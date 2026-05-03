@@ -1,0 +1,1831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CMP701 Digital Transformation Studio</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:13px;background:#f0f4f8;color:#1e293b;min-height:100vh}
+
+/* Header */
+.hdr{background:#1B3A6B;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.hdr-title h1{font-size:16px;font-weight:800;letter-spacing:.2px}
+.hdr-title p{font-size:10px;opacity:.7;margin-top:2px}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.live-badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700}
+.live-badge.ok{background:rgba(21,128,61,.3);border-color:rgba(21,128,61,.5);color:#86efac}
+.role-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);border-radius:6px;padding:6px 14px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:.15s}
+.role-btn:hover{background:rgba(255,255,255,.25)}
+.week-badge{background:#0D7377;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700}
+
+/* Tabs */
+.tabs{display:flex;background:#162d55;border-bottom:3px solid #0D7377;overflow-x:auto;flex-shrink:0}
+.tab{padding:10px 16px;color:rgba(255,255,255,.55);cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;border:none;background:none;transition:.15s;letter-spacing:.3px}
+.tab:hover{color:#fff;background:rgba(255,255,255,.07)}
+.tab.on{color:#fff;background:#0D7377}
+
+/* Pages */
+.pg{display:none;padding:16px;max-width:1400px;margin:0 auto}
+.pg.on{display:block}
+
+/* KPI cards */
+.krow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.kpi{background:#fff;border-radius:8px;padding:12px 15px;flex:1 1 120px;border-top:4px solid #1B3A6B;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.kpi .v{font-size:26px;font-weight:800;line-height:1;color:#1B3A6B}
+.kpi .l{font-size:9px;color:#64748b;margin-top:4px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.kpi.gr{border-top-color:#15803D}.kpi.gr .v{color:#15803D}
+.kpi.am{border-top-color:#B45309}.kpi.am .v{color:#B45309}
+.kpi.tl{border-top-color:#0D7377}.kpi.tl .v{color:#0D7377}
+.kpi.bl{border-top-color:#1D4ED8}.kpi.bl .v{color:#1D4ED8}
+.kpi.pu{border-top-color:#7C3AED}.kpi.pu .v{color:#7C3AED}
+
+/* Cards */
+.card{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px;overflow:hidden}
+.card-hdr{padding:10px 16px;font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+.card-hdr.blue{background:#1B3A6B}
+.card-hdr.teal{background:#0D7377}
+.card-hdr.green{background:#15803D}
+.card-hdr.purple{background:#7C3AED}
+.card-hdr.amber{background:#B45309}
+.card-hdr.slate{background:#334155}
+.card-body{padding:16px}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:#334155;color:#fff;padding:8px 10px;text-align:left;font-weight:700;font-size:11px;white-space:nowrap;position:sticky;top:0;z-index:2}
+thead th.C{text-align:center}
+tbody tr:nth-child(even){background:#f8fafc}
+tbody tr:hover{background:#eff6ff}
+td{padding:7px 10px;border-bottom:1px solid #e2e8f0;vertical-align:middle}
+td.C{text-align:center}
+.tw{overflow-x:auto}
+
+/* Badges */
+.b{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap}
+.b-green{background:#dcfce7;color:#15803D}
+.b-red{background:#fee2e2;color:#B91C1C}
+.b-amber{background:#fef9c3;color:#854d0e}
+.b-blue{background:#dbeafe;color:#1D4ED8}
+.b-teal{background:#ccfbf1;color:#0D7377}
+.b-slate{background:#f1f5f9;color:#475569}
+.b-purple{background:#ede9fe;color:#7C3AED}
+
+/* Forms */
+.form-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end}
+.form-group{display:flex;flex-direction:column;gap:4px;flex:1 1 180px}
+.form-group label{font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px}
+input,select,textarea{padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px;font-family:Arial,sans-serif;width:100%;transition:.15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#0D7377;box-shadow:0 0 0 3px rgba(13,115,119,.15)}
+textarea{resize:vertical;min-height:80px}
+
+/* Buttons */
+.btn{padding:8px 16px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:5px}
+.btn-primary{background:#0D7377;color:#fff}
+.btn-primary:hover{background:#0a5a5e}
+.btn-secondary{background:#1B3A6B;color:#fff}
+.btn-secondary:hover{background:#152d54}
+.btn-danger{background:#B91C1C;color:#fff}
+.btn-danger:hover{background:#991b1b}
+.btn-ghost{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}
+.btn-ghost:hover{background:#e2e8f0}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-purple{background:#7C3AED;color:#fff}
+.btn-purple:hover{background:#6d28d9}
+
+/* Guild card grid */
+.guild-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:16px}
+.guild-card{background:#fff;border-radius:8px;border:2px solid #e2e8f0;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:.15s}
+.guild-card:hover{border-color:#0D7377;box-shadow:0 2px 8px rgba(13,115,119,.15)}
+.guild-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.guild-name{font-size:14px;font-weight:800;color:#1B3A6B}
+.guild-campus{font-size:10px;color:#64748b;margin-top:2px}
+.member-list{list-style:none;margin-top:8px}
+.member-list li{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #f1f5f9;font-size:11px}
+.member-list li:last-child{border:none}
+.member-avatar{width:22px;height:22px;border-radius:50%;background:#1B3A6B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0}
+.role-tag{font-size:9px;padding:1px 6px;border-radius:8px;font-weight:700;margin-left:auto}
+
+/* Quest cards */
+.quest-week-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-bottom:16px}
+.quest-card{background:#fff;border-radius:8px;border:2px solid #e2e8f0;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.quest-card.published{border-color:#15803D}
+.quest-card.draft{border-color:#B45309}
+.quest-title{font-size:13px;font-weight:800;color:#1B3A6B;margin-bottom:6px}
+.quest-brief{font-size:11px;color:#475569;line-height:1.5;margin-bottom:10px}
+.deliverables li{font-size:11px;color:#334155;margin-left:16px;margin-bottom:3px;list-style:disc}
+
+/* AI panel */
+.ai-panel{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:20px;margin-bottom:16px}
+.ai-output{background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:6px;padding:14px;font-size:12px;line-height:1.7;white-space:pre-wrap;max-height:500px;overflow-y:auto;font-family:Arial,sans-serif}
+.ai-output.loading{color:#94a3b8;font-style:italic}
+
+/* Progress bar */
+.pbar-wrap{background:#e2e8f0;border-radius:4px;height:8px;overflow:hidden;margin-top:6px}
+.pbar-fill{height:100%;border-radius:4px;transition:width .4s}
+
+/* Alert */
+.alert{padding:10px 14px;border-radius:6px;font-size:12px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.alert-success{background:#dcfce7;color:#15803D;border:1px solid #86efac}
+.alert-error{background:#fee2e2;color:#B91C1C;border:1px solid #fca5a5}
+.alert-info{background:#dbeafe;color:#1D4ED8;border:1px solid #93c5fd}
+.alert-warn{background:#fef9c3;color:#854d0e;border:1px solid #fde047}
+
+/* Student portal specific */
+.quest-hero{background:linear-gradient(135deg,#1B3A6B,#0D7377);color:#fff;border-radius:10px;padding:24px;margin-bottom:16px}
+.quest-hero h2{font-size:18px;font-weight:800;margin-bottom:6px}
+.quest-hero p{font-size:12px;opacity:.85;line-height:1.5}
+.quest-deliverable{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:8px 12px;margin-top:8px;font-size:11px}
+
+/* Frow */
+.frow{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:10px;padding:24px;width:90%;max-width:580px;max-height:85vh;overflow-y:auto;position:relative}
+.modal h3{font-size:15px;font-weight:800;color:#1B3A6B;margin-bottom:16px}
+.modal-close{position:absolute;top:14px;right:14px;background:none;border:none;font-size:18px;cursor:pointer;color:#64748b}
+
+/* Toast */
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px}
+.toast{background:#1B3A6B;color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);animation:slideIn .3s ease;display:flex;align-items:center;gap:8px}
+.toast.ok{background:#15803D}
+.toast.err{background:#B91C1C}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Divider */
+.divider{height:1px;background:#e2e8f0;margin:14px 0}
+
+/* Responsive */
+@media(max-width:600px){.kpi .v{font-size:20px}.guild-grid{grid-template-columns:1fr}.quest-week-grid{grid-template-columns:1fr}}
+
+/* Submission timeline */
+.timeline{list-style:none;padding:0}
+.timeline li{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9;align-items:flex-start}
+.timeline li:last-child{border:none}
+.tl-dot{width:10px;height:10px;border-radius:50%;margin-top:3px;flex-shrink:0}
+.tl-dot.green{background:#15803D}
+.tl-dot.amber{background:#B45309}
+.tl-dot.slate{background:#94a3b8}
+.tl-content{flex:1}
+.tl-title{font-size:12px;font-weight:700;color:#1e293b}
+.tl-sub{font-size:10px;color:#64748b;margin-top:2px}
+
+/* Blackboard embed section */
+.embed-box{background:#f8fafc;border:2px dashed #94a3b8;border-radius:8px;padding:20px;margin-top:12px;text-align:center}
+.embed-code{background:#1e293b;color:#e2e8f0;padding:14px;border-radius:6px;font-family:monospace;font-size:11px;text-align:left;overflow-x:auto;margin-top:10px;white-space:pre}
+
+/* Role colors */
+.role-facilitator{background:#dbeafe;color:#1D4ED8}
+.role-analyst{background:#ede9fe;color:#7C3AED}
+.role-strategist{background:#dcfce7;color:#15803D}
+.role-innovator{background:#fef9c3;color:#854d0e}
+.role-reporter{background:#fce7f3;color:#9D174D}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr">
+  <div class="hdr-title">
+    <h1>CMP701 — Digital Transformation Studio</h1>
+    <p>Ulster University QAHE &nbsp;·&nbsp; Module Leader: Dr Tertsegha Anande</p>
+  </div>
+  <div class="hdr-right">
+    <span class="week-badge" id="weekBadge">Week —</span>
+    <button class="role-btn" onclick="toggleRole()" id="roleBtn">Switch to Student View</button>
+    <span class="live-badge" id="liveBadge">● Connecting…</span>
+  </div>
+</div>
+
+<!-- LEADER TABS -->
+<div class="tabs" id="leaderTabs">
+  <button class="tab on" onclick="showTab('dashboard',this)">Dashboard</button>
+  <button class="tab" onclick="showTab('guilds',this)">Guilds</button>
+  <button class="tab" onclick="showTab('quests',this)">Quest Manager</button>
+  <button class="tab" onclick="showTab('submissions',this)">Submissions</button>
+  <button class="tab" onclick="showTab('ai-tool',this)">AI Assessment</button>
+  <button class="tab" onclick="showTab('students',this)">Students</button>
+  <button class="tab" onclick="showTab('bb-setup',this)">Blackboard Setup</button>
+</div>
+
+<!-- STUDENT TABS -->
+<div class="tabs" id="studentTabs" style="display:none">
+  <button class="tab on" onclick="showTab('s-quest',this)">This Week's Quest</button>
+  <button class="tab" onclick="showTab('s-guild',this)">My Guild</button>
+  <button class="tab" onclick="showTab('s-submit',this)">Submit Artefact</button>
+  <button class="tab" onclick="showTab('s-ai',this)">AI Feedback</button>
+  <button class="tab" onclick="showTab('s-progress',this)">My Progress</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LEADER PAGES
+════════════════════════════════════════════════════════════ -->
+
+<!-- DASHBOARD -->
+<div class="pg on" id="pg-dashboard">
+  <div class="krow" id="dashKPIs">
+    <div class="kpi"><div class="v" id="kpi-guilds">—</div><div class="l">Guilds</div></div>
+    <div class="kpi bl"><div class="v" id="kpi-students">—</div><div class="l">Students</div></div>
+    <div class="kpi tl"><div class="v" id="kpi-week">—</div><div class="l">Current Week</div></div>
+    <div class="kpi gr"><div class="v" id="kpi-subs">—</div><div class="l">Submissions This Week</div></div>
+    <div class="kpi am"><div class="v" id="kpi-pending">—</div><div class="l">Pending Artefacts</div></div>
+    <div class="kpi pu"><div class="v" id="kpi-quests">—</div><div class="l">Quests Published</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex-wrap:wrap">
+    <div class="card">
+      <div class="card-hdr blue">Weekly Submission Progress</div>
+      <div class="card-body" id="dashSubmissionProgress"><p style="color:#94a3b8;font-size:12px">No data yet</p></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr teal">Guild Submission Status</div>
+      <div class="card-body" id="dashGuildStatus"><p style="color:#94a3b8;font-size:12px">No guilds set up yet</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr slate">Recent Activity</div>
+    <div class="card-body" id="dashActivity"><p style="color:#94a3b8;font-size:12px">No recent activity</p></div>
+  </div>
+</div>
+
+<!-- GUILDS -->
+<div class="pg" id="pg-guilds">
+  <div class="frow">
+    <button class="btn btn-primary" onclick="openGuildModal()">+ New Guild</button>
+    <button class="btn btn-ghost" onclick="openImportModal()">↑ Import Students CSV</button>
+    <button class="btn btn-ghost" onclick="autoAssignGuilds()">⚡ Auto-assign Roles</button>
+    <select class="fs" id="guildCampusFilter" onchange="renderGuilds()" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px">
+      <option value="">All Campuses</option>
+      <option>London</option><option>Birmingham</option><option>Manchester</option>
+    </select>
+  </div>
+  <div class="guild-grid" id="guildGrid"><p style="color:#94a3b8;font-size:12px">No guilds yet. Click "+ New Guild" to create one.</p></div>
+</div>
+
+<!-- QUEST MANAGER -->
+<div class="pg" id="pg-quests">
+  <div class="frow">
+    <button class="btn btn-primary" onclick="openQuestModal()">+ New Quest Brief</button>
+    <button class="btn btn-secondary" onclick="generateWeeklyQuest()">⚡ AI-Generate Quest</button>
+    <select class="fs" id="questWeekFilter" onchange="renderQuests()" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px">
+      <option value="">All Weeks</option>
+    </select>
+  </div>
+  <div class="quest-week-grid" id="questGrid"><p style="color:#94a3b8;font-size:12px">No quest briefs yet. Create one to get started.</p></div>
+</div>
+
+<!-- SUBMISSIONS -->
+<div class="pg" id="pg-submissions">
+  <div class="frow">
+    <select class="fs" id="subWeekFilter" onchange="renderSubmissions()" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px;min-width:120px">
+      <option value="">All Weeks</option>
+    </select>
+    <select class="fs" id="subGuildFilter" onchange="renderSubmissions()" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px;min-width:160px">
+      <option value="">All Guilds</option>
+    </select>
+    <select class="fs" id="subStatusFilter" onchange="renderSubmissions()" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px">
+      <option value="">All Statuses</option>
+      <option>Submitted</option><option>Pending</option><option>Reviewed</option>
+    </select>
+    <input type="text" placeholder="Search student…" class="sb" id="subSearch" oninput="renderSubmissions()" style="padding:7px 12px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px;min-width:180px">
+    <button class="btn btn-ghost btn-sm" onclick="exportSubmissionsCSV()">↓ Export CSV</button>
+  </div>
+  <div class="card">
+    <div class="card-hdr slate">Artefact Submissions</div>
+    <div class="tw" id="submissionsTable">
+      <table><thead><tr><th>Student</th><th>Guild</th><th>Week</th><th>Artefact</th><th class="C">Status</th><th class="C">Submitted</th><th class="C">Actions</th></tr></thead>
+      <tbody id="subTbody"><tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No submissions yet</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- AI ASSESSMENT TOOL -->
+<div class="pg" id="pg-ai-tool">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div>
+      <div class="card">
+        <div class="card-hdr purple">AI Assessment — Input</div>
+        <div class="card-body">
+          <div class="form-group" style="margin-bottom:12px">
+            <label>Assessment Type</label>
+            <select id="aiAssessType" onchange="updateAIForm()">
+              <option value="cw1">CW1 — Video Presentation (25%)</option>
+              <option value="cw2">CW2 — Written Report (75%)</option>
+              <option value="artefact">Weekly Studio Artefact</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label>Student Name</label>
+            <input type="text" id="aiStudentName" placeholder="e.g. Jane Smith">
+          </div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label>Business Chosen</label>
+            <input type="text" id="aiBusinessName" placeholder="e.g. Netflix">
+          </div>
+          <div class="form-group" style="margin-bottom:12px" id="aiWeekGroup" style="display:none">
+            <label>Studio Week</label>
+            <select id="aiWeekNum">
+              <option value="1">Week 1</option><option value="2">Week 2</option><option value="3">Week 3</option>
+              <option value="4">Week 4</option><option value="5">Week 5</option><option value="6">Week 6</option>
+              <option value="7">Week 7</option><option value="8">Week 8</option><option value="9">Week 9</option>
+              <option value="10">Week 10</option><option value="11">Week 11</option><option value="12">Week 12</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label id="aiTextLabel">Submission Text / Transcript</label>
+            <textarea id="aiSubmissionText" rows="10" placeholder="Paste the student's submission text, video transcript, or artefact description here…"></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom:16px">
+            <label>Anthropic API Key</label>
+            <input type="password" id="aiApiKey" placeholder="sk-ant-…" value="">
+            <small style="color:#64748b;font-size:10px;margin-top:3px">Stored locally in your browser only</small>
+          </div>
+          <button class="btn btn-purple" style="width:100%" onclick="runAIAssessment()">
+            ⚡ Generate AI Assessment
+          </button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-hdr purple">AI Assessment — Output</div>
+        <div class="card-body">
+          <div class="ai-output loading" id="aiOutput">AI assessment will appear here after you submit…</div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-ghost btn-sm" onclick="copyAIOutput()">Copy</button>
+            <button class="btn btn-ghost btn-sm" onclick="saveAIFeedback()">Save to Submission</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearAIOutput()">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rubrics Reference -->
+  <div class="card" style="margin-top:0">
+    <div class="card-hdr amber">Marking Rubrics Reference</div>
+    <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div>
+        <p style="font-size:12px;font-weight:700;color:#1B3A6B;margin-bottom:8px">CW1 — Video Presentation (100 pts)</p>
+        <table style="font-size:11px"><thead><tr><th>Criterion</th><th class="C">Pts</th></tr></thead><tbody>
+          <tr><td>Content Understanding</td><td class="C">25</td></tr>
+          <tr><td>Clarity and Engagement</td><td class="C">20</td></tr>
+          <tr><td>Structure and Organization</td><td class="C">20</td></tr>
+          <tr><td>Use of Visual Aids</td><td class="C">20</td></tr>
+          <tr><td>Delivery and Time Management</td><td class="C">15</td></tr>
+          <tr style="background:#1B3A6B;color:#fff"><td><strong>Total</strong></td><td class="C"><strong>100</strong></td></tr>
+        </tbody></table>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:#1B3A6B;margin-bottom:8px">CW2 — Written Report (100 pts)</p>
+        <table style="font-size:11px"><thead><tr><th>Criterion</th><th class="C">Pts</th></tr></thead><tbody>
+          <tr><td>Introduction & Content Understanding</td><td class="C">15</td></tr>
+          <tr><td>Critical Analysis (Business & Digital Tech)</td><td class="C">20</td></tr>
+          <tr><td>Digital Transformation Strategy</td><td class="C">20</td></tr>
+          <tr><td>Documentation and Structure</td><td class="C">15</td></tr>
+          <tr><td>Use of Evidence and Literature</td><td class="C">15</td></tr>
+          <tr><td>Presentation of Artefacts & Communication</td><td class="C">15</td></tr>
+          <tr style="background:#1B3A6B;color:#fff"><td><strong>Total</strong></td><td class="C"><strong>100</strong></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENTS -->
+<div class="pg" id="pg-students">
+  <div class="frow">
+    <input type="text" placeholder="Search student…" class="sb" id="studentSearch" oninput="renderStudents()" style="padding:7px 12px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px;min-width:200px">
+    <select class="fs" id="studentCampusFilter" onchange="renderStudents()" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px">
+      <option value="">All Campuses</option>
+      <option>London</option><option>Birmingham</option><option>Manchester</option>
+    </select>
+    <select class="fs" id="studentGuildFilter" onchange="renderStudents()" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px;min-width:160px">
+      <option value="">All Guilds</option>
+    </select>
+    <button class="btn btn-primary" onclick="openAddStudentModal()">+ Add Student</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportStudentsCSV()">↓ CSV</button>
+  </div>
+  <div class="card">
+    <div class="card-hdr blue">Student Roster</div>
+    <div class="tw">
+      <table><thead><tr>
+        <th>Name</th><th>Campus</th><th>Guild</th><th>Business</th>
+        <th class="C">Weeks Submitted</th><th class="C">Actions</th>
+      </tr></thead>
+      <tbody id="studentTbody"><tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">No students added yet</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- BLACKBOARD SETUP -->
+<div class="pg" id="pg-bb-setup">
+  <div class="card">
+    <div class="card-hdr blue">Blackboard Integration Guide</div>
+    <div class="card-body">
+      <div class="alert alert-info">This Studio system is designed to embed seamlessly into your Blackboard module page as a web tool. Follow the steps below for each method.</div>
+
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px;margin-top:16px">Method 1 — Embed as Web Link (Recommended)</h3>
+      <ol style="font-size:12px;line-height:2;margin-left:16px;color:#334155">
+        <li>In your Blackboard module, go to <strong>Content</strong> → <strong>Build Content</strong> → <strong>Web Link</strong></li>
+        <li>Name it: <em>Digital Transformation Studio</em></li>
+        <li>Paste the Studio URL below into the URL field</li>
+        <li>Check <strong>"This link is to a Tool Provider"</strong> if available</li>
+        <li>Check <strong>"Open in New Window"</strong> for best experience</li>
+        <li>Set availability to students and click Submit</li>
+      </ol>
+
+      <div class="embed-box">
+        <p style="font-size:12px;color:#475569;margin-bottom:8px">Your Studio URL (copy this into Blackboard)</p>
+        <div class="embed-code" id="bbStudentUrl">https://tertsegha1.github.io/cmp701-studio/</div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyBBUrl()">Copy URL</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Method 2 — Embed as iFrame in a Blackboard Item</h3>
+      <ol style="font-size:12px;line-height:2;margin-left:16px;color:#334155">
+        <li>Go to <strong>Build Content</strong> → <strong>Item</strong></li>
+        <li>In the text editor, click the <strong>HTML source</strong> button (<code>&lt;/&gt;</code>)</li>
+        <li>Paste the iframe code below</li>
+        <li>Click Submit</li>
+      </ol>
+      <div class="embed-code" id="bbIframeCode">&lt;iframe
+  src="https://tertsegha1.github.io/cmp701-studio/?role=student"
+  width="100%"
+  height="800"
+  frameborder="0"
+  allow="clipboard-write"
+  style="border-radius:8px;border:none"&gt;
+&lt;/iframe&gt;</div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyIframe()">Copy iFrame Code</button>
+
+      <div class="divider"></div>
+
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Method 3 — Separate Student Access Link</h3>
+      <p style="font-size:12px;color:#475569;margin-bottom:10px">Share this direct link with students via Blackboard Announcement or email. It opens in Student View automatically:</p>
+      <div class="embed-code" id="bbStudentDirectUrl">https://tertsegha1.github.io/cmp701-studio/?role=student</div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyStudentUrl()">Copy Student URL</button>
+
+      <div class="divider"></div>
+
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Student Identification</h3>
+      <p style="font-size:12px;color:#475569;margin-bottom:10px">Students select their name from a dropdown when they first open the Studio. Their progress is then tracked under their name in the Submissions tab above.</p>
+      <div class="alert alert-warn">Blackboard does not automatically pass student identity to external tools unless you use LTI. For LTI integration, contact your Blackboard administrator to register this tool as an LTI provider.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr teal">Module Configuration</div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Current Week</label>
+          <input type="number" id="cfgWeek" min="1" max="12" placeholder="1–12">
+        </div>
+        <div class="form-group">
+          <label>Semester Start Date</label>
+          <input type="date" id="cfgSemesterStart">
+        </div>
+        <div class="form-group">
+          <label>CW1 Deadline</label>
+          <input type="date" id="cfgCW1Deadline" value="2026-03-13">
+        </div>
+        <div class="form-group">
+          <label>CW2 Deadline</label>
+          <input type="date" id="cfgCW2Deadline" value="2026-05-06">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Module Leader Access Code</label>
+          <input type="password" id="cfgLeaderCode" placeholder="Set a code to protect leader view">
+        </div>
+        <div class="form-group" style="justify-content:flex-end">
+          <button class="btn btn-primary" onclick="saveConfig()">Save Configuration</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STUDENT PAGES
+════════════════════════════════════════════════════════════ -->
+
+<!-- STUDENT: Identity selector banner -->
+<div id="studentIdentityBanner" style="display:none;background:#fffbeb;border-bottom:2px solid #fde68a;padding:10px 20px;display:flex;align-items:center;gap:10px">
+  <span style="font-size:12px;font-weight:700;color:#854d0e">Who are you?</span>
+  <select id="studentIdentitySelect" onchange="setStudentIdentity()" style="padding:6px 10px;border:1.5px solid #fde68a;border-radius:6px;font-size:12px;min-width:200px;background:#fff">
+    <option value="">— Select your name —</option>
+  </select>
+  <span style="font-size:11px;color:#92400e">Your submissions will be saved under the name you select.</span>
+</div>
+
+<!-- STUDENT: This Week's Quest -->
+<div class="pg" id="pg-s-quest">
+  <div class="quest-hero" id="questHero">
+    <h2 id="questHeroTitle">Loading this week's quest…</h2>
+    <p id="questHeroBrief" style="margin-top:8px">Please wait while we load the quest brief.</p>
+  </div>
+  <div class="card" id="questDeliverables" style="display:none">
+    <div class="card-hdr teal">This Week's Deliverables</div>
+    <div class="card-body">
+      <ul class="deliverables" id="questDeliverablesList" style="margin-left:16px"></ul>
+      <div class="divider"></div>
+      <p style="font-size:11px;color:#64748b">Submit your artefact in the <strong>Submit Artefact</strong> tab. The deadline is end of the studio session.</p>
+    </div>
+  </div>
+  <div class="card" id="prevQuestCard" style="display:none">
+    <div class="card-hdr slate">Previous Weeks</div>
+    <div class="card-body" id="prevQuestList"></div>
+  </div>
+</div>
+
+<!-- STUDENT: My Guild -->
+<div class="pg" id="pg-s-guild">
+  <div class="card" id="myGuildCard">
+    <div class="card-hdr blue">My Guild</div>
+    <div class="card-body" id="myGuildBody">
+      <p style="color:#94a3b8;font-size:12px">Select your name from the top bar to see your guild.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hdr teal">Guild Working Contract</div>
+    <div class="card-body" id="guildContractBody">
+      <p style="color:#94a3b8;font-size:12px">Your guild's working contract will appear here.</p>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT: Submit Artefact -->
+<div class="pg" id="pg-s-submit">
+  <div class="card">
+    <div class="card-hdr green">Submit Weekly Artefact</div>
+    <div class="card-body">
+      <div id="submitAlert"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Week</label>
+          <select id="submitWeekSel" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px"></select>
+        </div>
+        <div class="form-group" style="flex:3">
+          <label>Artefact Title / Description</label>
+          <input type="text" id="submitTitle" placeholder="e.g. Business Snapshot — Netflix Digital Maturity Analysis">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Artefact Link (URL, OneDrive, Google Drive, etc.)</label>
+        <input type="url" id="submitLink" placeholder="https://…">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Description / Summary (What did you produce this week?)</label>
+        <textarea id="submitDescription" rows="5" placeholder="Briefly describe your artefact, key findings, and how it connects to your chosen business…"></textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Reflection (What did you learn? What would you do differently?)</label>
+        <textarea id="submitReflection" rows="4" placeholder="Your honest reflection on this week's studio work…"></textarea>
+      </div>
+      <button class="btn btn-primary" style="min-width:180px" onclick="submitArtefact()">Submit Artefact</button>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT: AI Feedback -->
+<div class="pg" id="pg-s-ai">
+  <div class="card">
+    <div class="card-hdr purple">Get AI Feedback on Your Work</div>
+    <div class="card-body">
+      <div class="alert alert-info">Paste your draft work below to receive preliminary AI feedback aligned to the CMP701 assessment criteria. This is formative only — final marks are awarded by your marker.</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Feedback Type</label>
+          <select id="sAiType">
+            <option value="cw1">CW1 — Video Script / Presentation Plan</option>
+            <option value="cw2">CW2 — Written Report Draft</option>
+            <option value="artefact">Weekly Studio Artefact</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Your Chosen Business</label>
+          <input type="text" id="sAiBusiness" placeholder="e.g. Netflix">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Paste Your Work Here</label>
+        <textarea id="sAiText" rows="10" placeholder="Paste your draft, script, or artefact description…"></textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>API Key (optional — use the module's shared key if provided)</label>
+        <input type="password" id="sAiKey" placeholder="sk-ant-…">
+      </div>
+      <button class="btn btn-purple" onclick="runStudentAI()">⚡ Get AI Feedback</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hdr purple">Feedback</div>
+    <div class="card-body">
+      <div class="ai-output loading" id="sAiOutput">Your feedback will appear here after you submit your work…</div>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT: My Progress -->
+<div class="pg" id="pg-s-progress">
+  <div class="krow" id="sProgressKPIs">
+    <div class="kpi bl"><div class="v" id="spk-weeks">—</div><div class="l">Weeks Submitted</div></div>
+    <div class="kpi gr"><div class="v" id="spk-pct">—</div><div class="l">Completion %</div></div>
+    <div class="kpi am"><div class="v" id="spk-pending">—</div><div class="l">Weeks Pending</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr blue">My Submission Timeline</div>
+    <div class="card-body" id="sProgressTimeline"><p style="color:#94a3b8;font-size:12px">No submissions yet.</p></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODALS
+════════════════════════════════════════════════════════════ -->
+
+<!-- Guild Modal -->
+<div class="modal-overlay" id="guildModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('guildModal')">✕</button>
+    <h3 id="guildModalTitle">New Guild</h3>
+    <input type="hidden" id="guildEditId">
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Guild Name</label>
+      <input type="text" id="guildName" placeholder="e.g. Guild Alpha">
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Campus</label>
+      <select id="guildCampus"><option>London</option><option>Birmingham</option><option>Manchester</option></select>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Guild Working Contract</label>
+      <textarea id="guildContract" rows="4" placeholder="e.g. We agree to meet every Tuesday at 2pm, share notes within 24 hours, and respect each other's ideas…"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('guildModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGuild()">Save Guild</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quest Modal -->
+<div class="modal-overlay" id="questModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('questModal')">✕</button>
+    <h3 id="questModalTitle">New Quest Brief</h3>
+    <input type="hidden" id="questEditId">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Week</label>
+        <select id="questWeek">
+          <option value="1">Week 1</option><option value="2">Week 2</option><option value="3">Week 3</option>
+          <option value="4">Week 4</option><option value="5">Week 5</option><option value="6">Week 6</option>
+          <option value="7">Week 7</option><option value="8">Week 8</option><option value="9">Week 9</option>
+          <option value="10">Week 10</option><option value="11">Week 11</option><option value="12">Week 12</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:3">
+        <label>Quest Title</label>
+        <input type="text" id="questTitle" placeholder="e.g. Business Snapshot — Who Are You Transforming?">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Quest Brief</label>
+      <textarea id="questBrief" rows="5" placeholder="Describe the context and challenge for this week's studio session…"></textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Deliverables (one per line)</label>
+      <textarea id="questDeliverableInput" rows="4" placeholder="1-page business snapshot&#10;Digital maturity score (1–5) with justification&#10;Guild working contract signed by all members"></textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Status</label>
+      <select id="questStatus"><option value="draft">Draft</option><option value="published">Published</option></select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('questModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveQuest()">Save Quest</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Student Modal -->
+<div class="modal-overlay" id="addStudentModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('addStudentModal')">✕</button>
+    <h3>Add Student</h3>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Full Name</label>
+      <input type="text" id="newStudentName" placeholder="e.g. Jane Smith">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Campus</label>
+        <select id="newStudentCampus"><option>London</option><option>Birmingham</option><option>Manchester</option></select>
+      </div>
+      <div class="form-group">
+        <label>Guild</label>
+        <select id="newStudentGuild"><option value="">— Unassigned —</option></select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Chosen Business</label>
+      <select id="newStudentBusiness">
+        <option value="">— Not yet chosen —</option>
+        <option>Zara</option><option>Mayo Clinic</option><option>JPMorgan Chase</option>
+        <option>General Electric (GE)</option><option>Tesla</option><option>Verizon Communications</option>
+        <option>Netflix</option><option>Marriott International</option><option>Coursera</option><option>FedEx</option>
+        <option>Other (with approval)</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('addStudentModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addStudent()">Add Student</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import CSV Modal -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('importModal')">✕</button>
+    <h3>Import Students from CSV</h3>
+    <div class="alert alert-info">CSV must have columns: <strong>Name, Campus, Guild, Business</strong></div>
+    <div style="border:2px dashed #94a3b8;border-radius:8px;padding:24px;text-align:center;margin:12px 0;cursor:pointer" onclick="document.getElementById('csvFileInput').click()" id="csvDropzone">
+      <div style="font-size:28px;margin-bottom:6px">📄</div>
+      <p style="font-size:12px;color:#475569;font-weight:700">Click to select CSV file</p>
+      <p style="font-size:11px;color:#94a3b8">or drag and drop here</p>
+    </div>
+    <input type="file" id="csvFileInput" accept=".csv" style="display:none" onchange="handleCSVImport(event)">
+    <div id="importPreview" style="max-height:200px;overflow-y:auto"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button class="btn btn-ghost" onclick="closeModal('importModal')">Cancel</button>
+      <button class="btn btn-primary" id="importConfirmBtn" style="display:none" onclick="confirmCSVImport()">Import Students</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// ─── Firebase ───────────────────────────────────────────────
+const _fbCfg = {
+  apiKey: "AIzaSyAsmakkoQ4mtpFU4psvYvxJ0rICoujNpsU",
+  authDomain: "cmp701markingtracker.firebaseapp.com",
+  databaseURL: "https://cmp701markingtracker-default-rtdb.firebaseio.com",
+  projectId: "cmp701markingtracker",
+  storageBucket: "cmp701markingtracker.firebasestorage.app",
+  messagingSenderId: "151181822417",
+  appId: "1:151181822417:web:08f7f794b1ac40746638f0"
+};
+firebase.initializeApp(_fbCfg);
+const db = firebase.database();
+
+// ─── State ──────────────────────────────────────────────────
+let isLeader = true;
+let appData = { guilds:{}, students:{}, quests:{}, submissions:{}, config:{} };
+let currentStudent = null;
+let csvImportBuffer = [];
+
+// ─── Boot ────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // Check URL param for student role
+  const params = new URLSearchParams(location.search);
+  if (params.get('role') === 'student') { isLeader = false; applyRole(); }
+
+  // Restore API key
+  const savedKey = localStorage.getItem('cmp701_ai_key');
+  if (savedKey) { document.getElementById('aiApiKey').value = savedKey; document.getElementById('sAiKey').value = savedKey; }
+
+  // Subscribe to Firebase
+  db.ref('studio').on('value', snap => {
+    const raw = snap.val() || {};
+    appData.guilds     = raw.guilds      || {};
+    appData.students   = raw.students    || {};
+    appData.quests     = raw.quests      || {};
+    appData.submissions= raw.submissions || {};
+    appData.config     = raw.config      || {};
+
+    document.getElementById('liveBadge').textContent = '● Live';
+    document.getElementById('liveBadge').className = 'live-badge ok';
+
+    refreshAll();
+  }, () => {
+    document.getElementById('liveBadge').textContent = '● Offline';
+    document.getElementById('liveBadge').className = 'live-badge';
+  });
+
+  populateWeekSelects();
+  setCurrentWeekBadge();
+});
+
+function refreshAll() {
+  updateDashboard();
+  renderGuilds();
+  renderQuests();
+  renderSubmissions();
+  renderStudents();
+  updateStudentIdentityDropdown();
+  if (!isLeader) refreshStudentViews();
+  loadConfig();
+  updateWeekSelectors();
+}
+
+// ─── Role Toggle ─────────────────────────────────────────────
+function toggleRole() {
+  isLeader = !isLeader;
+  applyRole();
+}
+
+function applyRole() {
+  document.getElementById('leaderTabs').style.display = isLeader ? 'flex' : 'none';
+  document.getElementById('studentTabs').style.display = isLeader ? 'none' : 'flex';
+  document.getElementById('studentIdentityBanner').style.display = isLeader ? 'none' : 'flex';
+  document.getElementById('roleBtn').textContent = isLeader ? 'Switch to Student View' : 'Switch to Leader View';
+
+  // Show/hide pages
+  const allPgs = document.querySelectorAll('.pg');
+  allPgs.forEach(p => p.classList.remove('on'));
+
+  if (isLeader) {
+    showTab('dashboard', document.querySelector('#leaderTabs .tab'));
+  } else {
+    showTab('s-quest', document.querySelector('#studentTabs .tab'));
+    refreshStudentViews();
+  }
+}
+
+// ─── Tabs ────────────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.pg').forEach(p => p.classList.remove('on'));
+  const pg = document.getElementById('pg-' + id);
+  if (pg) pg.classList.add('on');
+
+  const tabContainer = isLeader ? document.getElementById('leaderTabs') : document.getElementById('studentTabs');
+  tabContainer.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+}
+
+// ─── Week Badge ──────────────────────────────────────────────
+function setCurrentWeekBadge() {
+  const w = appData.config.currentWeek || computeCurrentWeek();
+  document.getElementById('weekBadge').textContent = 'Week ' + w;
+  document.getElementById('kpi-week').textContent = w;
+}
+
+function computeCurrentWeek() {
+  const start = appData.config.semesterStart;
+  if (!start) return '—';
+  const diff = Math.floor((Date.now() - new Date(start)) / (7 * 86400000)) + 1;
+  return Math.min(Math.max(diff, 1), 12);
+}
+
+// ─── Dashboard ───────────────────────────────────────────────
+function updateDashboard() {
+  const gCount = Object.keys(appData.guilds).length;
+  const sCount = Object.keys(appData.students).length;
+  const currentWeek = appData.config.currentWeek || computeCurrentWeek();
+  const allSubs = appData.submissions;
+
+  // Count submissions this week
+  let weekSubs = 0, pendingCount = 0;
+  Object.keys(appData.students).forEach(sid => {
+    const hasSub = allSubs[sid] && allSubs[sid]['week-' + currentWeek];
+    if (hasSub) weekSubs++; else pendingCount++;
+  });
+
+  const publishedQuests = Object.values(appData.quests).filter(q => q.status === 'published').length;
+
+  document.getElementById('kpi-guilds').textContent = gCount;
+  document.getElementById('kpi-students').textContent = sCount;
+  document.getElementById('kpi-week').textContent = currentWeek;
+  document.getElementById('kpi-subs').textContent = weekSubs;
+  document.getElementById('kpi-pending').textContent = pendingCount;
+  document.getElementById('kpi-quests').textContent = publishedQuests;
+
+  // Weekly submission progress bar
+  const pct = sCount > 0 ? Math.round(weekSubs / sCount * 100) : 0;
+  document.getElementById('dashSubmissionProgress').innerHTML = `
+    <p style="font-size:12px;color:#475569;margin-bottom:8px">Week ${currentWeek}: ${weekSubs} of ${sCount} students submitted</p>
+    <div class="pbar-wrap"><div class="pbar-fill" style="width:${pct}%;background:${pct>=80?'#15803D':pct>=50?'#B45309':'#B91C1C'}"></div></div>
+    <p style="font-size:11px;color:#94a3b8;margin-top:6px">${pct}% completion</p>
+  `;
+
+  // Guild status
+  const gRows = Object.entries(appData.guilds).map(([gid, g]) => {
+    const members = g.members ? Object.values(g.members) : [];
+    const submitted = members.filter(m => allSubs[m.id] && allSubs[m.id]['week-' + currentWeek]).length;
+    const total = members.length;
+    const p = total > 0 ? Math.round(submitted / total * 100) : 0;
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-size:11px;font-weight:700;min-width:110px;color:#1B3A6B">${g.name}</span>
+      <div class="pbar-wrap" style="flex:1"><div class="pbar-fill" style="width:${p}%;background:${p>=80?'#15803D':p>=50?'#B45309':'#B91C1C'}"></div></div>
+      <span style="font-size:11px;color:#475569;min-width:55px">${submitted}/${total}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('dashGuildStatus').innerHTML = gRows || '<p style="color:#94a3b8;font-size:12px">No guilds yet</p>';
+
+  // Recent activity
+  const activities = [];
+  Object.entries(appData.submissions).forEach(([sid, weeks]) => {
+    const student = appData.students[sid];
+    const sName = student ? student.name : sid;
+    Object.entries(weeks).forEach(([wk, sub]) => {
+      if (sub.submittedAt) activities.push({ name: sName, week: wk, time: sub.submittedAt, title: sub.title || 'Artefact' });
+    });
+  });
+  activities.sort((a, b) => b.time - a.time);
+  const recentHTML = activities.slice(0, 10).map(a => `
+    <div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #f1f5f9;align-items:center">
+      <span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap">${a.week.replace('week-', 'Wk ')}</span>
+      <span style="font-size:12px;font-weight:700;color:#1B3A6B">${a.name}</span>
+      <span style="font-size:11px;color:#475569;flex:1">${a.title}</span>
+      <span style="font-size:10px;color:#94a3b8">${new Date(a.time).toLocaleDateString()}</span>
+    </div>`).join('');
+  document.getElementById('dashActivity').innerHTML = recentHTML || '<p style="color:#94a3b8;font-size:12px">No recent activity</p>';
+}
+
+// ─── Guilds ───────────────────────────────────────────────────
+function renderGuilds() {
+  const campusFilter = document.getElementById('guildCampusFilter').value;
+  const grid = document.getElementById('guildGrid');
+  const guilds = Object.entries(appData.guilds)
+    .filter(([,g]) => !campusFilter || g.campus === campusFilter);
+
+  if (!guilds.length) { grid.innerHTML = '<p style="color:#94a3b8;font-size:12px">No guilds yet.</p>'; return; }
+
+  const ROLES = ['Facilitator', 'Analyst', 'Strategist', 'Innovator', 'Reporter'];
+  const ROLE_CLASSES = { Facilitator:'role-facilitator', Analyst:'role-analyst', Strategist:'role-strategist', Innovator:'role-innovator', Reporter:'role-reporter' };
+
+  grid.innerHTML = guilds.map(([gid, g]) => {
+    const members = g.members ? Object.values(g.members) : [];
+    const memberHTML = members.map((m, i) => {
+      const role = g.currentRoles && g.currentRoles[m.id] ? g.currentRoles[m.id] : ROLES[i % ROLES.length];
+      const initials = m.name.split(' ').map(p => p[0]).join('').substring(0,2).toUpperCase();
+      const currentWeek = appData.config.currentWeek || 1;
+      const hasSub = appData.submissions[m.id] && appData.submissions[m.id]['week-' + currentWeek];
+      return `<li>
+        <div class="member-avatar">${initials}</div>
+        <span style="flex:1">${m.name}</span>
+        <span class="role-tag ${ROLE_CLASSES[role] || 'b-slate'}">${role}</span>
+        ${hasSub ? '<span class="b b-green" style="font-size:9px">✓</span>' : '<span class="b b-amber" style="font-size:9px">—</span>'}
+      </li>`;
+    }).join('');
+
+    return `<div class="guild-card">
+      <div class="guild-card-hdr">
+        <div>
+          <div class="guild-name">${g.name}</div>
+          <div class="guild-campus">${g.campus || ''} &nbsp;·&nbsp; ${members.length} members</div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-ghost btn-sm" onclick="editGuild('${gid}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteGuild('${gid}')">✕</button>
+        </div>
+      </div>
+      <ul class="member-list">${memberHTML || '<li style="color:#94a3b8;font-size:11px">No members yet — add from Students tab</li>'}</ul>
+      <div style="margin-top:10px">
+        <button class="btn btn-ghost btn-sm" onclick="openAddToGuildModal('${gid}')">+ Add Member</button>
+        <button class="btn btn-ghost btn-sm" onclick="rotateRoles('${gid}')">↻ Rotate Roles</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Update guild selects in filters
+  updateGuildFilterSelects();
+}
+
+function openGuildModal(gid) {
+  document.getElementById('guildModalTitle').textContent = gid ? 'Edit Guild' : 'New Guild';
+  document.getElementById('guildEditId').value = gid || '';
+  if (gid && appData.guilds[gid]) {
+    const g = appData.guilds[gid];
+    document.getElementById('guildName').value = g.name || '';
+    document.getElementById('guildCampus').value = g.campus || 'London';
+    document.getElementById('guildContract').value = g.contract || '';
+  } else {
+    document.getElementById('guildName').value = '';
+    document.getElementById('guildContract').value = '';
+  }
+  openModal('guildModal');
+}
+
+function editGuild(gid) { openGuildModal(gid); }
+
+async function saveGuild() {
+  const name = document.getElementById('guildName').value.trim();
+  const campus = document.getElementById('guildCampus').value;
+  const contract = document.getElementById('guildContract').value.trim();
+  if (!name) { toast('Guild name is required', 'err'); return; }
+
+  const gid = document.getElementById('guildEditId').value || db.ref('studio/guilds').push().key;
+  const existing = appData.guilds[gid] || {};
+  await db.ref('studio/guilds/' + gid).update({ name, campus, contract, ...existing.members ? { members: existing.members } : {} });
+  closeModal('guildModal');
+  toast('Guild saved!', 'ok');
+}
+
+async function deleteGuild(gid) {
+  if (!confirm('Delete this guild?')) return;
+  await db.ref('studio/guilds/' + gid).remove();
+  toast('Guild deleted');
+}
+
+async function rotateRoles(gid) {
+  const g = appData.guilds[gid];
+  if (!g || !g.members) return;
+  const ROLES = ['Facilitator', 'Analyst', 'Strategist', 'Innovator', 'Reporter'];
+  const members = Object.values(g.members);
+  const currentRoles = g.currentRoles || {};
+  const roleArr = members.map((m, i) => ROLES[i % ROLES.length]);
+  // Rotate by 1
+  roleArr.push(roleArr.shift());
+  const newRoles = {};
+  members.forEach((m, i) => { newRoles[m.id] = roleArr[i]; });
+  await db.ref('studio/guilds/' + gid + '/currentRoles').set(newRoles);
+  toast('Roles rotated!', 'ok');
+}
+
+function openAddToGuildModal(gid) {
+  // Add unassigned students to this guild
+  const unassigned = Object.entries(appData.students).filter(([sid, s]) => !s.guildId);
+  if (!unassigned.length) { toast('No unassigned students available', 'err'); return; }
+  const name = prompt('Enter student ID or name to add to this guild:\n\nUnassigned: ' + unassigned.map(([,s])=>s.name).join(', '));
+  if (!name) return;
+  const match = unassigned.find(([,s]) => s.name.toLowerCase().includes(name.toLowerCase()));
+  if (!match) { toast('Student not found', 'err'); return; }
+  addStudentToGuild(match[0], gid);
+}
+
+async function addStudentToGuild(sid, gid) {
+  const student = appData.students[sid];
+  if (!student) return;
+  await db.ref(`studio/guilds/${gid}/members/${sid}`).set({ id: sid, name: student.name });
+  await db.ref(`studio/students/${sid}/guildId`).set(gid);
+  toast(`${student.name} added to guild`, 'ok');
+}
+
+function autoAssignGuilds() {
+  const unassigned = Object.entries(appData.students).filter(([,s]) => !s.guildId);
+  if (!unassigned.length) { toast('All students are already assigned', 'err'); return; }
+  const guilds = Object.keys(appData.guilds);
+  if (!guilds.length) { toast('Create at least one guild first', 'err'); return; }
+  const promises = unassigned.map(([sid], i) => addStudentToGuild(sid, guilds[i % guilds.length]));
+  Promise.all(promises).then(() => toast(`Assigned ${unassigned.length} students to guilds`, 'ok'));
+}
+
+function openImportModal() { openModal('importModal'); }
+
+// ─── Quests ───────────────────────────────────────────────────
+function renderQuests() {
+  const weekFilter = document.getElementById('questWeekFilter').value;
+  const grid = document.getElementById('questGrid');
+  const quests = Object.entries(appData.quests)
+    .filter(([wk]) => !weekFilter || wk === 'week-' + weekFilter)
+    .sort(([a], [b]) => parseInt(a.split('-')[1]) - parseInt(b.split('-')[1]));
+
+  if (!quests.length) { grid.innerHTML = '<p style="color:#94a3b8;font-size:12px">No quest briefs yet.</p>'; return; }
+
+  grid.innerHTML = quests.map(([wk, q]) => {
+    const weekNum = wk.split('-')[1];
+    const delivs = (q.deliverables || '').split('\n').filter(Boolean);
+    const statusClass = q.status === 'published' ? 'published' : 'draft';
+    const statusBadge = q.status === 'published' ? '<span class="b b-green">Published</span>' : '<span class="b b-amber">Draft</span>';
+
+    return `<div class="quest-card ${statusClass}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <span style="font-size:10px;font-weight:700;color:#0D7377;text-transform:uppercase">Week ${weekNum}</span>
+        ${statusBadge}
+      </div>
+      <div class="quest-title">${q.title || 'Untitled Quest'}</div>
+      <div class="quest-brief">${q.brief || ''}</div>
+      ${delivs.length ? `<ul class="deliverables">${delivs.map(d => `<li>${d}</li>`).join('')}</ul>` : ''}
+      <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="editQuest('${wk}')">Edit</button>
+        ${q.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="publishQuest('${wk}')">Publish</button>` : `<button class="btn btn-ghost btn-sm" onclick="unpublishQuest('${wk}')">Unpublish</button>`}
+        <button class="btn btn-danger btn-sm" onclick="deleteQuest('${wk}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openQuestModal(wk) {
+  document.getElementById('questModalTitle').textContent = wk ? 'Edit Quest Brief' : 'New Quest Brief';
+  document.getElementById('questEditId').value = wk || '';
+  if (wk && appData.quests[wk]) {
+    const q = appData.quests[wk];
+    document.getElementById('questWeek').value = wk.split('-')[1];
+    document.getElementById('questTitle').value = q.title || '';
+    document.getElementById('questBrief').value = q.brief || '';
+    document.getElementById('questDeliverableInput').value = q.deliverables || '';
+    document.getElementById('questStatus').value = q.status || 'draft';
+  } else {
+    document.getElementById('questTitle').value = '';
+    document.getElementById('questBrief').value = '';
+    document.getElementById('questDeliverableInput').value = '';
+    document.getElementById('questStatus').value = 'draft';
+  }
+  openModal('questModal');
+}
+
+function editQuest(wk) { openQuestModal(wk); }
+
+async function saveQuest() {
+  const weekNum = document.getElementById('questWeek').value;
+  const title = document.getElementById('questTitle').value.trim();
+  const brief = document.getElementById('questBrief').value.trim();
+  const deliverables = document.getElementById('questDeliverableInput').value.trim();
+  const status = document.getElementById('questStatus').value;
+  if (!title) { toast('Quest title is required', 'err'); return; }
+
+  const wk = 'week-' + weekNum;
+  await db.ref('studio/quests/' + wk).set({ title, brief, deliverables, status, updatedAt: Date.now() });
+  closeModal('questModal');
+  toast('Quest saved!', 'ok');
+}
+
+async function publishQuest(wk) {
+  await db.ref('studio/quests/' + wk + '/status').set('published');
+  toast('Quest published!', 'ok');
+}
+
+async function unpublishQuest(wk) {
+  await db.ref('studio/quests/' + wk + '/status').set('draft');
+  toast('Quest unpublished');
+}
+
+async function deleteQuest(wk) {
+  if (!confirm('Delete this quest?')) return;
+  await db.ref('studio/quests/' + wk).remove();
+  toast('Quest deleted');
+}
+
+async function generateWeeklyQuest() {
+  const apiKey = document.getElementById('aiApiKey').value.trim() || localStorage.getItem('cmp701_ai_key');
+  if (!apiKey) { toast('Enter your API key in the AI Assessment tab first', 'err'); return; }
+  const weekNum = document.getElementById('questWeekFilter').value || (appData.config.currentWeek || 1);
+  toast('Generating quest brief for Week ' + weekNum + '…');
+
+  const prompt = `You are helping a university module leader create a studio quest brief for CMP701 Digital Transformation, Week ${weekNum}.
+
+The module has students working in "Guilds" (small groups) with rotating roles: Facilitator, Analyst, Strategist, Innovator, Reporter.
+Students are each analysing a real business (e.g. Netflix, Tesla, JPMorgan Chase, Zara) for digital transformation.
+CW1 (25%) is a 7-8 min video presentation due March 2026. CW2 (75%) is a 3000-word report due May 2026.
+
+Create a quest brief for Week ${weekNum} of 12. Include:
+1. A punchy quest title (max 10 words)
+2. A 2-3 sentence quest brief/context (engaging, studio-style language)
+3. 3-4 concrete deliverables students must produce this week
+
+Format as:
+TITLE: [title]
+BRIEF: [brief]
+DELIVERABLES:
+- [deliverable 1]
+- [deliverable 2]
+- [deliverable 3]`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-calls': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 500, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    const text = data.content[0].text;
+    const titleMatch = text.match(/TITLE:\s*(.+)/);
+    const briefMatch = text.match(/BRIEF:\s*([\s\S]+?)(?=DELIVERABLES:|$)/);
+    const delivMatch = text.match(/DELIVERABLES:([\s\S]+)/);
+
+    if (titleMatch) document.getElementById('questTitle').value = titleMatch[1].trim();
+    if (briefMatch) document.getElementById('questBrief').value = briefMatch[1].trim();
+    if (delivMatch) document.getElementById('questDeliverableInput').value = delivMatch[1].trim().split('\n').filter(l => l.trim().startsWith('-')).map(l => l.replace(/^-\s*/, '')).join('\n');
+    document.getElementById('questWeek').value = weekNum;
+    openModal('questModal');
+    toast('Quest generated!', 'ok');
+  } catch(e) { toast('AI error: ' + e.message, 'err'); }
+}
+
+// ─── Submissions ──────────────────────────────────────────────
+function renderSubmissions() {
+  const weekF = document.getElementById('subWeekFilter').value;
+  const guildF = document.getElementById('subGuildFilter').value;
+  const statusF = document.getElementById('subStatusFilter').value;
+  const searchF = document.getElementById('subSearch').value.toLowerCase();
+
+  const rows = [];
+  Object.entries(appData.students).forEach(([sid, s]) => {
+    const guildName = s.guildId && appData.guilds[s.guildId] ? appData.guilds[s.guildId].name : '—';
+    if (guildF && s.guildId !== guildF) return;
+    if (searchF && !s.name.toLowerCase().includes(searchF)) return;
+
+    const weeks = appData.submissions[sid] || {};
+    const weekEntries = weekF ? [[`week-${weekF}`, weeks[`week-${weekF}`]]] : Object.entries(weeks);
+
+    weekEntries.forEach(([wk, sub]) => {
+      if (!sub && weekF) sub = null;
+      const status = sub ? 'Submitted' : 'Pending';
+      if (statusF && status !== statusF) return;
+      rows.push({ sid, name: s.name, guild: guildName, guildId: s.guildId, week: wk, sub, status });
+    });
+
+    // Show pending rows for all weeks if no week filter
+    if (!weekF) {
+      for (let w = 1; w <= 12; w++) {
+        const wk = 'week-' + w;
+        if (!weeks[wk] && (!statusF || statusF === 'Pending')) {
+          rows.push({ sid, name: s.name, guild: guildName, guildId: s.guildId, week: wk, sub: null, status: 'Pending' });
+        }
+      }
+    }
+  });
+
+  const tbody = document.getElementById('subTbody');
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No submissions match filters</td></tr>'; return; }
+
+  tbody.innerHTML = rows.sort((a,b) => a.name.localeCompare(b.name) || a.week.localeCompare(b.week)).slice(0, 200).map(r => `
+    <tr>
+      <td style="font-weight:700">${r.name}</td>
+      <td>${r.guild}</td>
+      <td><span class="b b-blue">Wk ${r.week.split('-')[1]}</span></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.sub ? (r.sub.link ? `<a href="${r.sub.link}" target="_blank" style="color:#0D7377">${r.sub.title || 'View'}</a>` : r.sub.title || '—') : '<span style="color:#94a3b8">—</span>'}</td>
+      <td class="C"><span class="b ${r.status==='Submitted'?'b-green':r.status==='Reviewed'?'b-teal':'b-amber'}">${r.status}</span></td>
+      <td class="C" style="font-size:10px;color:#94a3b8">${r.sub && r.sub.submittedAt ? new Date(r.sub.submittedAt).toLocaleDateString() : '—'}</td>
+      <td class="C">
+        ${r.sub ? `<button class="btn btn-ghost btn-sm" onclick="viewSubmission('${r.sid}','${r.week}')">View</button>` : ''}
+      </td>
+    </tr>`).join('');
+}
+
+function viewSubmission(sid, wk) {
+  const sub = appData.submissions[sid] && appData.submissions[sid][wk];
+  const student = appData.students[sid];
+  if (!sub) return;
+  alert(`${student ? student.name : sid} — ${wk}\n\nTitle: ${sub.title || '—'}\nLink: ${sub.link || '—'}\n\nDescription:\n${sub.description || '—'}\n\nReflection:\n${sub.reflection || '—'}\n\nSubmitted: ${sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : '—'}`);
+}
+
+function exportSubmissionsCSV() {
+  const rows = [['Student', 'Guild', 'Week', 'Title', 'Link', 'Description', 'Status', 'Submitted']];
+  Object.entries(appData.students).forEach(([sid, s]) => {
+    const guildName = s.guildId && appData.guilds[s.guildId] ? appData.guilds[s.guildId].name : '';
+    const weeks = appData.submissions[sid] || {};
+    for (let w = 1; w <= 12; w++) {
+      const wk = 'week-' + w;
+      const sub = weeks[wk];
+      rows.push([s.name, guildName, 'Week ' + w, sub?.title||'', sub?.link||'', sub?.description||'', sub?'Submitted':'Pending', sub?.submittedAt ? new Date(sub.submittedAt).toLocaleDateString() : '']);
+    }
+  });
+  downloadCSV(rows, 'cmp701-studio-submissions.csv');
+}
+
+// ─── Students ─────────────────────────────────────────────────
+function renderStudents() {
+  const search = document.getElementById('studentSearch').value.toLowerCase();
+  const campus = document.getElementById('studentCampusFilter').value;
+  const guildF = document.getElementById('studentGuildFilter').value;
+
+  const students = Object.entries(appData.students)
+    .filter(([,s]) => (!search || s.name.toLowerCase().includes(search)) &&
+                      (!campus || s.campus === campus) &&
+                      (!guildF || s.guildId === guildF));
+
+  const tbody = document.getElementById('studentTbody');
+  if (!students.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">No students match filters</td></tr>'; return; }
+
+  tbody.innerHTML = students.map(([sid, s]) => {
+    const guildName = s.guildId && appData.guilds[s.guildId] ? appData.guilds[s.guildId].name : '<span style="color:#94a3b8">Unassigned</span>';
+    const subsCount = appData.submissions[sid] ? Object.keys(appData.submissions[sid]).length : 0;
+    return `<tr>
+      <td style="font-weight:700">${s.name}</td>
+      <td>${s.campus || '—'}</td>
+      <td>${guildName}</td>
+      <td>${s.business || '<span style="color:#94a3b8">Not chosen</span>'}</td>
+      <td class="C">${subsCount}/12</td>
+      <td class="C">
+        <button class="btn btn-ghost btn-sm" onclick="editStudent('${sid}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteStudent('${sid}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openAddStudentModal() {
+  document.getElementById('newStudentName').value = '';
+  // Populate guild select
+  const sel = document.getElementById('newStudentGuild');
+  sel.innerHTML = '<option value="">— Unassigned —</option>' +
+    Object.entries(appData.guilds).map(([gid, g]) => `<option value="${gid}">${g.name} (${g.campus})</option>`).join('');
+  openModal('addStudentModal');
+}
+
+async function addStudent() {
+  const name = document.getElementById('newStudentName').value.trim();
+  const campus = document.getElementById('newStudentCampus').value;
+  const guildId = document.getElementById('newStudentGuild').value;
+  const business = document.getElementById('newStudentBusiness').value;
+  if (!name) { toast('Student name is required', 'err'); return; }
+
+  const sid = db.ref('studio/students').push().key;
+  await db.ref('studio/students/' + sid).set({ name, campus, guildId, business, addedAt: Date.now() });
+  if (guildId) await addStudentToGuild(sid, guildId);
+  closeModal('addStudentModal');
+  toast('Student added!', 'ok');
+}
+
+async function deleteStudent(sid) {
+  const s = appData.students[sid];
+  if (!confirm(`Remove ${s ? s.name : 'this student'}?`)) return;
+  await db.ref('studio/students/' + sid).remove();
+  toast('Student removed');
+}
+
+function editStudent(sid) {
+  const s = appData.students[sid];
+  if (!s) return;
+  const biz = prompt('Update business for ' + s.name + ':', s.business || '');
+  if (biz !== null) db.ref('studio/students/' + sid + '/business').set(biz).then(() => toast('Updated', 'ok'));
+}
+
+function exportStudentsCSV() {
+  const rows = [['Name', 'Campus', 'Guild', 'Business', 'Weeks Submitted']];
+  Object.entries(appData.students).forEach(([sid, s]) => {
+    const guild = s.guildId && appData.guilds[s.guildId] ? appData.guilds[s.guildId].name : '';
+    const subs = appData.submissions[sid] ? Object.keys(appData.submissions[sid]).length : 0;
+    rows.push([s.name, s.campus || '', guild, s.business || '', subs]);
+  });
+  downloadCSV(rows, 'cmp701-students.csv');
+}
+
+// ─── AI Assessment ────────────────────────────────────────────
+function updateAIForm() {
+  const type = document.getElementById('aiAssessType').value;
+  const lbl = document.getElementById('aiTextLabel');
+  const wkGrp = document.getElementById('aiWeekGroup');
+  if (type === 'cw1') { lbl.textContent = 'Video Transcript / Presentation Script'; wkGrp.style.display = 'none'; }
+  else if (type === 'cw2') { lbl.textContent = 'Written Report Text'; wkGrp.style.display = 'none'; }
+  else { lbl.textContent = 'Artefact Description / Summary'; wkGrp.style.display = 'block'; }
+}
+
+async function runAIAssessment() {
+  const apiKey = document.getElementById('aiApiKey').value.trim();
+  if (!apiKey) { toast('API key required', 'err'); return; }
+  localStorage.setItem('cmp701_ai_key', apiKey);
+  document.getElementById('sAiKey').value = apiKey;
+
+  const type = document.getElementById('aiAssessType').value;
+  const student = document.getElementById('aiStudentName').value.trim() || 'Student';
+  const business = document.getElementById('aiBusinessName').value.trim() || 'their chosen business';
+  const text = document.getElementById('aiSubmissionText').value.trim();
+  if (!text) { toast('Paste submission text first', 'err'); return; }
+
+  const output = document.getElementById('aiOutput');
+  output.textContent = 'Generating assessment…';
+  output.className = 'ai-output loading';
+
+  const prompt = buildAssessmentPrompt(type, student, business, text);
+  try {
+    const result = await callClaude(apiKey, prompt, 1500);
+    output.textContent = result;
+    output.className = 'ai-output';
+    toast('Assessment ready!', 'ok');
+  } catch(e) { output.textContent = 'Error: ' + e.message; toast('AI error', 'err'); }
+}
+
+async function runStudentAI() {
+  const apiKey = document.getElementById('sAiKey').value.trim() || localStorage.getItem('cmp701_ai_key');
+  if (!apiKey) { toast('API key required', 'err'); return; }
+  const type = document.getElementById('sAiType').value;
+  const business = document.getElementById('sAiBusiness').value.trim() || 'my chosen business';
+  const text = document.getElementById('sAiText').value.trim();
+  if (!text) { toast('Paste your work first', 'err'); return; }
+
+  const out = document.getElementById('sAiOutput');
+  out.textContent = 'Generating feedback…';
+  out.className = 'ai-output loading';
+
+  const prompt = buildAssessmentPrompt(type, 'Student', business, text, true);
+  try {
+    const result = await callClaude(apiKey, prompt, 1000);
+    out.textContent = result;
+    out.className = 'ai-output';
+    toast('Feedback ready!', 'ok');
+  } catch(e) { out.textContent = 'Error: ' + e.message; toast('AI error', 'err'); }
+}
+
+function buildAssessmentPrompt(type, student, business, text, isStudent = false) {
+  const tone = isStudent ? 'formative feedback for the student directly (address them as "you"), encouraging but honest' : 'detailed assessment feedback for a marker';
+
+  if (type === 'cw1') {
+    return `You are assessing a CMP701 Digital Transformation video presentation (CW1, 25% of module grade) at Ulster University QAHE.
+Student: ${student}. Chosen Business: ${business}.
+
+TRANSCRIPT/SCRIPT:
+${text}
+
+Provide ${tone} against these criteria (total 100 points, adjusted to 25% final):
+1. Content Understanding (25 pts) — depth of understanding of DT concepts and chosen business
+2. Clarity and Engagement (20 pts) — how clearly ideas are communicated, engagement level
+3. Structure and Organization (20 pts) — logical flow, clear intro/body/conclusion
+4. Use of Visual Aids (20 pts) — appropriateness and effectiveness of slides/visuals
+5. Delivery and Time Management (15 pts) — confidence, pace, fits 7-8 min window
+
+Format:
+CRITERION SCORES:
+- Content Understanding: [X]/25 — [1-sentence justification]
+- Clarity and Engagement: [X]/20 — [justification]
+- Structure and Organization: [X]/20 — [justification]
+- Use of Visual Aids: [X]/20 — [justification]
+- Delivery and Time Management: [X]/15 — [justification]
+
+TOTAL: [X]/100 → [Grade band: Poor 0-49 / Satisfactory 50-59 / Good 60-69 / Excellent 70+]
+
+STRENGTHS (2-3 bullet points):
+
+AREAS FOR IMPROVEMENT (2-3 bullet points):
+
+PRIORITY ACTION FOR CW2:`;
+  }
+
+  if (type === 'cw2') {
+    return `You are assessing a CMP701 Digital Transformation written report (CW2, 75% of module grade) at Ulster University QAHE.
+Student: ${student}. Chosen Business: ${business}.
+
+REPORT TEXT:
+${text}
+
+Provide ${tone} against these criteria (total 100 points, adjusted to 75% final):
+1. Introduction & Content Understanding (15 pts)
+2. Critical Analysis — Business & Digital Technologies Interface (20 pts)
+3. Digital Transformation Strategy (20 pts)
+4. Documentation and Structure (15 pts)
+5. Use of Evidence and Literature (15 pts)
+6. Presentation of Artefacts and Communication (15 pts)
+
+Format:
+CRITERION SCORES:
+- Introduction & Content Understanding: [X]/15 — [justification]
+- Critical Analysis: [X]/20 — [justification]
+- Digital Transformation Strategy: [X]/20 — [justification]
+- Documentation and Structure: [X]/15 — [justification]
+- Use of Evidence and Literature: [X]/15 — [justification]
+- Presentation of Artefacts: [X]/15 — [justification]
+
+TOTAL: [X]/100 → [Grade band]
+
+STRENGTHS (2-3 bullet points):
+
+AREAS FOR IMPROVEMENT (2-3 bullet points):
+
+REFLECTION ON CW1 FEEDBACK (did student incorporate it?):`;
+  }
+
+  return `You are providing ${tone} on a weekly studio artefact for CMP701 Digital Transformation at Ulster University QAHE.
+Student: ${student}. Chosen Business: ${business}.
+
+ARTEFACT:
+${text}
+
+Evaluate: (1) relevance to digital transformation, (2) depth of analysis, (3) practical application, (4) evidence of guild collaboration, (5) preparation for CW1/CW2.
+Provide 3 strengths and 3 specific improvements. Keep feedback concise (under 300 words).`;
+}
+
+async function callClaude(apiKey, prompt, maxTokens) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-calls': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || res.statusText); }
+  const data = await res.json();
+  return data.content[0].text;
+}
+
+function copyAIOutput() {
+  navigator.clipboard.writeText(document.getElementById('aiOutput').textContent);
+  toast('Copied!', 'ok');
+}
+function clearAIOutput() { document.getElementById('aiOutput').textContent = 'AI assessment will appear here after you submit…'; document.getElementById('aiOutput').className = 'ai-output loading'; }
+
+async function saveAIFeedback() {
+  const sid = prompt('Enter student ID or name:');
+  if (!sid) return;
+  const match = Object.entries(appData.students).find(([,s]) => s.name.toLowerCase().includes(sid.toLowerCase()));
+  if (!match) { toast('Student not found', 'err'); return; }
+  const wk = 'week-' + (appData.config.currentWeek || 1);
+  await db.ref(`studio/submissions/${match[0]}/${wk}/aiFeedback`).set(document.getElementById('aiOutput').textContent);
+  toast('Feedback saved!', 'ok');
+}
+
+// ─── Config ───────────────────────────────────────────────────
+function loadConfig() {
+  const c = appData.config;
+  if (c.currentWeek) document.getElementById('cfgWeek').value = c.currentWeek;
+  if (c.semesterStart) document.getElementById('cfgSemesterStart').value = c.semesterStart;
+  if (c.cw1Deadline) document.getElementById('cfgCW1Deadline').value = c.cw1Deadline;
+  if (c.cw2Deadline) document.getElementById('cfgCW2Deadline').value = c.cw2Deadline;
+  setCurrentWeekBadge();
+}
+
+async function saveConfig() {
+  const config = {
+    currentWeek: parseInt(document.getElementById('cfgWeek').value) || null,
+    semesterStart: document.getElementById('cfgSemesterStart').value || null,
+    cw1Deadline: document.getElementById('cfgCW1Deadline').value || '2026-03-13',
+    cw2Deadline: document.getElementById('cfgCW2Deadline').value || '2026-05-06',
+  };
+  const code = document.getElementById('cfgLeaderCode').value.trim();
+  if (code) config.leaderCode = code;
+  await db.ref('studio/config').update(config);
+  toast('Configuration saved!', 'ok');
+  setCurrentWeekBadge();
+}
+
+// ─── Student Identity ─────────────────────────────────────────
+function updateStudentIdentityDropdown() {
+  const sel = document.getElementById('studentIdentitySelect');
+  const saved = localStorage.getItem('cmp701_student_id');
+  sel.innerHTML = '<option value="">— Select your name —</option>' +
+    Object.entries(appData.students).sort(([,a],[,b]) => a.name.localeCompare(b.name))
+      .map(([sid, s]) => `<option value="${sid}" ${sid===saved?'selected':''}>${s.name} (${s.campus || ''})</option>`).join('');
+  if (saved && appData.students[saved]) { currentStudent = saved; refreshStudentViews(); }
+}
+
+function setStudentIdentity() {
+  currentStudent = document.getElementById('studentIdentitySelect').value;
+  if (currentStudent) localStorage.setItem('cmp701_student_id', currentStudent);
+  refreshStudentViews();
+}
+
+// ─── Student Views ────────────────────────────────────────────
+function refreshStudentViews() {
+  renderStudentQuest();
+  renderStudentGuild();
+  renderStudentProgress();
+  populateSubmitWeeks();
+}
+
+function renderStudentQuest() {
+  const currentWeek = appData.config.currentWeek || computeCurrentWeek();
+  const quest = appData.quests['week-' + currentWeek];
+  const hero = document.getElementById('questHero');
+
+  if (quest && quest.status === 'published') {
+    document.getElementById('questHeroTitle').textContent = `Week ${currentWeek}: ${quest.title}`;
+    document.getElementById('questHeroBrief').textContent = quest.brief || '';
+    const delivs = (quest.deliverables || '').split('\n').filter(Boolean);
+    if (delivs.length) {
+      document.getElementById('questDeliverables').style.display = 'block';
+      document.getElementById('questDeliverablesList').innerHTML = delivs.map(d => `<li style="margin-bottom:6px">${d}</li>`).join('');
+    }
+  } else {
+    document.getElementById('questHeroTitle').textContent = `Week ${currentWeek} — Studio Session`;
+    document.getElementById('questHeroBrief').textContent = 'No quest brief has been published yet for this week. Check back soon or ask your module leader.';
+    document.getElementById('questDeliverables').style.display = 'none';
+  }
+
+  // Previous quests
+  const prev = Object.entries(appData.quests)
+    .filter(([wk, q]) => parseInt(wk.split('-')[1]) < currentWeek && q.status === 'published')
+    .sort(([a],[b]) => parseInt(b.split('-')[1]) - parseInt(a.split('-')[1]));
+
+  if (prev.length) {
+    document.getElementById('prevQuestCard').style.display = 'block';
+    document.getElementById('prevQuestList').innerHTML = prev.map(([wk, q]) =>
+      `<div style="padding:8px 0;border-bottom:1px solid #f1f5f9">
+        <span class="b b-slate">Wk ${wk.split('-')[1]}</span>
+        <span style="font-size:12px;font-weight:700;color:#1B3A6B;margin-left:8px">${q.title}</span>
+      </div>`).join('');
+  }
+}
+
+function renderStudentGuild() {
+  if (!currentStudent || !appData.students[currentStudent]) {
+    document.getElementById('myGuildBody').innerHTML = '<p style="color:#94a3b8;font-size:12px">Select your name to see your guild.</p>';
+    return;
+  }
+  const s = appData.students[currentStudent];
+  const gid = s.guildId;
+  const guild = gid ? appData.guilds[gid] : null;
+
+  if (!guild) {
+    document.getElementById('myGuildBody').innerHTML = '<p style="color:#94a3b8;font-size:12px">You have not been assigned to a guild yet.</p>';
+    return;
+  }
+
+  const ROLES = ['Facilitator', 'Analyst', 'Strategist', 'Innovator', 'Reporter'];
+  const members = guild.members ? Object.values(guild.members) : [];
+  const myRole = guild.currentRoles && guild.currentRoles[currentStudent] ? guild.currentRoles[currentStudent] : 'Member';
+
+  document.getElementById('myGuildBody').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="background:#1B3A6B;color:#fff;border-radius:8px;padding:10px 18px;font-size:20px;font-weight:800">${guild.name}</div>
+      <div>
+        <div style="font-size:11px;color:#64748b">Your role this week</div>
+        <div style="font-size:14px;font-weight:800;color:#0D7377">${myRole}</div>
+      </div>
+      <div style="margin-left:auto">
+        <span class="b b-blue">${guild.campus}</span>
+      </div>
+    </div>
+    <table style="font-size:12px;width:100%"><thead><tr><th>Member</th><th>Role</th><th class="C">This Week</th></tr></thead><tbody>
+    ${members.map((m, i) => {
+      const role = guild.currentRoles && guild.currentRoles[m.id] ? guild.currentRoles[m.id] : ROLES[i % ROLES.length];
+      const wk = 'week-' + (appData.config.currentWeek || 1);
+      const hasSub = appData.submissions[m.id] && appData.submissions[m.id][wk];
+      const isMe = m.id === currentStudent;
+      return `<tr ${isMe ? 'style="background:#eff6ff"' : ''}>
+        <td style="font-weight:${isMe?'800':'400'}">${m.name}${isMe?' (you)':''}</td>
+        <td>${role}</td>
+        <td class="C"><span class="b ${hasSub?'b-green':'b-amber'}">${hasSub?'✓ Submitted':'Pending'}</span></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
+
+  document.getElementById('guildContractBody').innerHTML = guild.contract
+    ? `<p style="font-size:12px;line-height:1.7;color:#334155;white-space:pre-wrap">${guild.contract}</p>`
+    : '<p style="color:#94a3b8;font-size:12px">No contract set yet.</p>';
+}
+
+function populateSubmitWeeks() {
+  const sel = document.getElementById('submitWeekSel');
+  sel.innerHTML = '';
+  for (let w = 1; w <= 12; w++) sel.innerHTML += `<option value="${w}" ${w == (appData.config.currentWeek||1) ? 'selected' : ''}>Week ${w}</option>`;
+}
+
+async function submitArtefact() {
+  if (!currentStudent) { toast('Select your name first', 'err'); return; }
+  const weekNum = document.getElementById('submitWeekSel').value;
+  const title = document.getElementById('submitTitle').value.trim();
+  const link = document.getElementById('submitLink').value.trim();
+  const description = document.getElementById('submitDescription').value.trim();
+  const reflection = document.getElementById('submitReflection').value.trim();
+
+  if (!title) { toast('Add an artefact title', 'err'); return; }
+
+  const wk = 'week-' + weekNum;
+  await db.ref(`studio/submissions/${currentStudent}/${wk}`).set({
+    title, link, description, reflection, submittedAt: Date.now(), status: 'Submitted'
+  });
+
+  document.getElementById('submitAlert').innerHTML = '<div class="alert alert-success">✓ Artefact submitted for Week ' + weekNum + '! Your module leader can now see your submission.</div>';
+  document.getElementById('submitTitle').value = '';
+  document.getElementById('submitLink').value = '';
+  document.getElementById('submitDescription').value = '';
+  document.getElementById('submitReflection').value = '';
+  toast('Artefact submitted!', 'ok');
+  renderStudentProgress();
+}
+
+function renderStudentProgress() {
+  if (!currentStudent) return;
+  const subs = appData.submissions[currentStudent] || {};
+  const submitted = Object.keys(subs).length;
+  const currentWeek = parseInt(appData.config.currentWeek || computeCurrentWeek()) || 1;
+  const pct = currentWeek > 0 ? Math.round(submitted / currentWeek * 100) : 0;
+
+  document.getElementById('spk-weeks').textContent = submitted;
+  document.getElementById('spk-pct').textContent = pct + '%';
+  document.getElementById('spk-pending').textContent = Math.max(0, currentWeek - submitted);
+
+  const timeline = [];
+  for (let w = 1; w <= currentWeek; w++) {
+    const wk = 'week-' + w;
+    const sub = subs[wk];
+    const quest = appData.quests[wk];
+    timeline.push(`<li>
+      <div class="tl-dot ${sub ? 'green' : 'amber'}"></div>
+      <div class="tl-content">
+        <div class="tl-title">Week ${w}${quest ? ': ' + quest.title : ''}</div>
+        ${sub ? `<div class="tl-sub">Submitted ${new Date(sub.submittedAt).toLocaleDateString()} — ${sub.title}</div>` : '<div class="tl-sub" style="color:#B45309">Not yet submitted</div>'}
+      </div>
+    </li>`);
+  }
+
+  document.getElementById('sProgressTimeline').innerHTML = `<ul class="timeline">${timeline.join('')}</ul>`;
+}
+
+// ─── CSV Import ───────────────────────────────────────────────
+function handleCSVImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').map(l => l.trim()).filter(Boolean);
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    csvImportBuffer = lines.slice(1).map(line => {
+      const vals = line.split(',');
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = (vals[i] || '').trim().replace(/^"|"$/g, ''));
+      return obj;
+    }).filter(r => r.name);
+
+    document.getElementById('importPreview').innerHTML = `
+      <p style="font-size:12px;font-weight:700;color:#15803D;margin-bottom:8px">✓ ${csvImportBuffer.length} students found</p>
+      <div style="max-height:160px;overflow-y:auto">
+        ${csvImportBuffer.slice(0,10).map(r => `<div style="font-size:11px;padding:3px 0;border-bottom:1px solid #f1f5f9">${r.name} · ${r.campus||''} · ${r.guild||''}</div>`).join('')}
+        ${csvImportBuffer.length > 10 ? `<div style="font-size:11px;color:#94a3b8">…and ${csvImportBuffer.length - 10} more</div>` : ''}
+      </div>`;
+    document.getElementById('importConfirmBtn').style.display = 'inline-flex';
+  };
+  reader.readAsText(file);
+}
+
+async function confirmCSVImport() {
+  let added = 0;
+  for (const row of csvImportBuffer) {
+    const sid = db.ref('studio/students').push().key;
+    await db.ref('studio/students/' + sid).set({
+      name: row.name, campus: row.campus || '', business: row.business || '', guildId: '', addedAt: Date.now()
+    });
+
+    // Auto-create or assign guild
+    if (row.guild) {
+      const existingGuild = Object.entries(appData.guilds).find(([,g]) => g.name.toLowerCase() === row.guild.toLowerCase());
+      let gid;
+      if (existingGuild) {
+        gid = existingGuild[0];
+      } else {
+        gid = db.ref('studio/guilds').push().key;
+        await db.ref('studio/guilds/' + gid).set({ name: row.guild, campus: row.campus || '', members: {} });
+      }
+      await addStudentToGuild(sid, gid);
+    }
+    added++;
+  }
+  closeModal('importModal');
+  toast(`Imported ${added} students!`, 'ok');
+  csvImportBuffer = [];
+}
+
+// ─── Helpers ──────────────────────────────────────────────────
+function populateWeekSelects() {
+  const questWeekFilter = document.getElementById('questWeekFilter');
+  const subWeekFilter = document.getElementById('subWeekFilter');
+  for (let w = 1; w <= 12; w++) {
+    questWeekFilter.innerHTML += `<option value="${w}">Week ${w}</option>`;
+    subWeekFilter.innerHTML += `<option value="${w}">Week ${w}</option>`;
+  }
+}
+
+function updateWeekSelectors() {
+  const subGuildSel = document.getElementById('subGuildFilter');
+  const studentGuildSel = document.getElementById('studentGuildFilter');
+  const opts = '<option value="">All Guilds</option>' +
+    Object.entries(appData.guilds).map(([gid,g]) => `<option value="${gid}">${g.name}</option>`).join('');
+  subGuildSel.innerHTML = opts;
+  studentGuildSel.innerHTML = opts;
+}
+
+function updateGuildFilterSelects() {
+  updateWeekSelectors();
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function toast(msg, type = '') {
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = 'toast' + (type ? ' ' + type : '');
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+function downloadCSV(rows, filename) {
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = filename;
+  a.click();
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
