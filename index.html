@@ -205,8 +205,11 @@ textarea{resize:vertical;min-height:80px}
   <button class="tab" onclick="showTab('guilds',this)">Guilds</button>
   <button class="tab" onclick="showTab('quests',this)">Quest Manager</button>
   <button class="tab" onclick="showTab('submissions',this)">Submissions</button>
+  <button class="tab" onclick="showTab('peer-review',this)">Peer Review</button>
   <button class="tab" onclick="showTab('ai-tool',this)">AI Assessment</button>
   <button class="tab" onclick="showTab('students',this)">Students</button>
+  <button class="tab" onclick="showTab('announcements',this)">Announcements</button>
+  <button class="tab" onclick="showTab('timeline',this)">Timeline</button>
   <button class="tab" onclick="showTab('bb-setup',this)">Blackboard Setup</button>
 </div>
 
@@ -215,8 +218,10 @@ textarea{resize:vertical;min-height:80px}
   <button class="tab on" onclick="showTab('s-quest',this)">This Week's Quest</button>
   <button class="tab" onclick="showTab('s-guild',this)">My Guild</button>
   <button class="tab" onclick="showTab('s-submit',this)">Submit Artefact</button>
+  <button class="tab" onclick="showTab('s-peer',this)">Peer Review</button>
   <button class="tab" onclick="showTab('s-ai',this)">AI Feedback</button>
   <button class="tab" onclick="showTab('s-progress',this)">My Progress</button>
+  <button class="tab" onclick="showTab('s-timeline',this)">Timeline</button>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -514,6 +519,58 @@ textarea{resize:vertical;min-height:80px}
   </div>
 </div>
 
+<!-- PEER REVIEW (LEADER) -->
+<div class="pg" id="pg-peer-review">
+  <div class="frow">
+    <button class="btn btn-primary" onclick="createPeerReviewRound()">+ New Review Round</button>
+    <select class="fs" id="prWeekFilter" onchange="renderPeerReview()" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px;min-width:120px">
+      <option value="">All Weeks</option>
+    </select>
+  </div>
+  <div class="alert alert-info" style="margin-bottom:12px">Peer review assigns each guild to review another guild's artefact. Rotate assignments each round so no guild reviews the same guild twice.</div>
+  <div class="card">
+    <div class="card-hdr teal">Active Review Rounds</div>
+    <div class="card-body" id="peerReviewRounds"><p style="color:#94a3b8;font-size:12px">No review rounds yet. Click "+ New Review Round" to auto-assign guilds.</p></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr slate">Review Submissions</div>
+    <div class="tw">
+      <table><thead><tr><th>Reviewer Guild</th><th>Reviewing Guild</th><th>Week</th><th class="C">Status</th><th>Feedback Preview</th></tr></thead>
+      <tbody id="peerReviewTbody"><tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px">No peer reviews yet</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ANNOUNCEMENTS (LEADER) -->
+<div class="pg" id="pg-announcements">
+  <div class="frow">
+    <button class="btn btn-primary" onclick="openAnnouncementModal()">+ New Announcement</button>
+  </div>
+  <div class="card" id="announcementsLeaderCard">
+    <div class="card-hdr blue">All Announcements</div>
+    <div class="card-body" id="announcementsList"><p style="color:#94a3b8;font-size:12px">No announcements yet.</p></div>
+  </div>
+</div>
+
+<!-- TIMELINE (LEADER) -->
+<div class="pg" id="pg-timeline">
+  <div class="krow">
+    <div class="kpi bl"><div class="v" id="tl-days-cw1">—</div><div class="l">Days to CW1</div></div>
+    <div class="kpi am"><div class="v" id="tl-days-cw2">—</div><div class="l">Days to CW2</div></div>
+    <div class="kpi tl"><div class="v" id="tl-current-week">—</div><div class="l">Current Week</div></div>
+    <div class="kpi gr"><div class="v" id="tl-weeks-left">—</div><div class="l">Weeks Remaining</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr blue">Semester Timeline</div>
+    <div class="card-body" id="semesterTimeline"></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr teal">Week-by-Week Topics &amp; Quests</div>
+    <div class="card-body" id="weekTopicsGrid"></div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════
      STUDENT PAGES
 ════════════════════════════════════════════════════════════ -->
@@ -648,6 +705,55 @@ textarea{resize:vertical;min-height:80px}
   </div>
 </div>
 
+<!-- STUDENT: Peer Review -->
+<div class="pg" id="pg-s-peer">
+  <div class="card">
+    <div class="card-hdr teal">My Guild's Peer Review Assignment</div>
+    <div class="card-body" id="sPeerAssignment"><p style="color:#94a3b8;font-size:12px">Select your name to see your peer review assignment.</p></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr purple">Submit Peer Review Feedback</div>
+    <div class="card-body">
+      <div id="sPeerAlert"></div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Guild You Are Reviewing</label>
+        <input type="text" id="sPeerGuildName" readonly style="background:#f8fafc">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>What did they do well?</label>
+        <textarea id="sPeerStrengths" rows="3" placeholder="Describe 2-3 strengths of their artefact…"></textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>What could they improve?</label>
+        <textarea id="sPeerImprovements" rows="3" placeholder="Suggest 2-3 constructive improvements…"></textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Overall Rating</label>
+        <select id="sPeerRating">
+          <option value="5">⭐⭐⭐⭐⭐ Excellent</option>
+          <option value="4">⭐⭐⭐⭐ Good</option>
+          <option value="3" selected>⭐⭐⭐ Satisfactory</option>
+          <option value="2">⭐⭐ Needs Improvement</option>
+          <option value="1">⭐ Poor</option>
+        </select>
+      </div>
+      <button class="btn btn-purple" onclick="submitPeerFeedback()">Submit Peer Review</button>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT: Timeline -->
+<div class="pg" id="pg-s-timeline">
+  <div class="card">
+    <div class="card-hdr blue">Module Timeline &amp; Key Dates</div>
+    <div class="card-body" id="sTimelineBody"></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr teal">Announcements</div>
+    <div class="card-body" id="sAnnouncementsBody"><p style="color:#94a3b8;font-size:12px">No announcements.</p></div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════
      MODALS
 ════════════════════════════════════════════════════════════ -->
@@ -769,6 +875,41 @@ textarea{resize:vertical;min-height:80px}
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
       <button class="btn btn-ghost" onclick="closeModal('importModal')">Cancel</button>
       <button class="btn btn-primary" id="importConfirmBtn" style="display:none" onclick="confirmCSVImport()">Import Students</button>
+    </div>
+  </div>
+</div>
+
+<!-- Announcement Modal -->
+<div class="modal-overlay" id="announcementModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('announcementModal')">✕</button>
+    <h3>New Announcement</h3>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Title</label>
+      <input type="text" id="annTitle" placeholder="e.g. Week 5 Quest Brief Now Live">
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Message</label>
+      <textarea id="annBody" rows="5" placeholder="Write your announcement here…"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Type</label>
+        <select id="annType">
+          <option value="info">ℹ Info</option>
+          <option value="warn">⚠ Important</option>
+          <option value="success">✓ Good news</option>
+          <option value="error">🔴 Urgent</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Pinned?</label>
+        <select id="annPinned"><option value="false">No</option><option value="true">Yes — show at top</option></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-ghost" onclick="closeModal('announcementModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAnnouncement()">Post Announcement</button>
     </div>
   </div>
 </div>
@@ -1826,6 +1967,437 @@ function downloadCSV(rows, filename) {
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 });
+
+// ═══════════════════════════════════════════════════════════
+// ANNOUNCEMENTS
+// ═══════════════════════════════════════════════════════════
+function openAnnouncementModal() {
+  document.getElementById('annTitle').value = '';
+  document.getElementById('annBody').value = '';
+  document.getElementById('annType').value = 'info';
+  document.getElementById('annPinned').value = 'false';
+  openModal('announcementModal');
+}
+
+async function saveAnnouncement() {
+  const title = document.getElementById('annTitle').value.trim();
+  const body = document.getElementById('annBody').value.trim();
+  if (!title || !body) { toast('Title and message are required', 'err'); return; }
+  const id = db.ref('studio/announcements').push().key;
+  await db.ref('studio/announcements/' + id).set({
+    title, body,
+    type: document.getElementById('annType').value,
+    pinned: document.getElementById('annPinned').value === 'true',
+    postedAt: Date.now()
+  });
+  closeModal('announcementModal');
+  toast('Announcement posted!', 'ok');
+}
+
+function renderAnnouncements() {
+  const anns = appData.announcements || {};
+  const sorted = Object.entries(anns).sort(([,a],[,b]) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    return b.postedAt - a.postedAt;
+  });
+
+  const leaderEl = document.getElementById('announcementsList');
+  const studentEl = document.getElementById('sAnnouncementsBody');
+
+  if (!sorted.length) {
+    leaderEl.innerHTML = '<p style="color:#94a3b8;font-size:12px">No announcements yet.</p>';
+    if (studentEl) studentEl.innerHTML = '<p style="color:#94a3b8;font-size:12px">No announcements.</p>';
+    return;
+  }
+
+  const typeColors = { info:'b-blue', warn:'b-amber', success:'b-green', error:'b-red' };
+  const typeLabels = { info:'Info', warn:'Important', success:'Good news', error:'Urgent' };
+
+  const html = sorted.map(([id, a]) => `
+    <div style="padding:12px;border-radius:8px;margin-bottom:10px;background:${a.type==='warn'?'#fffbeb':a.type==='error'?'#fef2f2':a.type==='success'?'#f0fdf4':'#eff6ff'};border:1px solid ${a.type==='warn'?'#fde68a':a.type==='error'?'#fecaca':a.type==='success'?'#86efac':'#bfdbfe'}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        ${a.pinned ? '<span style="font-size:11px">📌</span>' : ''}
+        <span style="font-size:13px;font-weight:800;color:#1e293b;flex:1">${a.title}</span>
+        <span class="b ${typeColors[a.type]||'b-slate'}">${typeLabels[a.type]||a.type}</span>
+        <span style="font-size:10px;color:#94a3b8">${new Date(a.postedAt).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>
+        <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement('${id}')" style="padding:2px 8px">✕</button>
+      </div>
+      <p style="font-size:12px;color:#334155;line-height:1.6;white-space:pre-wrap">${a.body}</p>
+    </div>`).join('');
+
+  leaderEl.innerHTML = html;
+
+  if (studentEl) {
+    studentEl.innerHTML = sorted.map(([,a]) => `
+      <div style="padding:12px;border-radius:8px;margin-bottom:10px;background:${a.type==='warn'?'#fffbeb':a.type==='error'?'#fef2f2':a.type==='success'?'#f0fdf4':'#eff6ff'};border:1px solid ${a.type==='warn'?'#fde68a':a.type==='error'?'#fecaca':a.type==='success'?'#86efac':'#bfdbfe'}">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          ${a.pinned ? '<span style="font-size:11px">📌</span>' : ''}
+          <span style="font-size:12px;font-weight:800;color:#1e293b;flex:1">${a.title}</span>
+          <span style="font-size:10px;color:#94a3b8">${new Date(a.postedAt).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span>
+        </div>
+        <p style="font-size:11px;color:#334155;line-height:1.6;white-space:pre-wrap">${a.body}</p>
+      </div>`).join('');
+  }
+
+  // Show pinned announcements in student quest view too
+  const pinnedBanner = document.getElementById('pinnedAnnouncementBanner');
+  const pinned = sorted.filter(([,a]) => a.pinned);
+  if (pinnedBanner) {
+    pinnedBanner.innerHTML = pinned.map(([,a]) => `
+      <div class="alert alert-warn" style="margin-bottom:6px"><strong>${a.title}:</strong> ${a.body}</div>`).join('');
+    pinnedBanner.style.display = pinned.length ? 'block' : 'none';
+  }
+}
+
+async function deleteAnnouncement(id) {
+  if (!confirm('Delete this announcement?')) return;
+  await db.ref('studio/announcements/' + id).remove();
+  toast('Deleted');
+}
+
+// ═══════════════════════════════════════════════════════════
+// PEER REVIEW
+// ═══════════════════════════════════════════════════════════
+async function createPeerReviewRound() {
+  const guilds = Object.entries(appData.guilds);
+  if (guilds.length < 2) { toast('Need at least 2 guilds to create a review round', 'err'); return; }
+  const week = appData.config.currentWeek || 1;
+  const wk = 'week-' + week;
+
+  // Check if round already exists
+  if (appData.peerReviews && appData.peerReviews[wk]) {
+    if (!confirm(`A review round already exists for Week ${week}. Replace it?`)) return;
+  }
+
+  // Rotate: guild[i] reviews guild[(i+1) % n]
+  const rotOffset = ((week - 1) % guilds.length);
+  const assignments = {};
+  guilds.forEach(([gid], i) => {
+    const reviewsIdx = (i + 1 + rotOffset) % guilds.length;
+    assignments[gid] = { reviewerGuildId: gid, targetGuildId: guilds[reviewsIdx][0], status: 'pending' };
+  });
+
+  await db.ref('studio/peerReviews/' + wk).set(assignments);
+  toast(`Review round created for Week ${week}!`, 'ok');
+}
+
+function renderPeerReview() {
+  const weekF = document.getElementById('prWeekFilter').value;
+  const reviews = appData.peerReviews || {};
+
+  const roundsEl = document.getElementById('peerReviewRounds');
+  const tbodyEl = document.getElementById('peerReviewTbody');
+
+  const weeks = weekF ? ['week-' + weekF] : Object.keys(reviews).sort();
+
+  if (!weeks.length || !weeks.some(w => reviews[w])) {
+    roundsEl.innerHTML = '<p style="color:#94a3b8;font-size:12px">No review rounds yet.</p>';
+    tbodyEl.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px">No peer reviews yet</td></tr>';
+    return;
+  }
+
+  let roundsHTML = '';
+  let rows = [];
+
+  weeks.forEach(wk => {
+    if (!reviews[wk]) return;
+    const weekNum = wk.split('-')[1];
+    const assignments = Object.values(reviews[wk]);
+    const done = assignments.filter(a => a.status === 'submitted').length;
+
+    roundsHTML += `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:6px;background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:8px">
+        <span class="b b-blue">Week ${weekNum}</span>
+        <span style="font-size:12px;font-weight:700;color:#1B3A6B;flex:1">${assignments.length} guild pairs assigned</span>
+        <span class="b ${done===assignments.length?'b-green':'b-amber'}">${done}/${assignments.length} submitted</span>
+        <button class="btn btn-danger btn-sm" onclick="deletePeerReviewRound('${wk}')">Delete</button>
+      </div>`;
+
+    assignments.forEach(a => {
+      const rg = appData.guilds[a.reviewerGuildId];
+      const tg = appData.guilds[a.targetGuildId];
+      rows.push(`<tr>
+        <td style="font-weight:700">${rg ? rg.name : a.reviewerGuildId}</td>
+        <td>${tg ? tg.name : a.targetGuildId}</td>
+        <td><span class="b b-blue">Wk ${weekNum}</span></td>
+        <td class="C"><span class="b ${a.status==='submitted'?'b-green':'b-amber'}">${a.status==='submitted'?'Submitted':'Pending'}</span></td>
+        <td style="font-size:11px;color:#475569;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.strengths || '—'}</td>
+      </tr>`);
+    });
+  });
+
+  roundsEl.innerHTML = roundsHTML || '<p style="color:#94a3b8;font-size:12px">No rounds match filter.</p>';
+  tbodyEl.innerHTML = rows.join('') || '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px">No data</td></tr>';
+}
+
+async function deletePeerReviewRound(wk) {
+  if (!confirm('Delete this review round?')) return;
+  await db.ref('studio/peerReviews/' + wk).remove();
+  toast('Round deleted');
+}
+
+function renderStudentPeerReview() {
+  if (!currentStudent || !appData.students[currentStudent]) return;
+  const s = appData.students[currentStudent];
+  const gid = s.guildId;
+  const wk = 'week-' + (appData.config.currentWeek || 1);
+  const reviews = appData.peerReviews && appData.peerReviews[wk];
+  const assignment = reviews && reviews[gid];
+
+  const assignEl = document.getElementById('sPeerAssignment');
+  const guildInput = document.getElementById('sPeerGuildName');
+
+  if (!assignment) {
+    assignEl.innerHTML = '<p style="color:#94a3b8;font-size:12px">No peer review assignment for this week yet. Check back after your module leader sets it up.</p>';
+    if (guildInput) guildInput.value = '';
+    return;
+  }
+
+  const targetGuild = appData.guilds[assignment.targetGuildId];
+  const tgName = targetGuild ? targetGuild.name : assignment.targetGuildId;
+  if (guildInput) guildInput.value = tgName;
+
+  const tgMembers = targetGuild && targetGuild.members ? Object.values(targetGuild.members) : [];
+  const tgSubs = tgMembers.map(m => {
+    const sub = appData.submissions[m.id] && appData.submissions[m.id][wk];
+    return sub ? `<li style="font-size:11px;padding:4px 0;border-bottom:1px solid #f1f5f9"><strong>${m.name}</strong>: ${sub.title || 'Submitted'} ${sub.link ? `— <a href="${sub.link}" target="_blank" style="color:#0D7377">View</a>` : ''}</li>` : '';
+  }).filter(Boolean).join('');
+
+  assignEl.innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+      <div style="background:#0D7377;color:#fff;border-radius:8px;padding:8px 14px;font-size:14px;font-weight:800">${tgName}</div>
+      <div style="font-size:12px;color:#475569">Your guild is reviewing this guild's Week ${wk.split('-')[1]} artefact.</div>
+      <span class="b ${assignment.status==='submitted'?'b-green':'b-amber'}" style="margin-left:auto">${assignment.status==='submitted'?'✓ Submitted':'Pending'}</span>
+    </div>
+    ${tgSubs ? `<p style="font-size:11px;font-weight:700;color:#475569;margin-bottom:4px">Their submissions:</p><ul style="list-style:none">${tgSubs}</ul>` : '<p style="font-size:11px;color:#94a3b8">No submissions from this guild yet.</p>'}`;
+}
+
+async function submitPeerFeedback() {
+  if (!currentStudent || !appData.students[currentStudent]) { toast('Select your name first', 'err'); return; }
+  const s = appData.students[currentStudent];
+  const gid = s.guildId;
+  if (!gid) { toast('You are not assigned to a guild', 'err'); return; }
+
+  const wk = 'week-' + (appData.config.currentWeek || 1);
+  const strengths = document.getElementById('sPeerStrengths').value.trim();
+  const improvements = document.getElementById('sPeerImprovements').value.trim();
+  const rating = document.getElementById('sPeerRating').value;
+
+  if (!strengths || !improvements) { toast('Please fill in both strengths and improvements', 'err'); return; }
+
+  await db.ref(`studio/peerReviews/${wk}/${gid}`).update({
+    strengths, improvements, rating: parseInt(rating),
+    submittedBy: currentStudent, submittedAt: Date.now(), status: 'submitted'
+  });
+
+  document.getElementById('sPeerAlert').innerHTML = '<div class="alert alert-success">✓ Peer review submitted!</div>';
+  document.getElementById('sPeerStrengths').value = '';
+  document.getElementById('sPeerImprovements').value = '';
+  toast('Peer review submitted!', 'ok');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TIMELINE
+// ═══════════════════════════════════════════════════════════
+const WEEK_TOPICS = [
+  { week:1,  topic:'Use of Cloud Computing',                 lab:'Cloud Platforms',       colour:'#1B3A6B' },
+  { week:2,  topic:'Descriptive Analysis for DT',            lab:'Data Analysis',         colour:'#0D7377' },
+  { week:3,  topic:'Visualise the Data',                     lab:'Data Visualisation',    colour:'#15803D' },
+  { week:4,  topic:'Digital Transformation Tools',           lab:'DT Toolkits',           colour:'#7C3AED' },
+  { week:5,  topic:'Implementing DT Strategies using Jira',  lab:'Jira / Agile',          colour:'#B45309' },
+  { week:6,  topic:'CW1 Video Presentations',                lab:'Assessment Week',       colour:'#B91C1C' },
+  { week:7,  topic:'Exploring Digital Business Models',      lab:'Business Model Innovation', colour:'#0369a1' },
+  { week:8,  topic:'Business Models for CW2',                lab:'CW2 Preparation',       colour:'#065F46' },
+  { week:9,  topic:'Forecasting Data using RapidMiner',      lab:'Predictive Analytics',  colour:'#7C3AED' },
+  { week:10, topic:'CW2 Mind Mapping & Group Discussion',    lab:'Strategy Development',  colour:'#B45309' },
+  { week:11, topic:'Innovation & Knowledge Management',      lab:'Innovation Frameworks', colour:'#1B3A6B' },
+  { week:12, topic:'Visualisation using Power BI',           lab:'Power BI / BI Tools',   colour:'#0D7377' },
+];
+
+function renderTimeline() {
+  const cfg = appData.config;
+  const cw1 = cfg.cw1Deadline || '2026-03-13';
+  const cw2 = cfg.cw2Deadline || '2026-05-06';
+  const now = Date.now();
+  const currentWeek = parseInt(cfg.currentWeek || computeCurrentWeek()) || 1;
+
+  const daysToCW1 = Math.max(0, Math.ceil((new Date(cw1) - now) / 86400000));
+  const daysToCW2 = Math.max(0, Math.ceil((new Date(cw2) - now) / 86400000));
+  const weeksLeft = Math.max(0, 12 - currentWeek + 1);
+
+  document.getElementById('tl-days-cw1').textContent = daysToCW1 > 0 ? daysToCW1 : '✓';
+  document.getElementById('tl-days-cw2').textContent = daysToCW2 > 0 ? daysToCW2 : '✓';
+  document.getElementById('tl-current-week').textContent = currentWeek;
+  document.getElementById('tl-weeks-left').textContent = weeksLeft;
+
+  // Build visual timeline bar
+  const milestones = [
+    { label: 'Semester Start', date: cfg.semesterStart || '2026-01-13', colour: '#1B3A6B', icon: '🎓' },
+    { label: 'CW1 Deadline', date: cw1, colour: '#B91C1C', icon: '📹' },
+    { label: 'CW2 Deadline', date: cw2, colour: '#15803D', icon: '📄' },
+  ];
+
+  const semesterTimelineEl = document.getElementById('semesterTimeline');
+  semesterTimelineEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">
+      ${milestones.map(m => {
+        const d = new Date(m.date);
+        const daysAway = Math.ceil((d - now) / 86400000);
+        const isPast = daysAway < 0;
+        return `<div style="background:${isPast?'#f1f5f9':'#fff'};border:2px solid ${m.colour};border-radius:8px;padding:14px;text-align:center">
+          <div style="font-size:22px;margin-bottom:4px">${m.icon}</div>
+          <div style="font-size:12px;font-weight:800;color:${m.colour}">${m.label}</div>
+          <div style="font-size:13px;font-weight:700;color:#1e293b;margin-top:4px">${d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
+          <div style="font-size:11px;margin-top:4px;color:${isPast?'#94a3b8':daysAway<=7?'#B91C1C':'#15803D'}">${isPast?'Passed':daysAway===0?'Today!':daysAway+' days away'}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  // Week-by-week grid
+  const weekTopicsEl = document.getElementById('weekTopicsGrid');
+  const questMap = appData.quests || {};
+  weekTopicsEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+    ${WEEK_TOPICS.map(wt => {
+      const isCurrentWeek = wt.week === currentWeek;
+      const isPastWeek = wt.week < currentWeek;
+      const quest = questMap['week-' + wt.week];
+      const questPublished = quest && quest.status === 'published';
+      return `<div style="background:${isCurrentWeek?wt.colour:'#fff'};color:${isCurrentWeek?'#fff':'#1e293b'};border:2px solid ${isCurrentWeek?wt.colour:'#e2e8f0'};border-radius:8px;padding:12px;opacity:${isPastWeek&&!isCurrentWeek?0.7:1}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:10px;font-weight:700;opacity:${isCurrentWeek?1:.7}">WEEK ${wt.week}</span>
+          ${isCurrentWeek ? '<span style="font-size:9px;background:rgba(255,255,255,.2);padding:1px 6px;border-radius:8px;font-weight:700">NOW</span>' : ''}
+          ${isPastWeek&&!isCurrentWeek ? '<span style="font-size:9px;color:#94a3b8">✓</span>' : ''}
+        </div>
+        <div style="font-size:11px;font-weight:700;margin-bottom:3px">${wt.topic}</div>
+        <div style="font-size:10px;opacity:.7">${wt.lab}</div>
+        ${questPublished ? `<div style="font-size:9px;margin-top:6px;padding:2px 6px;border-radius:8px;display:inline-block;background:${isCurrentWeek?'rgba(255,255,255,.2)':'#dcfce7'};color:${isCurrentWeek?'#fff':'#15803D'};font-weight:700">Quest live</div>` : ''}
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  // Student timeline view
+  const sTimelineEl = document.getElementById('sTimelineBody');
+  if (sTimelineEl) {
+    sTimelineEl.innerHTML = semesterTimelineEl.innerHTML +
+      `<div style="margin-top:16px">` + weekTopicsEl.innerHTML + `</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SEED QUEST BRIEFS (12 WEEKS)
+// ═══════════════════════════════════════════════════════════
+const DEFAULT_QUESTS = [
+  { week:1, title:'Business Snapshot — Who Are You Transforming?',
+    brief:'Every digital transformation begins with understanding the present state. This week you are detectives, mapping your chosen business\'s current digital landscape, technology stack, and strategic position before any transformation begins.',
+    deliverables:'1-page Business Snapshot (overview, industry, scale, key products/services)\nDigital Maturity Score (1–5) with justification using a recognised framework\nInitial Technology Landscape map (what tools/platforms does the business currently use?)\nGuild Working Contract signed by all members' },
+  { week:2, title:'Data Detectives — Uncovering the Numbers',
+    brief:'Data is the raw material of digital transformation. This week you will use descriptive analytics techniques to analyse publicly available data about your chosen business, looking for patterns that reveal opportunities and threats.',
+    deliverables:'Dataset identified and downloaded (financial, social media, customer, or operational data)\nDescriptive statistics summary (mean, median, distribution, outliers)\nAt least 3 key insights from the data with business implications\nReflection on data quality and limitations' },
+  { week:3, title:'Telling Stories with Data — Visualise the Transformation',
+    brief:'Raw numbers rarely move decision-makers. Powerful visualisations do. This week you will transform your data findings into compelling visual narratives that a Board of Directors could act on.',
+    deliverables:'3–5 data visualisations created (charts, graphs, or infographics)\nNarrative summary explaining what each visualisation reveals\nDashboard prototype or slide deck integrating your visuals\nReflection: which visualisation type worked best and why?' },
+  { week:4, title:'The Toolkit — Frameworks for Digital Transformation',
+    brief:'Digital transformation practitioners do not work from instinct alone — they use proven frameworks. This week you select and apply the right analytical tools to your business\'s transformation challenge.',
+    deliverables:'2 DT frameworks applied to your business (e.g. PESTLE, Porter\'s Five Forces, Digital Maturity Model, McKinsey 7S)\nComparison: which framework reveals more and why\nKey findings from framework application\nInitial outline of your CW1 presentation structure' },
+  { week:5, title:'Agile Strategy — Managing Transformation with Jira',
+    brief:'Digital transformation must be managed as well as envisioned. This week you will model your transformation roadmap as an agile project using Jira, turning strategy into trackable work.',
+    deliverables:'Jira board created with your transformation as an Epic\nAt least 8 user stories written for your transformation initiative\nSprint plan for first 3 months of transformation\nScreenshot evidence of your Jira board' },
+  { week:6, title:'CW1 Showcase — Present Your Transformation Vision',
+    brief:'Assessment week. Each student presents their individual 7–8 minute video presentation demonstrating their business understanding, analytical findings, and proposed transformation direction. Guilds provide peer support and feedback.',
+    deliverables:'CW1 Video submitted via Blackboard (7–8 minutes)\nPeer feedback form completed for at least 1 guild member\nPost-presentation reflection: what would you do differently?' },
+  { week:7, title:'Business Model Lab — How Does Digital Change the Game?',
+    brief:'Digital disruption does not just change how businesses operate — it changes the rules of competition entirely. This week you explore how digital technologies enable entirely new business models and what that means for your chosen business.',
+    deliverables:'Business Model Canvas completed for your business (current state)\nIdentification of 2–3 digital disruptors threatening your business\nAnalysis of one digital-native competitor using the same canvas\nOpportunity gap: where could your business pivot its model?' },
+  { week:8, title:'Transformation Blueprint — Building Your CW2 Argument',
+    brief:'CW2 is now firmly in view. This week is about consolidating your research and building the intellectual architecture of your written report. Strong reports are built on clear arguments — this session helps you find yours.',
+    deliverables:'CW2 Report outline completed (all 6 sections with key arguments per section)\nLiterature review extended to at least 8 academic sources\nCore argument statement: one paragraph explaining your transformation thesis\nAction plan: milestones for completing CW2 by the deadline' },
+  { week:9, title:'Forecasting the Future — Predictive Analytics in Action',
+    brief:'Digital transformation strategies must be grounded in evidence, not just vision. This week you use RapidMiner to build predictive models that forecast future trends for your chosen business.',
+    deliverables:'Predictive model built in RapidMiner (regression, classification, or clustering)\nModel evaluation report (accuracy, key variables, limitations)\n3 strategic recommendations derived from your predictions\nScreenshot evidence and brief methodology section for CW2' },
+  { week:10, title:'Strategy Convergence — Mind Mapping Your Way to Clarity',
+    brief:'Ten weeks of research, data, frameworks and ideas. Now it is time to synthesise. This studio session uses mind mapping and group discussion to help each student find the strongest version of their digital transformation strategy.',
+    deliverables:'Mind map created integrating all key themes from your research\nDigital transformation strategy statement (200 words, clear and specific)\nPeer review: review one guild member\'s strategy statement and provide written feedback\nRevised CW2 outline based on today\'s session' },
+  { week:11, title:'Innovation Engine — Knowledge, People and Transformation',
+    brief:'Sustainable digital transformation requires more than technology — it requires people who innovate, share knowledge, and work collaboratively. This week you examine the human and organisational dimensions of transformation.',
+    deliverables:'Innovation strategy for your business (incremental vs disruptive vs architectural innovation)\nKnowledge management plan: how will your business capture and share digital expertise?\nStakeholder impact analysis: who wins, who loses, who resists?\nCW2 draft introduction and conclusion submitted for guild peer review' },
+  { week:12, title:'Power BI Dashboard — Transformation Intelligence at a Glance',
+    brief:'The final studio session. You will build a professional Power BI dashboard that visualises the key metrics, trends and insights from your entire semester of research — a strategic intelligence tool that could sit in a real boardroom.',
+    deliverables:'Power BI dashboard created with at least 5 interactive visualisations\nExecutive summary slide (1 page) summarising your transformation strategy\nFinal CW2 draft ready for submission review\nGuild retrospective: what did your guild learn this semester?' },
+];
+
+async function seedDefaultQuests() {
+  if (!confirm(`This will add all 12 default quest briefs. Existing quests with the same week number will be overwritten. Continue?`)) return;
+  let count = 0;
+  for (const q of DEFAULT_QUESTS) {
+    const wk = 'week-' + q.week;
+    await db.ref('studio/quests/' + wk).set({
+      title: q.title,
+      brief: q.brief,
+      deliverables: q.deliverables,
+      status: 'draft',
+      updatedAt: Date.now()
+    });
+    count++;
+  }
+  toast(`${count} quest briefs loaded!`, 'ok');
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIREBASE SUBSCRIPTION EXTENSION
+// ═══════════════════════════════════════════════════════════
+// Extend the existing subscription to also watch announcements & peerReviews
+db.ref('studio/announcements').on('value', snap => {
+  appData.announcements = snap.val() || {};
+  renderAnnouncements();
+});
+db.ref('studio/peerReviews').on('value', snap => {
+  appData.peerReviews = snap.val() || {};
+  renderPeerReview();
+  if (!isLeader) renderStudentPeerReview();
+  // populate week filter for peer review
+  const sel = document.getElementById('prWeekFilter');
+  if (sel) {
+    const existing = new Set(Array.from(sel.options).map(o => o.value));
+    Object.keys(appData.peerReviews).forEach(wk => {
+      const wNum = wk.split('-')[1];
+      if (!existing.has(wNum)) sel.innerHTML += `<option value="${wNum}">Week ${wNum}</option>`;
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// WIRE NEW FEATURES INTO refreshAll
+// ═══════════════════════════════════════════════════════════
+const _origRefreshAll = refreshAll;
+refreshAll = function() {
+  _origRefreshAll();
+  renderAnnouncements();
+  renderTimeline();
+  if (!isLeader) {
+    renderStudentPeerReview();
+    renderTimeline();
+  }
+};
+
+// Add "Seed Quests" button to Quest Manager dynamically
+window.addEventListener('DOMContentLoaded', () => {
+  const questFrow = document.querySelector('#pg-quests .frow');
+  if (questFrow) {
+    const seedBtn = document.createElement('button');
+    seedBtn.className = 'btn btn-ghost';
+    seedBtn.textContent = '📚 Seed 12 Default Quests';
+    seedBtn.onclick = seedDefaultQuests;
+    questFrow.appendChild(seedBtn);
+  }
+  // Add pinned announcement banner to student quest page
+  const questHero = document.getElementById('pg-s-quest');
+  if (questHero) {
+    const banner = document.createElement('div');
+    banner.id = 'pinnedAnnouncementBanner';
+    banner.style.cssText = 'padding:0 16px;display:none';
+    questHero.insertBefore(banner, questHero.firstChild);
+  }
+}, { once: true });
 </script>
 </body>
 </html>
