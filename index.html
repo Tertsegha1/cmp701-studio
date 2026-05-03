@@ -193,8 +193,15 @@ textarea{resize:vertical;min-height:80px}
     <p>Ulster University QAHE &nbsp;·&nbsp; Module Leader: Dr Tertsegha Anande</p>
   </div>
   <div class="hdr-right">
+    <select id="cohortSelector" onchange="switchCohort(this.value)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);border-radius:6px;color:#fff;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;min-width:140px">
+      <option value="default">Loading cohorts…</option>
+    </select>
     <span class="week-badge" id="weekBadge">Week —</span>
-    <button class="role-btn" onclick="toggleRole()" id="roleBtn">Switch to Student View</button>
+    <select id="roleSelector" onchange="setRole(this.value)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);border-radius:6px;color:#fff;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">
+      <option value="leader">Module Leader</option>
+      <option value="initiator">Initiator</option>
+      <option value="student">Student</option>
+    </select>
     <span class="live-badge" id="liveBadge">● Connecting…</span>
   </div>
 </div>
@@ -210,6 +217,7 @@ textarea{resize:vertical;min-height:80px}
   <button class="tab" onclick="showTab('students',this)">Students</button>
   <button class="tab" onclick="showTab('announcements',this)">Announcements</button>
   <button class="tab" onclick="showTab('timeline',this)">Timeline</button>
+  <button class="tab" id="tab-cohorts" onclick="showTab('cohorts',this)">Cohorts</button>
   <button class="tab" onclick="showTab('bb-setup',this)">Blackboard Setup</button>
 </div>
 
@@ -517,6 +525,17 @@ textarea{resize:vertical;min-height:80px}
       </div>
     </div>
   </div>
+</div>
+
+<!-- COHORTS MANAGEMENT -->
+<div class="pg" id="pg-cohorts">
+  <div class="alert alert-info" style="margin-bottom:14px">
+    Each cohort is a fully isolated semester/intake — its own students, guilds, quests, submissions, deadlines and announcements. The Module Leader manages all cohorts; an <strong>Initiator</strong> manages only the cohort they are assigned to.
+  </div>
+  <div class="frow">
+    <button class="btn btn-primary" onclick="openCohortModal()">+ New Cohort</button>
+  </div>
+  <div id="cohortGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px"></div>
 </div>
 
 <!-- PEER REVIEW (LEADER) -->
@@ -879,6 +898,78 @@ textarea{resize:vertical;min-height:80px}
   </div>
 </div>
 
+<!-- Cohort Modal -->
+<div class="modal-overlay" id="cohortModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('cohortModal')">✕</button>
+    <h3 id="cohortModalTitle">New Cohort</h3>
+    <input type="hidden" id="cohortEditId">
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Cohort Name</label>
+        <input type="text" id="cohortName" placeholder="e.g. 2025–26 Semester 2">
+      </div>
+      <div class="form-group">
+        <label>Academic Year</label>
+        <input type="text" id="cohortYear" placeholder="2025-26">
+      </div>
+      <div class="form-group">
+        <label>Semester</label>
+        <select id="cohortSemester"><option value="1">Semester 1</option><option value="2" selected>Semester 2</option><option value="S">Summer</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Semester Start Date</label>
+        <input type="date" id="cohortStart">
+      </div>
+      <div class="form-group">
+        <label>Current Week</label>
+        <input type="number" id="cohortWeek" min="1" max="12" placeholder="1–12" value="1">
+      </div>
+    </div>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:14px">
+      <p style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px">Assessment Deadlines</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>CW1 Submission</label>
+          <input type="date" id="cohortCW1Sub">
+        </div>
+        <div class="form-group">
+          <label>CW1 Marking</label>
+          <input type="date" id="cohortCW1Mark">
+        </div>
+        <div class="form-group">
+          <label>CW2 Submission</label>
+          <input type="date" id="cohortCW2Sub">
+        </div>
+        <div class="form-group">
+          <label>CW2 Marking</label>
+          <input type="date" id="cohortCW2Mark">
+        </div>
+      </div>
+    </div>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:14px">
+      <p style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px">Access Codes</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Initiator Code</label>
+          <input type="text" id="cohortInitiatorCode" placeholder="Share with your Initiator(s)">
+          <small style="color:#64748b;font-size:10px">Initiators use this to access and manage this cohort</small>
+        </div>
+        <div class="form-group">
+          <label>Campuses (comma-separated)</label>
+          <input type="text" id="cohortCampuses" placeholder="London, Birmingham, Manchester">
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('cohortModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCohort()">Save Cohort</button>
+    </div>
+  </div>
+</div>
+
 <!-- Announcement Modal -->
 <div class="modal-overlay" id="announcementModal">
   <div class="modal">
@@ -936,42 +1027,130 @@ firebase.initializeApp(_fbCfg);
 const db = firebase.database();
 
 // ─── State ──────────────────────────────────────────────────
-let isLeader = true;
-let appData = { guilds:{}, students:{}, quests:{}, submissions:{}, config:{} };
+let userRole = 'leader'; // 'leader' | 'initiator' | 'student'
+let isLeader = true;     // true for leader + initiator
+let isInitiator = false; // true only for initiator
+let appData = { guilds:{}, students:{}, quests:{}, submissions:{}, config:{}, announcements:{}, peerReviews:{} };
 let currentStudent = null;
 let csvImportBuffer = [];
 
+// ─── Cohort State ────────────────────────────────────────────
+let COHORT_ID   = 'default';          // current cohort key
+let COHORT_PATH = 'studio';           // Firebase base path for current cohort
+let allCohorts  = {};                 // cohortId → meta, loaded from studio/__cohorts
+let _mainUnsub  = null;
+let _annUnsub   = null;
+let _prUnsub    = null;
+
+// Helper — returns a Firebase ref under the current cohort
+function sRef(subpath) {
+  return db.ref(subpath ? COHORT_PATH + '/' + subpath : COHORT_PATH);
+}
+
 // ─── Boot ────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  // Check URL param for student role
   const params = new URLSearchParams(location.search);
-  if (params.get('role') === 'student') { isLeader = false; applyRole(); }
+
+  // Role from URL param
+  const urlRole = params.get('role');
+  if (urlRole === 'student')   { userRole = 'student';    isLeader = false; isInitiator = false; }
+  if (urlRole === 'initiator') { userRole = 'initiator';  isLeader = true;  isInitiator = true;  }
 
   // Restore API key
   const savedKey = localStorage.getItem('cmp701_ai_key');
   if (savedKey) { document.getElementById('aiApiKey').value = savedKey; document.getElementById('sAiKey').value = savedKey; }
 
-  // Subscribe to Firebase
-  db.ref('studio').on('value', snap => {
-    const raw = snap.val() || {};
-    appData.guilds     = raw.guilds      || {};
-    appData.students   = raw.students    || {};
-    appData.quests     = raw.quests      || {};
-    appData.submissions= raw.submissions || {};
-    appData.config     = raw.config      || {};
+  // Restore last cohort
+  const savedCohort = localStorage.getItem('cmp701_cohort') || 'default';
 
-    document.getElementById('liveBadge').textContent = '● Live';
-    document.getElementById('liveBadge').className = 'live-badge ok';
-
-    refreshAll();
-  }, () => {
-    document.getElementById('liveBadge').textContent = '● Offline';
-    document.getElementById('liveBadge').className = 'live-badge';
+  // Load cohort list first, then subscribe to data
+  sRef('__cohorts').on('value', snap => {
+    allCohorts = snap.val() || {};
+    renderCohortSelector(savedCohort);
   });
 
+  // Subscribe to data for the saved cohort
+  subscribeToCohort(savedCohort);
+
+  // Apply role UI (must run after DOM is ready)
+  applyRole();
   populateWeekSelects();
   setCurrentWeekBadge();
 });
+
+// ─── Cohort Subscription ─────────────────────────────────────
+function subscribeToCohort(cohortId) {
+  // Tear down previous subscriptions
+  if (_mainUnsub) { db.ref(COHORT_PATH).off('value', _mainUnsub); _mainUnsub = null; }
+  if (_annUnsub)  { db.ref(COHORT_PATH + '/announcements').off('value', _annUnsub); _annUnsub = null; }
+  if (_prUnsub)   { db.ref(COHORT_PATH + '/peerReviews').off('value', _prUnsub); _prUnsub = null; }
+
+  COHORT_ID   = cohortId;
+  COHORT_PATH = cohortId === 'default' ? 'studio' : 'studio/c_' + cohortId;
+  localStorage.setItem('cmp701_cohort', cohortId);
+
+  _mainUnsub = snap => {
+    const raw = snap.val() || {};
+    appData.guilds      = raw.guilds      || {};
+    appData.students    = raw.students    || {};
+    appData.quests      = raw.quests      || {};
+    appData.submissions = raw.submissions || {};
+    appData.config      = raw.config      || {};
+
+    document.getElementById('liveBadge').textContent = '● Live';
+    document.getElementById('liveBadge').className   = 'live-badge ok';
+    refreshAll();
+  };
+  db.ref(COHORT_PATH).on('value', _mainUnsub, () => {
+    document.getElementById('liveBadge').textContent = '● Offline';
+    document.getElementById('liveBadge').className   = 'live-badge';
+  });
+
+  _annUnsub = snap => {
+    appData.announcements = snap.val() || {};
+    renderAnnouncements();
+  };
+  db.ref(COHORT_PATH + '/announcements').on('value', _annUnsub);
+
+  _prUnsub = snap => {
+    appData.peerReviews = snap.val() || {};
+    renderPeerReview();
+    if (!isLeader) renderStudentPeerReview();
+    const sel = document.getElementById('prWeekFilter');
+    if (sel) {
+      const existing = new Set(Array.from(sel.options).map(o => o.value));
+      Object.keys(appData.peerReviews).forEach(wk => {
+        const wNum = wk.split('-')[1];
+        if (!existing.has(wNum)) sel.innerHTML += `<option value="${wNum}">Week ${wNum}</option>`;
+      });
+    }
+  };
+  db.ref(COHORT_PATH + '/peerReviews').on('value', _prUnsub);
+}
+
+async function switchCohort(cohortId) {
+  subscribeToCohort(cohortId);
+  updateCohortBadge(cohortId);
+}
+
+function renderCohortSelector(activeCohortId) {
+  const sel = document.getElementById('cohortSelector');
+  const opts = [{ id: 'default', meta: { name: '2025–26 S2 (Default)', year: '2025-26', semester: '2' } }];
+  Object.entries(allCohorts).forEach(([id, m]) => opts.push({ id, meta: m }));
+  sel.innerHTML = opts.map(o =>
+    `<option value="${o.id}" ${o.id === activeCohortId ? 'selected' : ''}>${o.meta.name}</option>`
+  ).join('');
+  updateCohortBadge(activeCohortId);
+}
+
+function updateCohortBadge(cohortId) {
+  const meta = cohortId === 'default'
+    ? { name: '2025–26 S2', cw1Deadline: '2026-03-13', cw2Deadline: '2026-05-06' }
+    : (allCohorts[cohortId] || {});
+  // Update config defaults from cohort meta if not overridden
+  if (!appData.config.cw1Deadline && meta.cw1Deadline) appData.config.cw1Deadline = meta.cw1Deadline;
+  if (!appData.config.cw2Deadline && meta.cw2Deadline) appData.config.cw2Deadline = meta.cw2Deadline;
+}
 
 function refreshAll() {
   updateDashboard();
@@ -985,22 +1164,25 @@ function refreshAll() {
   updateWeekSelectors();
 }
 
-// ─── Role Toggle ─────────────────────────────────────────────
-function toggleRole() {
-  isLeader = !isLeader;
+// ─── Role Management ─────────────────────────────────────────
+function setRole(role) {
+  userRole    = role;
+  isLeader    = role === 'leader' || role === 'initiator';
+  isInitiator = role === 'initiator';
+  document.getElementById('roleSelector').value = role;
+  // Cohorts tab hidden for Initiator (they can't manage cross-cohort)
+  const cohortsTab = document.getElementById('tab-cohorts');
+  if (cohortsTab) cohortsTab.style.display = isInitiator ? 'none' : '';
   applyRole();
 }
 
 function applyRole() {
   document.getElementById('leaderTabs').style.display = isLeader ? 'flex' : 'none';
   document.getElementById('studentTabs').style.display = isLeader ? 'none' : 'flex';
-  document.getElementById('studentIdentityBanner').style.display = isLeader ? 'none' : 'flex';
-  document.getElementById('roleBtn').textContent = isLeader ? 'Switch to Student View' : 'Switch to Leader View';
+  const banner = document.getElementById('studentIdentityBanner');
+  if (banner) banner.style.display = isLeader ? 'none' : 'flex';
 
-  // Show/hide pages
-  const allPgs = document.querySelectorAll('.pg');
-  allPgs.forEach(p => p.classList.remove('on'));
-
+  document.querySelectorAll('.pg').forEach(p => p.classList.remove('on'));
   if (isLeader) {
     showTab('dashboard', document.querySelector('#leaderTabs .tab'));
   } else {
@@ -1008,6 +1190,9 @@ function applyRole() {
     refreshStudentViews();
   }
 }
+
+// Selector in header calls this
+function handleRoleSelect(sel) { setRole(sel.value); }
 
 // ─── Tabs ────────────────────────────────────────────────────
 function showTab(id, btn) {
@@ -1172,16 +1357,16 @@ async function saveGuild() {
   const contract = document.getElementById('guildContract').value.trim();
   if (!name) { toast('Guild name is required', 'err'); return; }
 
-  const gid = document.getElementById('guildEditId').value || db.ref('studio/guilds').push().key;
+  const gid = document.getElementById('guildEditId').value || sRef('guilds').push().key;
   const existing = appData.guilds[gid] || {};
-  await db.ref('studio/guilds/' + gid).update({ name, campus, contract, ...existing.members ? { members: existing.members } : {} });
+  await sRef('guilds/' + gid).update({ name, campus, contract, ...existing.members ? { members: existing.members } : {} });
   closeModal('guildModal');
   toast('Guild saved!', 'ok');
 }
 
 async function deleteGuild(gid) {
   if (!confirm('Delete this guild?')) return;
-  await db.ref('studio/guilds/' + gid).remove();
+  await sRef('guilds/' + gid).remove();
   toast('Guild deleted');
 }
 
@@ -1196,7 +1381,7 @@ async function rotateRoles(gid) {
   roleArr.push(roleArr.shift());
   const newRoles = {};
   members.forEach((m, i) => { newRoles[m.id] = roleArr[i]; });
-  await db.ref('studio/guilds/' + gid + '/currentRoles').set(newRoles);
+  await sRef('guilds/' + gid + '/currentRoles').set(newRoles);
   toast('Roles rotated!', 'ok');
 }
 
@@ -1214,8 +1399,8 @@ function openAddToGuildModal(gid) {
 async function addStudentToGuild(sid, gid) {
   const student = appData.students[sid];
   if (!student) return;
-  await db.ref(`studio/guilds/${gid}/members/${sid}`).set({ id: sid, name: student.name });
-  await db.ref(`studio/students/${sid}/guildId`).set(gid);
+  await sRef(`guilds/${gid}/members/${sid}`).set({ id: sid, name: student.name });
+  await sRef(`students/${sid}/guildId`).set(gid);
   toast(`${student.name} added to guild`, 'ok');
 }
 
@@ -1293,24 +1478,24 @@ async function saveQuest() {
   if (!title) { toast('Quest title is required', 'err'); return; }
 
   const wk = 'week-' + weekNum;
-  await db.ref('studio/quests/' + wk).set({ title, brief, deliverables, status, updatedAt: Date.now() });
+  await sRef('quests/' + wk).set({ title, brief, deliverables, status, updatedAt: Date.now() });
   closeModal('questModal');
   toast('Quest saved!', 'ok');
 }
 
 async function publishQuest(wk) {
-  await db.ref('studio/quests/' + wk + '/status').set('published');
+  await sRef('quests/' + wk + '/status').set('published');
   toast('Quest published!', 'ok');
 }
 
 async function unpublishQuest(wk) {
-  await db.ref('studio/quests/' + wk + '/status').set('draft');
+  await sRef('quests/' + wk + '/status').set('draft');
   toast('Quest unpublished');
 }
 
 async function deleteQuest(wk) {
   if (!confirm('Delete this quest?')) return;
-  await db.ref('studio/quests/' + wk).remove();
+  await sRef('quests/' + wk).remove();
   toast('Quest deleted');
 }
 
@@ -1479,8 +1664,8 @@ async function addStudent() {
   const business = document.getElementById('newStudentBusiness').value;
   if (!name) { toast('Student name is required', 'err'); return; }
 
-  const sid = db.ref('studio/students').push().key;
-  await db.ref('studio/students/' + sid).set({ name, campus, guildId, business, addedAt: Date.now() });
+  const sid = sRef('students').push().key;
+  await sRef('students/' + sid).set({ name, campus, guildId, business, addedAt: Date.now() });
   if (guildId) await addStudentToGuild(sid, guildId);
   closeModal('addStudentModal');
   toast('Student added!', 'ok');
@@ -1489,7 +1674,7 @@ async function addStudent() {
 async function deleteStudent(sid) {
   const s = appData.students[sid];
   if (!confirm(`Remove ${s ? s.name : 'this student'}?`)) return;
-  await db.ref('studio/students/' + sid).remove();
+  await sRef('students/' + sid).remove();
   toast('Student removed');
 }
 
@@ -1497,7 +1682,7 @@ function editStudent(sid) {
   const s = appData.students[sid];
   if (!s) return;
   const biz = prompt('Update business for ' + s.name + ':', s.business || '');
-  if (biz !== null) db.ref('studio/students/' + sid + '/business').set(biz).then(() => toast('Updated', 'ok'));
+  if (biz !== null) sRef('students/' + sid + '/business').set(biz).then(() => toast('Updated', 'ok'));
 }
 
 function exportStudentsCSV() {
@@ -1675,32 +1860,45 @@ async function saveAIFeedback() {
   const match = Object.entries(appData.students).find(([,s]) => s.name.toLowerCase().includes(sid.toLowerCase()));
   if (!match) { toast('Student not found', 'err'); return; }
   const wk = 'week-' + (appData.config.currentWeek || 1);
-  await db.ref(`studio/submissions/${match[0]}/${wk}/aiFeedback`).set(document.getElementById('aiOutput').textContent);
+  await sRef(`submissions/${match[0]}/${wk}/aiFeedback`).set(document.getElementById('aiOutput').textContent);
   toast('Feedback saved!', 'ok');
 }
 
 // ─── Config ───────────────────────────────────────────────────
 function loadConfig() {
-  const c = appData.config;
-  if (c.currentWeek) document.getElementById('cfgWeek').value = c.currentWeek;
+  // Merge cohort-level deadlines as fallback
+  const cohortMeta = COHORT_ID === 'default' ? {} : (allCohorts[COHORT_ID] || {});
+  const c = { ...cohortMeta, ...appData.config };
+  if (c.currentWeek)   document.getElementById('cfgWeek').value          = c.currentWeek;
   if (c.semesterStart) document.getElementById('cfgSemesterStart').value = c.semesterStart;
-  if (c.cw1Deadline) document.getElementById('cfgCW1Deadline').value = c.cw1Deadline;
-  if (c.cw2Deadline) document.getElementById('cfgCW2Deadline').value = c.cw2Deadline;
+  const cw1 = c.cw1Deadline || c.cw1Sub || '2026-03-13';
+  const cw2 = c.cw2Deadline || c.cw2Sub || '2026-05-06';
+  document.getElementById('cfgCW1Deadline').value = cw1;
+  document.getElementById('cfgCW2Deadline').value = cw2;
   setCurrentWeekBadge();
 }
 
 async function saveConfig() {
+  const cw1 = document.getElementById('cfgCW1Deadline').value || '2026-03-13';
+  const cw2 = document.getElementById('cfgCW2Deadline').value || '2026-05-06';
   const config = {
-    currentWeek: parseInt(document.getElementById('cfgWeek').value) || null,
+    currentWeek:   parseInt(document.getElementById('cfgWeek').value) || null,
     semesterStart: document.getElementById('cfgSemesterStart').value || null,
-    cw1Deadline: document.getElementById('cfgCW1Deadline').value || '2026-03-13',
-    cw2Deadline: document.getElementById('cfgCW2Deadline').value || '2026-05-06',
+    cw1Deadline:   cw1,
+    cw2Deadline:   cw2,
   };
   const code = document.getElementById('cfgLeaderCode').value.trim();
   if (code) config.leaderCode = code;
-  await db.ref('studio/config').update(config);
+  await sRef('config').update(config);
+
+  // Also mirror deadlines onto the cohort meta so Timeline picks them up
+  if (COHORT_ID !== 'default') {
+    await db.ref('studio/__cohorts/' + COHORT_ID).update({ cw1Sub: cw1, cw2Sub: cw2 });
+  }
+
   toast('Configuration saved!', 'ok');
   setCurrentWeekBadge();
+  renderTimeline();
 }
 
 // ─── Student Identity ─────────────────────────────────────────
@@ -1826,7 +2024,7 @@ async function submitArtefact() {
   if (!title) { toast('Add an artefact title', 'err'); return; }
 
   const wk = 'week-' + weekNum;
-  await db.ref(`studio/submissions/${currentStudent}/${wk}`).set({
+  await sRef(`submissions/${currentStudent}/${wk}`).set({
     title, link, description, reflection, submittedAt: Date.now(), status: 'Submitted'
   });
 
@@ -1896,8 +2094,8 @@ function handleCSVImport(event) {
 async function confirmCSVImport() {
   let added = 0;
   for (const row of csvImportBuffer) {
-    const sid = db.ref('studio/students').push().key;
-    await db.ref('studio/students/' + sid).set({
+    const sid = sRef('students').push().key;
+    await sRef('students/' + sid).set({
       name: row.name, campus: row.campus || '', business: row.business || '', guildId: '', addedAt: Date.now()
     });
 
@@ -1908,8 +2106,8 @@ async function confirmCSVImport() {
       if (existingGuild) {
         gid = existingGuild[0];
       } else {
-        gid = db.ref('studio/guilds').push().key;
-        await db.ref('studio/guilds/' + gid).set({ name: row.guild, campus: row.campus || '', members: {} });
+        gid = sRef('guilds').push().key;
+        await sRef('guilds/' + gid).set({ name: row.guild, campus: row.campus || '', members: {} });
       }
       await addStudentToGuild(sid, gid);
     }
@@ -1983,8 +2181,8 @@ async function saveAnnouncement() {
   const title = document.getElementById('annTitle').value.trim();
   const body = document.getElementById('annBody').value.trim();
   if (!title || !body) { toast('Title and message are required', 'err'); return; }
-  const id = db.ref('studio/announcements').push().key;
-  await db.ref('studio/announcements/' + id).set({
+  const id = sRef('announcements').push().key;
+  await sRef('announcements/' + id).set({
     title, body,
     type: document.getElementById('annType').value,
     pinned: document.getElementById('annPinned').value === 'true',
@@ -2051,7 +2249,7 @@ function renderAnnouncements() {
 
 async function deleteAnnouncement(id) {
   if (!confirm('Delete this announcement?')) return;
-  await db.ref('studio/announcements/' + id).remove();
+  await sRef('announcements/' + id).remove();
   toast('Deleted');
 }
 
@@ -2077,7 +2275,7 @@ async function createPeerReviewRound() {
     assignments[gid] = { reviewerGuildId: gid, targetGuildId: guilds[reviewsIdx][0], status: 'pending' };
   });
 
-  await db.ref('studio/peerReviews/' + wk).set(assignments);
+  await sRef('peerReviews/' + wk).set(assignments);
   toast(`Review round created for Week ${week}!`, 'ok');
 }
 
@@ -2132,7 +2330,7 @@ function renderPeerReview() {
 
 async function deletePeerReviewRound(wk) {
   if (!confirm('Delete this review round?')) return;
-  await db.ref('studio/peerReviews/' + wk).remove();
+  await sRef('peerReviews/' + wk).remove();
   toast('Round deleted');
 }
 
@@ -2185,7 +2383,7 @@ async function submitPeerFeedback() {
 
   if (!strengths || !improvements) { toast('Please fill in both strengths and improvements', 'err'); return; }
 
-  await db.ref(`studio/peerReviews/${wk}/${gid}`).update({
+  await sRef(`peerReviews/${wk}/${gid}`).update({
     strengths, improvements, rating: parseInt(rating),
     submittedBy: currentStudent, submittedAt: Date.now(), status: 'submitted'
   });
@@ -2215,9 +2413,13 @@ const WEEK_TOPICS = [
 ];
 
 function renderTimeline() {
+  // Deadlines: cohort meta wins over config wins over hard default
+  const cohortMeta = COHORT_ID === 'default' ? {} : (allCohorts[COHORT_ID] || {});
   const cfg = appData.config;
-  const cw1 = cfg.cw1Deadline || '2026-03-13';
-  const cw2 = cfg.cw2Deadline || '2026-05-06';
+  const cw1 = cfg.cw1Deadline || cohortMeta.cw1Sub || '2026-03-13';
+  const cw2 = cfg.cw2Deadline || cohortMeta.cw2Sub || '2026-05-06';
+  const cw1Mark = cohortMeta.cw1Mark || null;
+  const cw2Mark = cohortMeta.cw2Mark || null;
   const now = Date.now();
   const currentWeek = parseInt(cfg.currentWeek || computeCurrentWeek()) || 1;
 
@@ -2231,15 +2433,19 @@ function renderTimeline() {
   document.getElementById('tl-weeks-left').textContent = weeksLeft;
 
   // Build visual timeline bar
+  const semStart = cfg.semesterStart || cohortMeta.semesterStart || '2026-01-13';
   const milestones = [
-    { label: 'Semester Start', date: cfg.semesterStart || '2026-01-13', colour: '#1B3A6B', icon: '🎓' },
-    { label: 'CW1 Deadline', date: cw1, colour: '#B91C1C', icon: '📹' },
-    { label: 'CW2 Deadline', date: cw2, colour: '#15803D', icon: '📄' },
-  ];
+    { label: 'Semester Start',    date: semStart, colour: '#1B3A6B', icon: '🎓' },
+    { label: 'CW1 Submission',    date: cw1,      colour: '#B91C1C', icon: '📹' },
+    cw1Mark ? { label: 'CW1 Marking',  date: cw1Mark,  colour: '#B45309', icon: '✏️' } : null,
+    { label: 'CW2 Submission',    date: cw2,      colour: '#15803D', icon: '📄' },
+    cw2Mark ? { label: 'CW2 Marking',  date: cw2Mark,  colour: '#0369a1', icon: '✅' } : null,
+  ].filter(Boolean);
 
   const semesterTimelineEl = document.getElementById('semesterTimeline');
+  const cols = milestones.length <= 3 ? milestones.length : 'auto-fill, minmax(160px, 1fr)';
   semesterTimelineEl.innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">
+    <div style="display:grid;grid-template-columns:repeat(${milestones.length <= 3 ? milestones.length : 'auto-fill, minmax(160px, 1fr)'});gap:14px;margin-bottom:16px">
       ${milestones.map(m => {
         const d = new Date(m.date);
         const daysAway = Math.ceil((d - now) / 86400000);
@@ -2330,7 +2536,7 @@ async function seedDefaultQuests() {
   let count = 0;
   for (const q of DEFAULT_QUESTS) {
     const wk = 'week-' + q.week;
-    await db.ref('studio/quests/' + wk).set({
+    await sRef('quests/' + wk).set({
       title: q.title,
       brief: q.brief,
       deliverables: q.deliverables,
@@ -2342,42 +2548,201 @@ async function seedDefaultQuests() {
   toast(`${count} quest briefs loaded!`, 'ok');
 }
 
-// ═══════════════════════════════════════════════════════════
-// FIREBASE SUBSCRIPTION EXTENSION
-// ═══════════════════════════════════════════════════════════
-// Extend the existing subscription to also watch announcements & peerReviews
-db.ref('studio/announcements').on('value', snap => {
-  appData.announcements = snap.val() || {};
-  renderAnnouncements();
-});
-db.ref('studio/peerReviews').on('value', snap => {
-  appData.peerReviews = snap.val() || {};
-  renderPeerReview();
-  if (!isLeader) renderStudentPeerReview();
-  // populate week filter for peer review
-  const sel = document.getElementById('prWeekFilter');
-  if (sel) {
-    const existing = new Set(Array.from(sel.options).map(o => o.value));
-    Object.keys(appData.peerReviews).forEach(wk => {
-      const wNum = wk.split('-')[1];
-      if (!existing.has(wNum)) sel.innerHTML += `<option value="${wNum}">Week ${wNum}</option>`;
-    });
-  }
-});
+// Announcements and peerReviews are now subscribed inside subscribeToCohort()
 
 // ═══════════════════════════════════════════════════════════
-// WIRE NEW FEATURES INTO refreshAll
+// WIRE ALL EXTRA RENDERS INTO refreshAll (single consolidated patch)
 // ═══════════════════════════════════════════════════════════
-const _origRefreshAll = refreshAll;
+const _coreRefreshAll = refreshAll;
 refreshAll = function() {
-  _origRefreshAll();
+  _coreRefreshAll();
   renderAnnouncements();
   renderTimeline();
-  if (!isLeader) {
-    renderStudentPeerReview();
-    renderTimeline();
-  }
+  renderCohortGrid();
+  if (!isLeader) renderStudentPeerReview();
 };
+
+// ═══════════════════════════════════════════════════════════
+// COHORT MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+
+function openCohortModal(cohortId) {
+  const isEdit = !!cohortId;
+  document.getElementById('cohortModalTitle').textContent = isEdit ? 'Edit Cohort' : 'New Cohort';
+  document.getElementById('cohortEditId').value = cohortId || '';
+
+  if (isEdit && allCohorts[cohortId]) {
+    const m = allCohorts[cohortId];
+    document.getElementById('cohortName').value          = m.name || '';
+    document.getElementById('cohortYear').value          = m.year || '';
+    document.getElementById('cohortSemester').value      = m.semester || '2';
+    document.getElementById('cohortStart').value         = m.semesterStart || '';
+    document.getElementById('cohortWeek').value          = m.currentWeek || 1;
+    document.getElementById('cohortCW1Sub').value        = m.cw1Sub || '';
+    document.getElementById('cohortCW1Mark').value       = m.cw1Mark || '';
+    document.getElementById('cohortCW2Sub').value        = m.cw2Sub || '';
+    document.getElementById('cohortCW2Mark').value       = m.cw2Mark || '';
+    document.getElementById('cohortInitiatorCode').value = m.initiatorCode || '';
+    document.getElementById('cohortCampuses').value      = (m.campuses || []).join(', ');
+  } else {
+    document.getElementById('cohortName').value          = '';
+    document.getElementById('cohortYear').value          = '';
+    document.getElementById('cohortSemester').value      = '2';
+    document.getElementById('cohortStart').value         = '';
+    document.getElementById('cohortWeek').value          = 1;
+    document.getElementById('cohortCW1Sub').value        = '';
+    document.getElementById('cohortCW1Mark').value       = '';
+    document.getElementById('cohortCW2Sub').value        = '';
+    document.getElementById('cohortCW2Mark').value       = '';
+    document.getElementById('cohortInitiatorCode').value = '';
+    document.getElementById('cohortCampuses').value      = 'London, Birmingham, Manchester';
+  }
+  openModal('cohortModal');
+}
+
+async function saveCohort() {
+  const name = document.getElementById('cohortName').value.trim();
+  if (!name) { toast('Cohort name is required', 'err'); return; }
+
+  const editId  = document.getElementById('cohortEditId').value;
+  const year     = document.getElementById('cohortYear').value.trim();
+  const semester = document.getElementById('cohortSemester').value;
+  const campusesRaw = document.getElementById('cohortCampuses').value;
+
+  const meta = {
+    name,
+    year,
+    semester,
+    semesterStart:  document.getElementById('cohortStart').value || null,
+    currentWeek:    parseInt(document.getElementById('cohortWeek').value) || 1,
+    cw1Sub:         document.getElementById('cohortCW1Sub').value  || null,
+    cw1Mark:        document.getElementById('cohortCW1Mark').value || null,
+    cw2Sub:         document.getElementById('cohortCW2Sub').value  || null,
+    cw2Mark:        document.getElementById('cohortCW2Mark').value || null,
+    initiatorCode:  document.getElementById('cohortInitiatorCode').value.trim() || null,
+    campuses:       campusesRaw ? campusesRaw.split(',').map(s => s.trim()).filter(Boolean) : ['London','Birmingham','Manchester'],
+    status:         'active',
+    createdAt:      editId ? (allCohorts[editId]?.createdAt || Date.now()) : Date.now(),
+  };
+
+  // Generate a safe cohort ID from year + semester if new
+  const cohortId = editId || (year + '-s' + semester).replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
+  await db.ref('studio/__cohorts/' + cohortId).set(meta);
+
+  // Pre-seed cohort config with deadlines so Timeline works immediately
+  if (!editId) {
+    const newPath = 'studio/c_' + cohortId;
+    if (meta.cw1Sub) await db.ref(newPath + '/config/cw1Deadline').set(meta.cw1Sub);
+    if (meta.cw2Sub) await db.ref(newPath + '/config/cw2Deadline').set(meta.cw2Sub);
+    if (meta.semesterStart) await db.ref(newPath + '/config/semesterStart').set(meta.semesterStart);
+    await db.ref(newPath + '/config/currentWeek').set(meta.currentWeek);
+  }
+
+  closeModal('cohortModal');
+  toast(editId ? 'Cohort updated!' : 'Cohort created!', 'ok');
+}
+
+function renderCohortGrid() {
+  const grid = document.getElementById('cohortGrid');
+  if (!grid) return;
+
+  const cohorts = [
+    { id: 'default', meta: { name: '2025–26 Semester 2 (Default)', year: '2025-26', semester: '2', status: 'active', cw1Sub: '2026-03-13', cw2Sub: '2026-05-06', campuses: ['London','Birmingham','Manchester'] } },
+    ...Object.entries(allCohorts).map(([id, meta]) => ({ id, meta }))
+  ];
+
+  if (cohorts.length === 1) {
+    grid.innerHTML = '<p style="color:#94a3b8;font-size:12px">No additional cohorts yet. Click "+ New Cohort" to create one for your next intake.</p>';
+    return;
+  }
+
+  grid.innerHTML = cohorts.map(({ id, meta: m }) => {
+    const isActive   = COHORT_ID === id;
+    const isArchived = m.status === 'archived';
+    const campuses   = (m.campuses || ['London','Birmingham','Manchester']).join(' · ');
+
+    const deadlineRows = [
+      m.cw1Sub  ? `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f1f5f9"><span style="color:#64748b">CW1 Submission</span><strong>${fmtDate(m.cw1Sub)}</strong></div>` : '',
+      m.cw1Mark ? `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f1f5f9"><span style="color:#64748b">CW1 Marking</span><strong>${fmtDate(m.cw1Mark)}</strong></div>` : '',
+      m.cw2Sub  ? `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f1f5f9"><span style="color:#64748b">CW2 Submission</span><strong>${fmtDate(m.cw2Sub)}</strong></div>` : '',
+      m.cw2Mark ? `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0"><span style="color:#64748b">CW2 Marking</span><strong>${fmtDate(m.cw2Mark)}</strong></div>` : '',
+    ].filter(Boolean).join('');
+
+    return `
+    <div style="background:#fff;border:2px solid ${isActive?'#0D7377':'#e2e8f0'};border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);opacity:${isArchived?.6:1}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-size:14px;font-weight:800;color:#1B3A6B">${m.name}</div>
+          <div style="font-size:10px;color:#64748b;margin-top:2px">${campuses}</div>
+        </div>
+        <div style="display:flex;gap:5px;align-items:center">
+          ${isActive ? '<span class="b b-teal">Active</span>' : ''}
+          ${isArchived ? '<span class="b b-slate">Archived</span>' : ''}
+          ${m.initiatorCode ? '<span class="b b-purple" title="Has Initiator code">Initiator ✓</span>' : ''}
+        </div>
+      </div>
+      <div style="margin-bottom:12px">${deadlineRows || '<p style="font-size:11px;color:#94a3b8">No deadlines set</p>'}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${!isActive ? `<button class="btn btn-primary btn-sm" onclick="switchCohort('${id}');document.getElementById('cohortSelector').value='${id}'">Switch To</button>` : '<span class="btn btn-ghost btn-sm" style="cursor:default">Current</span>'}
+        ${id !== 'default' ? `<button class="btn btn-ghost btn-sm" onclick="openCohortModal('${id}')">Edit</button>` : ''}
+        ${id !== 'default' && !isArchived ? `<button class="btn btn-ghost btn-sm" onclick="archiveCohort('${id}')">Archive</button>` : ''}
+        ${id !== 'default' ? `<button class="btn btn-danger btn-sm" onclick="deleteCohort('${id}')">Delete</button>` : ''}
+        ${m.initiatorCode ? `<button class="btn btn-ghost btn-sm" onclick="copyInitiatorLink('${id}','${m.initiatorCode}')">Copy Initiator Link</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function archiveCohort(cohortId) {
+  if (!confirm('Archive this cohort? It will be hidden from the selector but data is preserved.')) return;
+  await db.ref('studio/__cohorts/' + cohortId + '/status').set('archived');
+  toast('Cohort archived');
+}
+
+async function deleteCohort(cohortId) {
+  if (!confirm('Permanently delete this cohort and ALL its data? This cannot be undone.')) return;
+  await db.ref('studio/__cohorts/' + cohortId).remove();
+  await db.ref('studio/c_' + cohortId).remove();
+  if (COHORT_ID === cohortId) switchCohort('default');
+  toast('Cohort deleted');
+}
+
+function copyInitiatorLink(cohortId, code) {
+  const url = `${location.origin}${location.pathname}?role=initiator&cohort=${cohortId}&code=${encodeURIComponent(code)}`;
+  navigator.clipboard.writeText(url);
+  toast('Initiator link copied!', 'ok');
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// ─── Initiator cohort auto-login via URL ─────────────────────
+(function checkInitiatorLogin() {
+  const params = new URLSearchParams(location.search);
+  const urlCohort = params.get('cohort');
+  const urlCode   = params.get('code');
+  if (!urlCohort || !urlCode) return;
+
+  // Wait for cohort list to load, then verify code
+  const check = setInterval(() => {
+    const meta = allCohorts[urlCohort];
+    if (!meta) return; // not loaded yet
+    clearInterval(check);
+    if (meta.initiatorCode && meta.initiatorCode === urlCode) {
+      setRole('initiator');
+      switchCohort(urlCohort);
+      const sel = document.getElementById('cohortSelector');
+      if (sel) sel.value = urlCohort;
+      toast(`Signed in as Initiator — ${meta.name}`, 'ok');
+    } else {
+      toast('Invalid Initiator code for this cohort', 'err');
+    }
+  }, 300);
+})();
+
+// renderCohortGrid is already wired into the consolidated refreshAll above
 
 // Add "Seed Quests" button to Quest Manager dynamically
 window.addEventListener('DOMContentLoaded', () => {
