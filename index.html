@@ -190,7 +190,7 @@ textarea{resize:vertical;min-height:80px}
 <div class="hdr">
   <div class="hdr-title">
     <h1>CMP701 — Digital Transformation Studio</h1>
-    <p>Ulster University QAHE &nbsp;·&nbsp; Module Leader: Dr Tertsegha Anande</p>
+    <p>Ulster University QAHE &nbsp;·&nbsp; <span style="opacity:.55">Creator &amp; Module Leader:</span> Dr Tertsegha Anande</p>
   </div>
   <div class="hdr-right">
     <select id="cohortSelector" onchange="switchCohort(this.value)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);border-radius:6px;color:#fff;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;min-width:140px">
@@ -199,7 +199,7 @@ textarea{resize:vertical;min-height:80px}
     <span class="week-badge" id="weekBadge">Week —</span>
     <select id="roleSelector" onchange="setRole(this.value)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);border-radius:6px;color:#fff;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">
       <option value="leader">Module Leader</option>
-      <option value="initiator">Initiator</option>
+      <option value="lecturer">Lecturer</option>
       <option value="student">Student</option>
     </select>
     <span class="live-badge" id="liveBadge">● Connecting…</span>
@@ -219,6 +219,16 @@ textarea{resize:vertical;min-height:80px}
   <button class="tab" onclick="showTab('timeline',this)">Timeline</button>
   <button class="tab" id="tab-cohorts" onclick="showTab('cohorts',this)">Cohorts</button>
   <button class="tab" onclick="showTab('bb-setup',this)">Blackboard Setup</button>
+</div>
+
+<!-- LECTURER TABS (operational view — no admin/config) -->
+<div class="tabs" id="lecturerTabs" style="display:none">
+  <button class="tab on" onclick="showTab('dashboard',this)">Dashboard</button>
+  <button class="tab" onclick="showTab('submissions',this)">Submissions</button>
+  <button class="tab" onclick="showTab('peer-review',this)">Peer Review</button>
+  <button class="tab" onclick="showTab('ai-tool',this)">AI Assessment</button>
+  <button class="tab" onclick="showTab('announcements',this)">Announcements</button>
+  <button class="tab" onclick="showTab('timeline',this)">Timeline</button>
 </div>
 
 <!-- STUDENT TABS -->
@@ -487,6 +497,14 @@ textarea{resize:vertical;min-height:80px}
 
       <div class="divider"></div>
 
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Lecturer / Tutor Access Link</h3>
+      <p style="font-size:12px;color:#475569;margin-bottom:10px">Share this link with seminar leaders, visiting lecturers, and tutors. It opens in <strong>Lecturer View</strong> — they can see submissions, run AI assessment, and post announcements, but cannot change configuration or manage cohorts.</p>
+      <div class="embed-code">https://tertsegha1.github.io/cmp701-studio/?role=lecturer</div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="navigator.clipboard.writeText('https://tertsegha1.github.io/cmp701-studio/?role=lecturer');toast('Copied!','ok')">Copy Lecturer URL</button>
+      <p style="font-size:11px;color:#64748b;margin-top:8px">For a specific cohort: use the <strong>Copy Lecturer Link</strong> button on the cohort card in the Cohorts tab — it appends the cohort ID automatically.</p>
+
+      <div class="divider"></div>
+
       <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Student Identification</h3>
       <p style="font-size:12px;color:#475569;margin-bottom:10px">Students select their name from a dropdown when they first open the Studio. Their progress is then tracked under their name in the Submissions tab above.</p>
       <div class="alert alert-warn">Blackboard does not automatically pass student identity to external tools unless you use LTI. For LTI integration, contact your Blackboard administrator to register this tool as an LTI provider.</div>
@@ -530,7 +548,7 @@ textarea{resize:vertical;min-height:80px}
 <!-- COHORTS MANAGEMENT -->
 <div class="pg" id="pg-cohorts">
   <div class="alert alert-info" style="margin-bottom:14px">
-    Each cohort is a fully isolated semester/intake — its own students, guilds, quests, submissions, deadlines and announcements. The Module Leader manages all cohorts; an <strong>Initiator</strong> manages only the cohort they are assigned to.
+    Each cohort is a fully isolated semester/intake — its own students, guilds, quests, submissions, deadlines and announcements. Switch cohorts from the header dropdown; Lecturers access via the shared Lecturer link.
   </div>
   <div class="frow">
     <button class="btn btn-primary" onclick="openCohortModal()">+ New Cohort</button>
@@ -950,17 +968,10 @@ textarea{resize:vertical;min-height:80px}
       </div>
     </div>
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:14px">
-      <p style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px">Access Codes</p>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Initiator Code</label>
-          <input type="text" id="cohortInitiatorCode" placeholder="Share with your Initiator(s)">
-          <small style="color:#64748b;font-size:10px">Initiators use this to access and manage this cohort</small>
-        </div>
-        <div class="form-group">
-          <label>Campuses (comma-separated)</label>
-          <input type="text" id="cohortCampuses" placeholder="London, Birmingham, Manchester">
-        </div>
+      <p style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px">Campuses</p>
+      <div class="form-group">
+        <label>Campuses (comma-separated)</label>
+        <input type="text" id="cohortCampuses" placeholder="London, Birmingham, Manchester">
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -1027,9 +1038,9 @@ firebase.initializeApp(_fbCfg);
 const db = firebase.database();
 
 // ─── State ──────────────────────────────────────────────────
-let userRole = 'leader'; // 'leader' | 'initiator' | 'student'
-let isLeader = true;     // true for leader + initiator
-let isInitiator = false; // true only for initiator
+let userRole = 'leader'; // 'leader' | 'lecturer' | 'student'
+let isLeader = true;     // true for leader only
+let isLecturer = false;  // true for lecturer (operational, no admin)
 let appData = { guilds:{}, students:{}, quests:{}, submissions:{}, config:{}, announcements:{}, peerReviews:{} };
 let currentStudent = null;
 let csvImportBuffer = [];
@@ -1051,10 +1062,10 @@ function sRef(subpath) {
 window.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(location.search);
 
-  // Role from URL param
+  // Role from URL param (?role=student | lecturer | leader)
   const urlRole = params.get('role');
-  if (urlRole === 'student')   { userRole = 'student';    isLeader = false; isInitiator = false; }
-  if (urlRole === 'initiator') { userRole = 'initiator';  isLeader = true;  isInitiator = true;  }
+  if (urlRole === 'student')  { userRole = 'student';   isLeader = false; isLecturer = false; }
+  if (urlRole === 'lecturer') { userRole = 'lecturer';  isLeader = false; isLecturer = true;  }
 
   // Restore API key
   const savedKey = localStorage.getItem('cmp701_ai_key');
@@ -1166,33 +1177,33 @@ function refreshAll() {
 
 // ─── Role Management ─────────────────────────────────────────
 function setRole(role) {
-  userRole    = role;
-  isLeader    = role === 'leader' || role === 'initiator';
-  isInitiator = role === 'initiator';
+  userRole   = role;
+  isLeader   = role === 'leader';
+  isLecturer = role === 'lecturer';
   document.getElementById('roleSelector').value = role;
-  // Cohorts tab hidden for Initiator (they can't manage cross-cohort)
-  const cohortsTab = document.getElementById('tab-cohorts');
-  if (cohortsTab) cohortsTab.style.display = isInitiator ? 'none' : '';
   applyRole();
 }
 
 function applyRole() {
-  document.getElementById('leaderTabs').style.display = isLeader ? 'flex' : 'none';
-  document.getElementById('studentTabs').style.display = isLeader ? 'none' : 'flex';
+  const isStudent = userRole === 'student';
+  document.getElementById('leaderTabs').style.display   = isLeader   ? 'flex' : 'none';
+  document.getElementById('lecturerTabs').style.display = isLecturer ? 'flex' : 'none';
+  document.getElementById('studentTabs').style.display  = isStudent  ? 'flex' : 'none';
+
   const banner = document.getElementById('studentIdentityBanner');
-  if (banner) banner.style.display = isLeader ? 'none' : 'flex';
+  if (banner) banner.style.display = isStudent ? 'flex' : 'none';
 
   document.querySelectorAll('.pg').forEach(p => p.classList.remove('on'));
+
   if (isLeader) {
     showTab('dashboard', document.querySelector('#leaderTabs .tab'));
+  } else if (isLecturer) {
+    showTab('dashboard', document.querySelector('#lecturerTabs .tab'));
   } else {
     showTab('s-quest', document.querySelector('#studentTabs .tab'));
     refreshStudentViews();
   }
 }
-
-// Selector in header calls this
-function handleRoleSelect(sel) { setRole(sel.value); }
 
 // ─── Tabs ────────────────────────────────────────────────────
 function showTab(id, btn) {
@@ -1200,7 +1211,9 @@ function showTab(id, btn) {
   const pg = document.getElementById('pg-' + id);
   if (pg) pg.classList.add('on');
 
-  const tabContainer = isLeader ? document.getElementById('leaderTabs') : document.getElementById('studentTabs');
+  const tabContainer = isLeader   ? document.getElementById('leaderTabs')
+                     : isLecturer ? document.getElementById('lecturerTabs')
+                     :              document.getElementById('studentTabs');
   tabContainer.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
   if (btn) btn.classList.add('on');
 }
@@ -2582,7 +2595,6 @@ function openCohortModal(cohortId) {
     document.getElementById('cohortCW1Mark').value       = m.cw1Mark || '';
     document.getElementById('cohortCW2Sub').value        = m.cw2Sub || '';
     document.getElementById('cohortCW2Mark').value       = m.cw2Mark || '';
-    document.getElementById('cohortInitiatorCode').value = m.initiatorCode || '';
     document.getElementById('cohortCampuses').value      = (m.campuses || []).join(', ');
   } else {
     document.getElementById('cohortName').value          = '';
@@ -2594,7 +2606,6 @@ function openCohortModal(cohortId) {
     document.getElementById('cohortCW1Mark').value       = '';
     document.getElementById('cohortCW2Sub').value        = '';
     document.getElementById('cohortCW2Mark').value       = '';
-    document.getElementById('cohortInitiatorCode').value = '';
     document.getElementById('cohortCampuses').value      = 'London, Birmingham, Manchester';
   }
   openModal('cohortModal');
@@ -2619,7 +2630,6 @@ async function saveCohort() {
     cw1Mark:        document.getElementById('cohortCW1Mark').value || null,
     cw2Sub:         document.getElementById('cohortCW2Sub').value  || null,
     cw2Mark:        document.getElementById('cohortCW2Mark').value || null,
-    initiatorCode:  document.getElementById('cohortInitiatorCode').value.trim() || null,
     campuses:       campusesRaw ? campusesRaw.split(',').map(s => s.trim()).filter(Boolean) : ['London','Birmingham','Manchester'],
     status:         'active',
     createdAt:      editId ? (allCohorts[editId]?.createdAt || Date.now()) : Date.now(),
@@ -2678,7 +2688,6 @@ function renderCohortGrid() {
         <div style="display:flex;gap:5px;align-items:center">
           ${isActive ? '<span class="b b-teal">Active</span>' : ''}
           ${isArchived ? '<span class="b b-slate">Archived</span>' : ''}
-          ${m.initiatorCode ? '<span class="b b-purple" title="Has Initiator code">Initiator ✓</span>' : ''}
         </div>
       </div>
       <div style="margin-bottom:12px">${deadlineRows || '<p style="font-size:11px;color:#94a3b8">No deadlines set</p>'}</div>
@@ -2687,7 +2696,7 @@ function renderCohortGrid() {
         ${id !== 'default' ? `<button class="btn btn-ghost btn-sm" onclick="openCohortModal('${id}')">Edit</button>` : ''}
         ${id !== 'default' && !isArchived ? `<button class="btn btn-ghost btn-sm" onclick="archiveCohort('${id}')">Archive</button>` : ''}
         ${id !== 'default' ? `<button class="btn btn-danger btn-sm" onclick="deleteCohort('${id}')">Delete</button>` : ''}
-        ${m.initiatorCode ? `<button class="btn btn-ghost btn-sm" onclick="copyInitiatorLink('${id}','${m.initiatorCode}')">Copy Initiator Link</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="copyLecturerLink('${id}')">Copy Lecturer Link</button>
       </div>
     </div>`;
   }).join('');
@@ -2707,10 +2716,13 @@ async function deleteCohort(cohortId) {
   toast('Cohort deleted');
 }
 
-function copyInitiatorLink(cohortId, code) {
-  const url = `${location.origin}${location.pathname}?role=initiator&cohort=${cohortId}&code=${encodeURIComponent(code)}`;
+function copyLecturerLink(cohortId) {
+  const base = `${location.origin}${location.pathname}`;
+  const url = cohortId === 'default'
+    ? `${base}?role=lecturer`
+    : `${base}?role=lecturer&cohort=${cohortId}`;
   navigator.clipboard.writeText(url);
-  toast('Initiator link copied!', 'ok');
+  toast('Lecturer link copied!', 'ok');
 }
 
 function fmtDate(d) {
@@ -2718,27 +2730,21 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-// ─── Initiator cohort auto-login via URL ─────────────────────
-(function checkInitiatorLogin() {
-  const params = new URLSearchParams(location.search);
+// ─── Lecturer cohort auto-switch via URL ─────────────────────
+// ?role=lecturer&cohort=2026-27-s1 → switch to that cohort in lecturer view
+(function checkLecturerCohort() {
+  const params    = new URLSearchParams(location.search);
   const urlCohort = params.get('cohort');
-  const urlCode   = params.get('code');
-  if (!urlCohort || !urlCode) return;
-
-  // Wait for cohort list to load, then verify code
+  if (!urlCohort || userRole !== 'lecturer') return;
+  // Wait for cohort list to load, then switch
   const check = setInterval(() => {
-    const meta = allCohorts[urlCohort];
-    if (!meta) return; // not loaded yet
+    if (!allCohorts[urlCohort]) return;
     clearInterval(check);
-    if (meta.initiatorCode && meta.initiatorCode === urlCode) {
-      setRole('initiator');
-      switchCohort(urlCohort);
-      const sel = document.getElementById('cohortSelector');
-      if (sel) sel.value = urlCohort;
-      toast(`Signed in as Initiator — ${meta.name}`, 'ok');
-    } else {
-      toast('Invalid Initiator code for this cohort', 'err');
-    }
+    switchCohort(urlCohort);
+    const sel = document.getElementById('cohortSelector');
+    if (sel) sel.value = urlCohort;
+    const meta = allCohorts[urlCohort];
+    toast(`Lecturer view — ${meta.name}`, 'ok');
   }, 300);
 })();
 
