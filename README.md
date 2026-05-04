@@ -22,7 +22,7 @@ The system supports three access roles and scales across multiple semesters thro
 
 | Role | Who | Access |
 |---|---|---|
-| **Module Leader** | Dr Tertsegha Anande | Full admin access — all tabs including cohort management, teaching team, configuration, and AI key setup. Protected by an admin code. |
+| **Module Leader** | Dr Tertsegha Anande | Full admin access — all tabs including cohort management, teaching team, configuration, and AI key setup. Protected by an admin code - DSTcmp701. |
 | **Lecturer** | Seminar leaders, visiting tutors | Operational access — dashboard, submissions, formative artefact feedback, peer review, announcements, timeline. Must select their name from the Teaching Team list before proceeding. No config or admin access. |
 | **Student** | Enrolled students | Student portal — quest brief, guild info, artefact submission, peer review, formative AI feedback, progress tracker |
 
