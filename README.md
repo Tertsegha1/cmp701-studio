@@ -22,8 +22,8 @@ The system supports three access roles and scales across multiple semesters thro
 
 | Role | Who | Access |
 |---|---|---|
-| **Module Leader** | Dr Tertsegha Anande | Full access — all tabs including cohort management, configuration, and AI key setup |
-| **Lecturer** | Seminar leaders, visiting tutors | Operational access — dashboard, submissions, formative artefact feedback, peer review, announcements, timeline. No config or admin. |
+| **Module Leader** | Dr Tertsegha Anande | Full admin access — all tabs including cohort management, teaching team, configuration, and AI key setup. Protected by an admin code. |
+| **Lecturer** | Seminar leaders, visiting tutors | Operational access — dashboard, submissions, formative artefact feedback, peer review, announcements, timeline. Must select their name from the Teaching Team list before proceeding. No config or admin access. |
 | **Student** | Enrolled students | Student portal — quest brief, guild info, artefact submission, peer review, formative AI feedback, progress tracker |
 
 ### URLs
@@ -35,6 +35,20 @@ The system supports three access roles and scales across multiple semesters thro
 | Student | `https://tertsegha1.github.io/cmp701-studio/?role=student` |
 
 For a specific cohort, append `&cohort=<cohort-id>` to the Lecturer or Student URL. The **Copy Lecturer Link** button on each cohort card generates the correct URL automatically.
+
+### Module Leader Admin Code
+
+The Module Leader view is protected by an admin code. Set it once in **Blackboard Setup → Module Configuration → Leader Admin Code**. Anyone opening the app without the code is locked to Lecturer or Student view. The code is stored in Firebase (cohort config) — not in the URL.
+
+If no code is set, the Module Leader view is accessible without a gate (useful during initial setup before sharing the app).
+
+### Teaching Team
+
+The Teaching Team is the list of lecturers and seminar leaders who can access the Lecturer view each semester. It is managed globally (not per-cohort) in **Blackboard Setup → Teaching Team**.
+
+When a lecturer opens the app at the Lecturer URL, they are shown an identity screen and must select their name before proceeding. Their selection is remembered in the browser for the session. A **⇄ switch** button in the header lets them change identity at any time.
+
+**At the start of each new semester:** go to **Blackboard Setup → Teaching Team → 🗑 Clear All (New Semester)** and add the new team. Existing lecturer sessions will be prompted to re-identify.
 
 ---
 
@@ -151,13 +165,15 @@ This gives students a developmental signal — how much of their work reads as A
 2. Fill in: cohort name, academic year, semester, semester start date, all four deadlines, and campus list
 3. The new cohort appears in the header dropdown — select it
 4. Go to **Blackboard Setup → AI Configuration** and enter your Anthropic API key once — it is saved to your browser and used silently by all AI features
-5. Go to **Students** → **↑ Import Students CSV**
+5. Go to **Blackboard Setup → Module Configuration** and set a **Leader Admin Code** to protect the Module Leader view
+6. Go to **Blackboard Setup → Teaching Team** → add all lecturers and seminar leaders for this semester (name, campus, role). If returning from a previous semester, click **🗑 Clear All (New Semester)** first
+7. Go to **Students** → **↑ Import Students CSV**
    - Required columns: `Name, Campus, Guild, Business`
    - Guilds are auto-created from the CSV; students are assigned automatically
-6. Go to **Quest Manager** → **📚 Seed 12 Default Quests** → then publish Week 1
-7. Go to **Peer Review** → **+ New Review Round** to set up Week 1 guild pairings
-8. Post a welcome announcement in the **Announcements** tab
-9. Share the student URL in a Blackboard announcement (see Blackboard Integration below)
+8. Go to **Quest Manager** → **📚 Seed 12 Default Quests** → then publish Week 1
+9. Go to **Peer Review** → **+ New Review Round** to set up Week 1 guild pairings
+10. Post a welcome announcement in the **Announcements** tab
+11. Share the student URL in a Blackboard announcement (see Blackboard Integration below)
 
 ### Weekly Workflow
 

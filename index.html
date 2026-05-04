@@ -201,11 +201,18 @@ textarea{resize:vertical;min-height:80px}
       <option value="default">Loading cohorts…</option>
     </select>
     <span class="week-badge" id="weekBadge">Week —</span>
-    <select id="roleSelector" onchange="setRole(this.value)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);border-radius:6px;color:#fff;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">
+    <!-- Only visible to Module Leader — used to preview other role views -->
+    <select id="roleSelector" onchange="setRole(this.value)" style="display:none;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);border-radius:6px;color:#fff;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">
       <option value="leader">Module Leader</option>
       <option value="lecturer">Lecturer</option>
       <option value="student">Student</option>
     </select>
+    <!-- Lecturer identity badge -->
+    <div id="lecturerNameBadge" style="display:none;align-items:center;gap:6px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:5px 12px">
+      <span style="font-size:10px;opacity:.7">Lecturer:</span>
+      <span id="lecturerNameChip" style="font-size:11px;font-weight:700"></span>
+      <button onclick="clearLecturerIdentity()" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:12px;padding:0 0 0 4px" title="Switch user">⇄</button>
+    </div>
     <span class="live-badge" id="liveBadge">● Connecting…</span>
   </div>
 </div>
@@ -587,6 +594,31 @@ textarea{resize:vertical;min-height:80px}
 
       <div class="divider"></div>
 
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Teaching Team</h3>
+      <p style="font-size:12px;color:#475569;margin-bottom:10px">Members listed here can access Lecturer View. When a team member opens the lecturer URL, they must select their name from this list before proceeding. <strong>Update this list at the start of each semester.</strong></p>
+      <div class="form-row" style="align-items:flex-end;margin-bottom:10px">
+        <div class="form-group" style="flex:2 1 180px">
+          <label>Full Name</label>
+          <input type="text" id="ttName" placeholder="e.g. Sarah Jones">
+        </div>
+        <div class="form-group" style="flex:1 1 120px">
+          <label>Campus</label>
+          <input type="text" id="ttCampus" placeholder="e.g. London">
+        </div>
+        <div class="form-group" style="flex:1 1 160px">
+          <label>Role</label>
+          <input type="text" id="ttTitle" placeholder="e.g. Seminar Leader">
+        </div>
+        <button class="btn btn-primary" onclick="addTeachingTeamMember()" style="flex-shrink:0">+ Add Member</button>
+      </div>
+      <div id="teachingTeamAdminList"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+        <button class="btn btn-danger btn-sm" onclick="clearTeachingTeam()">🗑 Clear All (New Semester)</button>
+        <span style="font-size:10px;color:#64748b">Removes all members — use at the start of each semester before adding the new team.</span>
+      </div>
+
+      <div class="divider"></div>
+
       <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Student Identification</h3>
       <p style="font-size:12px;color:#475569;margin-bottom:10px">Students select their name from a dropdown when they first open the Studio. Their progress is then tracked under their name in the Submissions tab above.</p>
       <div class="alert alert-warn">Blackboard does not automatically pass student identity to external tools unless you use LTI. For LTI integration, contact your Blackboard administrator to register this tool as an LTI provider.</div>
@@ -874,6 +906,41 @@ textarea{resize:vertical;min-height:80px}
 ════════════════════════════════════════════════════════════ -->
 
 <!-- Guild Modal -->
+<!-- LEADER CODE GATE -->
+<div class="modal-overlay" id="leaderCodeModal">
+  <div class="modal" style="max-width:380px;text-align:center">
+    <div style="font-size:40px;margin-bottom:12px">🔐</div>
+    <h3 style="margin-bottom:8px">Module Leader Access</h3>
+    <p style="font-size:12px;color:#64748b;margin-bottom:20px">Enter the admin code to access the Module Leader view.</p>
+    <input type="password" id="leaderCodeInput" placeholder="Admin code…"
+           style="text-align:center;font-size:15px;letter-spacing:3px;margin-bottom:8px"
+           onkeydown="if(event.key==='Enter')verifyLeaderCode()">
+    <p id="leaderCodeErr" style="font-size:11px;color:#B91C1C;margin-bottom:10px;display:none">Incorrect code — try again.</p>
+    <button class="btn btn-primary" style="width:100%" onclick="verifyLeaderCode()">Verify →</button>
+    <p style="font-size:10px;color:#94a3b8;margin-top:18px">Students and lecturers should use the link shared by the Module Leader.</p>
+  </div>
+</div>
+
+<!-- LECTURER IDENTITY SCREEN -->
+<div id="lecturerIdentityScreen" style="display:none;position:fixed;inset:0;background:#f0f4f8;z-index:998;overflow-y:auto;align-items:flex-start;justify-content:center;padding:60px 20px">
+  <div style="width:100%;max-width:460px">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:36px;margin-bottom:10px">👋</div>
+      <h2 style="font-size:18px;font-weight:800;color:#1B3A6B;margin-bottom:6px">CMP701 Digital Transformation Studio</h2>
+      <p style="font-size:12px;color:#64748b">Teaching Team Access — select your name to continue</p>
+    </div>
+    <div class="card">
+      <div class="card-hdr blue">Who are you?</div>
+      <div class="card-body">
+        <div id="teachingTeamSelector">
+          <p style="color:#94a3b8;font-size:12px">Loading teaching team…</p>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:10px;color:#94a3b8;text-align:center;margin-top:14px">If your name is not listed, ask the Module Leader to add you in Blackboard Setup.</p>
+  </div>
+</div>
+
 <div class="modal-overlay" id="guildModal">
   <div class="modal">
     <button class="modal-close" onclick="closeModal('guildModal')">✕</button>
@@ -1161,10 +1228,26 @@ window.addEventListener('DOMContentLoaded', () => {
   // Subscribe to data for the saved cohort
   subscribeToCohort(savedCohort);
 
+  // Restore lecturer identity from previous session
+  if (isLecturer) {
+    const saved = localStorage.getItem('cmp701_lecturer');
+    if (saved) {
+      try { currentLecturer = JSON.parse(saved); } catch(e) { currentLecturer = null; }
+    }
+  }
+
+  // Load teaching team (global, not cohort-scoped)
+  loadTeachingTeam();
+
   // Apply role UI (must run after DOM is ready)
   applyRole();
   populateWeekSelects();
   setCurrentWeekBadge();
+
+  // Show lecturer identity screen if not yet identified
+  if (isLecturer && !currentLecturer) {
+    showLecturerIdentityScreen();
+  }
 });
 
 // ─── Cohort Subscription ─────────────────────────────────────
@@ -1185,6 +1268,7 @@ function subscribeToCohort(cohortId) {
     appData.quests      = raw.quests      || {};
     appData.submissions = raw.submissions || {};
     appData.config      = raw.config      || {};
+    checkLeaderCodeGate();
 
     document.getElementById('liveBadge').textContent = '● Live';
     document.getElementById('liveBadge').className   = 'live-badge ok';
@@ -1255,6 +1339,12 @@ function refreshAll() {
 
 // ─── Role Management ─────────────────────────────────────────
 function setRole(role) {
+  // Switching to leader requires code verification (if a code is set)
+  if (role === 'leader' && appData.config.leaderCode && !sessionStorage.getItem('cmp701_leader_ok')) {
+    openModal('leaderCodeModal');
+    setTimeout(() => { const f = document.getElementById('leaderCodeInput'); if (f) f.focus(); }, 150);
+    return;
+  }
   userRole   = role;
   isLeader   = role === 'leader';
   isLecturer = role === 'lecturer';
@@ -1264,9 +1354,22 @@ function setRole(role) {
 
 function applyRole() {
   const isStudent = userRole === 'student';
+
   document.getElementById('leaderTabs').style.display   = isLeader   ? 'flex' : 'none';
   document.getElementById('lecturerTabs').style.display = isLecturer ? 'flex' : 'none';
   document.getElementById('studentTabs').style.display  = isStudent  ? 'flex' : 'none';
+
+  // Role selector: only visible to Module Leader (used to preview other roles)
+  document.getElementById('roleSelector').style.display = isLeader ? '' : 'none';
+
+  // Lecturer name badge
+  const lecBadge = document.getElementById('lecturerNameBadge');
+  if (lecBadge) {
+    lecBadge.style.display = isLecturer ? 'flex' : 'none';
+    if (isLecturer && currentLecturer) {
+      document.getElementById('lecturerNameChip').textContent = currentLecturer.name;
+    }
+  }
 
   const banner = document.getElementById('studentIdentityBanner');
   if (banner) banner.style.display = isStudent ? 'flex' : 'none';
@@ -2489,6 +2592,130 @@ function downloadCSV(rows, filename) {
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 });
+
+// ═══════════════════════════════════════════════════════════
+// TEACHING TEAM & PERMISSIONS
+// ═══════════════════════════════════════════════════════════
+let allTeachingTeam = {};
+let currentLecturer = null; // { id, name, campus, title }
+
+function loadTeachingTeam() {
+  db.ref('studio/__teachingTeam').on('value', snap => {
+    allTeachingTeam = snap.val() || {};
+    renderTeachingTeamSelector();
+    renderTeachingTeamAdmin();
+    // Show identity screen if lecturer not yet identified
+    if (isLecturer && !currentLecturer) showLecturerIdentityScreen();
+  });
+}
+
+function renderTeachingTeamSelector() {
+  const el = document.getElementById('teachingTeamSelector');
+  if (!el) return;
+  const members = Object.entries(allTeachingTeam);
+  if (!members.length) {
+    el.innerHTML = '<p style="color:#94a3b8;font-size:12px;padding:8px 0">No teaching team configured yet. Ask the Module Leader to add your name in Blackboard Setup.</p>';
+    return;
+  }
+  el.innerHTML = members.sort((a,b) => a[1].name.localeCompare(b[1].name)).map(([id, m]) => `
+    <button class="btn btn-ghost" style="width:100%;text-align:left;justify-content:flex-start;padding:12px 16px;border:1.5px solid #e2e8f0;margin-bottom:6px"
+            onclick="selectLecturerIdentity('${id}','${m.name.replace(/'/g,"\\'")}','${(m.campus||'').replace(/'/g,"\\'")}','${(m.title||'').replace(/'/g,"\\'")}')">
+      <div style="font-weight:700;font-size:13px;color:#1B3A6B">${m.name}</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">${[m.title, m.campus].filter(Boolean).join(' · ')}</div>
+    </button>`).join('');
+}
+
+function showLecturerIdentityScreen() {
+  document.getElementById('lecturerIdentityScreen').style.display = 'flex';
+}
+
+function selectLecturerIdentity(id, name, campus, title) {
+  currentLecturer = { id, name, campus, title };
+  localStorage.setItem('cmp701_lecturer', JSON.stringify(currentLecturer));
+  document.getElementById('lecturerIdentityScreen').style.display = 'none';
+  document.getElementById('lecturerNameChip').textContent = name;
+  document.getElementById('lecturerNameBadge').style.display = 'flex';
+  toast('Welcome, ' + name + '!', 'ok');
+}
+
+function clearLecturerIdentity() {
+  currentLecturer = null;
+  localStorage.removeItem('cmp701_lecturer');
+  document.getElementById('lecturerNameBadge').style.display = 'none';
+  renderTeachingTeamSelector();
+  showLecturerIdentityScreen();
+}
+
+function renderTeachingTeamAdmin() {
+  const el = document.getElementById('teachingTeamAdminList');
+  if (!el) return;
+  const members = Object.entries(allTeachingTeam);
+  if (!members.length) {
+    el.innerHTML = '<p style="color:#94a3b8;font-size:12px;padding:8px 0">No team members yet.</p>';
+    return;
+  }
+  el.innerHTML = `<div class="tw" style="margin-top:8px"><table><thead><tr>
+    <th>Name</th><th>Campus</th><th>Role</th><th>Added</th><th class="C">Remove</th>
+  </tr></thead><tbody>${
+    members.sort((a,b) => a[1].name.localeCompare(b[1].name)).map(([id, m]) => `<tr>
+      <td style="font-weight:700">${m.name}</td>
+      <td>${m.campus || '—'}</td>
+      <td>${m.title || '—'}</td>
+      <td style="font-size:10px;color:#94a3b8">${m.addedAt ? new Date(m.addedAt).toLocaleDateString() : '—'}</td>
+      <td class="C"><button class="btn btn-danger btn-sm" onclick="removeTeachingTeamMember('${id}')">✕</button></td>
+    </tr>`).join('')
+  }</tbody></table></div>`;
+}
+
+async function addTeachingTeamMember() {
+  const name   = document.getElementById('ttName').value.trim();
+  const campus = document.getElementById('ttCampus').value.trim();
+  const title  = document.getElementById('ttTitle').value.trim();
+  if (!name) { toast('Enter a name first', 'err'); return; }
+  const id = db.ref('studio/__teachingTeam').push().key;
+  await db.ref('studio/__teachingTeam/' + id).set({ name, campus, title, addedAt: Date.now() });
+  document.getElementById('ttName').value = '';
+  document.getElementById('ttCampus').value = '';
+  document.getElementById('ttTitle').value = '';
+  toast(name + ' added to teaching team', 'ok');
+}
+
+async function removeTeachingTeamMember(id) {
+  if (!confirm('Remove this team member?')) return;
+  await db.ref('studio/__teachingTeam/' + id).remove();
+  toast('Removed', 'ok');
+}
+
+async function clearTeachingTeam() {
+  if (!confirm('Remove all teaching team members? Do this at the start of a new semester before adding the new team.')) return;
+  await db.ref('studio/__teachingTeam').remove();
+  toast('Teaching team cleared — ready for new semester', 'ok');
+}
+
+// ─── Leader Code Gate ─────────────────────────────────────────
+function checkLeaderCodeGate() {
+  if (!isLeader) return;
+  const code = appData.config.leaderCode;
+  if (code && !sessionStorage.getItem('cmp701_leader_ok')) {
+    openModal('leaderCodeModal');
+    setTimeout(() => { const f = document.getElementById('leaderCodeInput'); if (f) f.focus(); }, 150);
+  }
+}
+
+function verifyLeaderCode() {
+  const input  = document.getElementById('leaderCodeInput').value.trim();
+  const stored = appData.config.leaderCode;
+  if (!stored || input === stored) {
+    sessionStorage.setItem('cmp701_leader_ok', '1');
+    closeModal('leaderCodeModal');
+    document.getElementById('leaderCodeInput').value = '';
+    toast('Admin access granted', 'ok');
+  } else {
+    document.getElementById('leaderCodeErr').style.display = 'block';
+    document.getElementById('leaderCodeInput').value = '';
+    document.getElementById('leaderCodeInput').focus();
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 // ANNOUNCEMENTS
