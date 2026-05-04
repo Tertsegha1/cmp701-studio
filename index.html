@@ -168,6 +168,7 @@ textarea{resize:vertical;min-height:80px}
 .tl-dot.green{background:#15803D}
 .tl-dot.amber{background:#B45309}
 .tl-dot.slate{background:#94a3b8}
+.tl-dot.teal{background:#0D7377}
 .tl-content{flex:1}
 .tl-title{font-size:12px;font-weight:700;color:#1e293b}
 .tl-sub{font-size:10px;color:#64748b;margin-top:2px}
@@ -324,6 +325,54 @@ textarea{resize:vertical;min-height:80px}
       </table>
     </div>
   </div>
+
+  <!-- Inline Grade Panel -->
+  <div id="gradePanel" style="display:none">
+    <div class="card" style="border:2px solid #7C3AED">
+      <div class="card-hdr purple" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Grade Artefact — <span id="gpStudentLabel">Student</span> · <span id="gpWeekLabel">Week —</span></span>
+        <button class="btn btn-ghost btn-sm" onclick="closeGradePanel()">✕ Close</button>
+      </div>
+      <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <!-- Left: submission content + form -->
+        <div>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;margin-bottom:14px">
+            <p style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px">Submission</p>
+            <p style="font-size:12px;font-weight:700;color:#1B3A6B;margin-bottom:4px" id="gpTitle">—</p>
+            <p id="gpLinkRow" style="font-size:11px;margin-bottom:6px"></p>
+            <p style="font-size:11px;color:#475569;margin-bottom:4px"><strong>Description:</strong> <span id="gpDescription">—</span></p>
+            <p style="font-size:11px;color:#475569"><strong>Reflection:</strong> <span id="gpReflection">—</span></p>
+          </div>
+          <div class="form-group" style="margin-bottom:10px">
+            <label>Assessment Type</label>
+            <select id="gpAssessType" onchange="updateGPForm()">
+              <option value="artefact">Weekly Studio Artefact</option>
+              <option value="cw1">CW1 — Video Presentation (25%)</option>
+              <option value="cw2">CW2 — Written Report (75%)</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:10px">
+            <label>Business Chosen</label>
+            <input type="text" id="gpBusiness" placeholder="e.g. Netflix">
+          </div>
+          <div class="form-group" style="margin-bottom:10px">
+            <label id="gpTextLabel">Submission Text for AI</label>
+            <textarea id="gpText" rows="7" placeholder="Pre-filled from description and reflection. Edit or paste full text…"></textarea>
+          </div>
+          <button class="btn btn-purple" style="width:100%" onclick="runInlineAI()">⚡ Generate AI Feedback</button>
+        </div>
+        <!-- Right: output + save -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="ai-output loading" id="gpOutput" style="flex:1;min-height:300px">AI feedback will appear here…</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" style="flex:1" onclick="saveInlineFeedback()">💾 Save Feedback to Submission</button>
+            <button class="btn btn-ghost btn-sm" onclick="copyGPOutput()">Copy</button>
+          </div>
+          <div id="gpSaveAlert"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- AI ASSESSMENT TOOL -->
@@ -362,10 +411,8 @@ textarea{resize:vertical;min-height:80px}
             <label id="aiTextLabel">Submission Text / Transcript</label>
             <textarea id="aiSubmissionText" rows="10" placeholder="Paste the student's submission text, video transcript, or artefact description here…"></textarea>
           </div>
-          <div class="form-group" style="margin-bottom:16px">
-            <label>Anthropic API Key</label>
-            <input type="password" id="aiApiKey" placeholder="sk-ant-…" value="">
-            <small style="color:#64748b;font-size:10px;margin-top:3px">Stored locally in your browser only</small>
+          <div id="aiNoKeyAlert" style="display:none;background:#fef9c3;border:1px solid #fbbf24;border-radius:6px;padding:8px 12px;font-size:11px;color:#854d0e;margin-bottom:12px">
+            API key not configured. Set it in the <strong>Blackboard Setup</strong> tab.
           </div>
           <button class="btn btn-purple" style="width:100%" onclick="runAIAssessment()">
             ⚡ Generate AI Assessment
@@ -471,7 +518,7 @@ textarea{resize:vertical;min-height:80px}
 
       <div class="divider"></div>
 
-      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Method 2 — Embed as iFrame in a Blackboard Item</h3>
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Method 2 — Embed as iFrame in a Blackboard Item <span style="font-size:11px;font-weight:700;background:#fee2e2;color:#B91C1C;border-radius:4px;padding:2px 8px;margin-left:6px">NOT RECOMMENDED</span></h3>
       <ol style="font-size:12px;line-height:2;margin-left:16px;color:#334155">
         <li>Go to <strong>Build Content</strong> → <strong>Item</strong></li>
         <li>In the text editor, click the <strong>HTML source</strong> button (<code>&lt;/&gt;</code>)</li>
@@ -502,6 +549,16 @@ textarea{resize:vertical;min-height:80px}
       <div class="embed-code">https://tertsegha1.github.io/cmp701-studio/?role=lecturer</div>
       <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="navigator.clipboard.writeText('https://tertsegha1.github.io/cmp701-studio/?role=lecturer');toast('Copied!','ok')">Copy Lecturer URL</button>
       <p style="font-size:11px;color:#64748b;margin-top:8px">For a specific cohort: use the <strong>Copy Lecturer Link</strong> button on the cohort card in the Cohorts tab — it appends the cohort ID automatically.</p>
+
+      <div class="divider"></div>
+
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">AI Configuration (Module Leader)</h3>
+      <p style="font-size:12px;color:#475569;margin-bottom:8px">Enter your Anthropic API key once here. It is stored in your browser only and used silently by all AI features — lecturers and students never see or need to enter it.</p>
+      <div style="display:flex;gap:8px;align-items:center;max-width:500px">
+        <input type="password" id="masterApiKey" placeholder="sk-ant-api03-…" style="flex:1;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px">
+        <button class="btn btn-primary" onclick="saveMasterApiKey()">Save Key</button>
+      </div>
+      <small style="color:#64748b;font-size:10px;margin-top:4px;display:block">Never stored in Firebase. Stays in this browser's localStorage only.</small>
 
       <div class="divider"></div>
 
@@ -713,10 +770,6 @@ textarea{resize:vertical;min-height:80px}
       <div class="form-group" style="margin-bottom:12px">
         <label>Paste Your Work Here</label>
         <textarea id="sAiText" rows="10" placeholder="Paste your draft, script, or artefact description…"></textarea>
-      </div>
-      <div class="form-group" style="margin-bottom:16px">
-        <label>API Key (optional — use the module's shared key if provided)</label>
-        <input type="password" id="sAiKey" placeholder="sk-ant-…">
       </div>
       <button class="btn btn-purple" onclick="runStudentAI()">⚡ Get AI Feedback</button>
     </div>
@@ -1067,9 +1120,9 @@ window.addEventListener('DOMContentLoaded', () => {
   if (urlRole === 'student')  { userRole = 'student';   isLeader = false; isLecturer = false; }
   if (urlRole === 'lecturer') { userRole = 'lecturer';  isLeader = false; isLecturer = true;  }
 
-  // Restore API key
+  // Restore API key into config field (leader only)
   const savedKey = localStorage.getItem('cmp701_ai_key');
-  if (savedKey) { document.getElementById('aiApiKey').value = savedKey; document.getElementById('sAiKey').value = savedKey; }
+  if (savedKey) { const f = document.getElementById('masterApiKey'); if (f) f.value = savedKey; }
 
   // Restore last cohort
   const savedCohort = localStorage.getItem('cmp701_cohort') || 'default';
@@ -1513,8 +1566,8 @@ async function deleteQuest(wk) {
 }
 
 async function generateWeeklyQuest() {
-  const apiKey = document.getElementById('aiApiKey').value.trim() || localStorage.getItem('cmp701_ai_key');
-  if (!apiKey) { toast('Enter your API key in the AI Assessment tab first', 'err'); return; }
+  const apiKey = getStoredApiKey();
+  if (!apiKey) { toast('API key not configured — set it in Blackboard Setup', 'err'); return; }
   const weekNum = document.getElementById('questWeekFilter').value || (appData.config.currentWeek || 1);
   toast('Generating quest brief for Week ' + weekNum + '…');
 
@@ -1595,18 +1648,23 @@ function renderSubmissions() {
   const tbody = document.getElementById('subTbody');
   if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No submissions match filters</td></tr>'; return; }
 
-  tbody.innerHTML = rows.sort((a,b) => a.name.localeCompare(b.name) || a.week.localeCompare(b.week)).slice(0, 200).map(r => `
-    <tr>
+  tbody.innerHTML = rows.sort((a,b) => a.name.localeCompare(b.name) || a.week.localeCompare(b.week)).slice(0, 200).map(r => {
+    const graded = r.sub && r.sub.aiFeedback;
+    const statusBadge = graded ? 'b-teal' : r.status==='Submitted' ? 'b-green' : 'b-amber';
+    const statusLabel = graded ? 'Graded' : r.status;
+    return `<tr>
       <td style="font-weight:700">${r.name}</td>
       <td>${r.guild}</td>
       <td><span class="b b-blue">Wk ${r.week.split('-')[1]}</span></td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.sub ? (r.sub.link ? `<a href="${r.sub.link}" target="_blank" style="color:#0D7377">${r.sub.title || 'View'}</a>` : r.sub.title || '—') : '<span style="color:#94a3b8">—</span>'}</td>
-      <td class="C"><span class="b ${r.status==='Submitted'?'b-green':r.status==='Reviewed'?'b-teal':'b-amber'}">${r.status}</span></td>
+      <td class="C"><span class="b ${statusBadge}">${statusLabel}</span></td>
       <td class="C" style="font-size:10px;color:#94a3b8">${r.sub && r.sub.submittedAt ? new Date(r.sub.submittedAt).toLocaleDateString() : '—'}</td>
-      <td class="C">
-        ${r.sub ? `<button class="btn btn-ghost btn-sm" onclick="viewSubmission('${r.sid}','${r.week}')">View</button>` : ''}
+      <td class="C" style="white-space:nowrap">
+        ${r.sub ? `<button class="btn btn-ghost btn-sm" onclick="viewSubmission('${r.sid}','${r.week}')">View</button>
+        <button class="btn btn-sm btn-purple" onclick="openGradePanel('${r.sid}','${r.week}')" style="margin-left:4px">${graded ? '✓ Re-grade' : 'Grade'}</button>` : ''}
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 function viewSubmission(sid, wk) {
@@ -1718,11 +1776,21 @@ function updateAIForm() {
   else { lbl.textContent = 'Artefact Description / Summary'; wkGrp.style.display = 'block'; }
 }
 
+function getStoredApiKey() { return localStorage.getItem('cmp701_ai_key') || ''; }
+function saveMasterApiKey() {
+  const key = document.getElementById('masterApiKey').value.trim();
+  if (!key) { toast('Enter a key first', 'err'); return; }
+  localStorage.setItem('cmp701_ai_key', key);
+  toast('API key saved!', 'ok');
+}
+
 async function runAIAssessment() {
-  const apiKey = document.getElementById('aiApiKey').value.trim();
-  if (!apiKey) { toast('API key required', 'err'); return; }
-  localStorage.setItem('cmp701_ai_key', apiKey);
-  document.getElementById('sAiKey').value = apiKey;
+  const apiKey = getStoredApiKey();
+  if (!apiKey) {
+    document.getElementById('aiNoKeyAlert').style.display = 'block';
+    toast('API key not configured — set it in Blackboard Setup', 'err'); return;
+  }
+  document.getElementById('aiNoKeyAlert').style.display = 'none';
 
   const type = document.getElementById('aiAssessType').value;
   const student = document.getElementById('aiStudentName').value.trim() || 'Student';
@@ -1744,8 +1812,8 @@ async function runAIAssessment() {
 }
 
 async function runStudentAI() {
-  const apiKey = document.getElementById('sAiKey').value.trim() || localStorage.getItem('cmp701_ai_key');
-  if (!apiKey) { toast('API key required', 'err'); return; }
+  const apiKey = getStoredApiKey();
+  if (!apiKey) { toast('AI feedback is not available right now', 'err'); return; }
   const type = document.getElementById('sAiType').value;
   const business = document.getElementById('sAiBusiness').value.trim() || 'my chosen business';
   const text = document.getElementById('sAiText').value.trim();
@@ -1875,6 +1943,103 @@ async function saveAIFeedback() {
   const wk = 'week-' + (appData.config.currentWeek || 1);
   await sRef(`submissions/${match[0]}/${wk}/aiFeedback`).set(document.getElementById('aiOutput').textContent);
   toast('Feedback saved!', 'ok');
+}
+
+// ─── Inline Grade Panel ───────────────────────────────────────
+let _gpSid = null, _gpWk = null;
+
+function openGradePanel(sid, wk) {
+  _gpSid = sid; _gpWk = wk;
+  const sub = appData.submissions[sid] && appData.submissions[sid][wk];
+  const student = appData.students[sid];
+  if (!sub || !student) return;
+
+  const weekNum = wk.split('-')[1];
+  document.getElementById('gpStudentLabel').textContent = student.name;
+  document.getElementById('gpWeekLabel').textContent = 'Week ' + weekNum;
+  document.getElementById('gpTitle').textContent = sub.title || '—';
+
+  const linkRow = document.getElementById('gpLinkRow');
+  linkRow.innerHTML = sub.link ? `<a href="${sub.link}" target="_blank" style="color:#0D7377;font-size:11px">${sub.link}</a>` : '';
+
+  document.getElementById('gpDescription').textContent = sub.description || '—';
+  document.getElementById('gpReflection').textContent = sub.reflection || '—';
+  document.getElementById('gpBusiness').value = student.business || '';
+
+  // Pre-fill text from description + reflection
+  const combined = [sub.title, sub.description, sub.reflection].filter(Boolean).join('\n\n');
+  document.getElementById('gpText').value = combined;
+
+  // Auto-detect type: week 6 = CW1, week 12 = CW2, else artefact
+  const n = parseInt(weekNum);
+  const type = n === 6 ? 'cw1' : n === 12 ? 'cw2' : 'artefact';
+  document.getElementById('gpAssessType').value = type;
+  updateGPForm();
+
+  // If feedback already saved, show it
+  const out = document.getElementById('gpOutput');
+  if (sub.aiFeedback) {
+    out.textContent = sub.aiFeedback;
+    out.className = 'ai-output';
+  } else {
+    out.textContent = 'AI feedback will appear here…';
+    out.className = 'ai-output loading';
+  }
+  document.getElementById('gpSaveAlert').innerHTML = '';
+
+  const panel = document.getElementById('gradePanel');
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeGradePanel() {
+  document.getElementById('gradePanel').style.display = 'none';
+  _gpSid = null; _gpWk = null;
+}
+
+function updateGPForm() {
+  const type = document.getElementById('gpAssessType').value;
+  document.getElementById('gpTextLabel').textContent =
+    type === 'cw1' ? 'Presentation Script / Transcript' :
+    type === 'cw2' ? 'Report Text' : 'Artefact Description & Reflection';
+}
+
+async function runInlineAI() {
+  const apiKey = getStoredApiKey();
+  if (!apiKey) { toast('API key not configured — set it in Blackboard Setup', 'err'); return; }
+
+  const type = document.getElementById('gpAssessType').value;
+  const student = document.getElementById('gpStudentLabel').textContent;
+  const business = document.getElementById('gpBusiness').value.trim() || 'their chosen business';
+  const text = document.getElementById('gpText').value.trim();
+  if (!text) { toast('No submission text to assess', 'err'); return; }
+
+  const out = document.getElementById('gpOutput');
+  out.textContent = 'Generating feedback…';
+  out.className = 'ai-output loading';
+
+  const prompt = buildAssessmentPrompt(type, student, business, text);
+  try {
+    const result = await callClaude(apiKey, prompt, 1500);
+    out.textContent = result;
+    out.className = 'ai-output';
+    toast('Feedback ready — review and save', 'ok');
+  } catch(e) { out.textContent = 'Error: ' + e.message; toast('AI error', 'err'); }
+}
+
+async function saveInlineFeedback() {
+  if (!_gpSid || !_gpWk) return;
+  const text = document.getElementById('gpOutput').textContent;
+  if (!text || text.includes('appear here')) { toast('Generate feedback first', 'err'); return; }
+  await sRef(`submissions/${_gpSid}/${_gpWk}/aiFeedback`).set(text);
+  document.getElementById('gpSaveAlert').innerHTML = '<div style="font-size:11px;color:#15803D;font-weight:700;margin-top:6px">✓ Feedback saved — student can see it in My Progress</div>';
+  toast('Feedback saved!', 'ok');
+  renderSubmissions();
+}
+
+function copyGPOutput() {
+  navigator.clipboard.writeText(document.getElementById('gpOutput').textContent);
+  toast('Copied!', 'ok');
 }
 
 // ─── Config ───────────────────────────────────────────────────
@@ -2066,11 +2231,16 @@ function renderStudentProgress() {
     const wk = 'week-' + w;
     const sub = subs[wk];
     const quest = appData.quests[wk];
+    const feedbackHtml = sub && sub.aiFeedback
+      ? `<div style="margin-top:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px">
+          <p style="font-size:10px;font-weight:700;color:#15803D;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Lecturer Feedback</p>
+          <pre style="font-size:11px;color:#1e293b;white-space:pre-wrap;font-family:Arial,sans-serif;margin:0">${sub.aiFeedback}</pre>
+        </div>` : '';
     timeline.push(`<li>
-      <div class="tl-dot ${sub ? 'green' : 'amber'}"></div>
+      <div class="tl-dot ${sub && sub.aiFeedback ? 'teal' : sub ? 'green' : 'amber'}"></div>
       <div class="tl-content">
         <div class="tl-title">Week ${w}${quest ? ': ' + quest.title : ''}</div>
-        ${sub ? `<div class="tl-sub">Submitted ${new Date(sub.submittedAt).toLocaleDateString()} — ${sub.title}</div>` : '<div class="tl-sub" style="color:#B45309">Not yet submitted</div>'}
+        ${sub ? `<div class="tl-sub">Submitted ${new Date(sub.submittedAt).toLocaleDateString()} — ${sub.title}</div>${feedbackHtml}` : '<div class="tl-sub" style="color:#B45309">Not yet submitted</div>'}
       </div>
     </li>`);
   }
@@ -2506,42 +2676,53 @@ function renderTimeline() {
 // SEED QUEST BRIEFS (12 WEEKS)
 // ═══════════════════════════════════════════════════════════
 const DEFAULT_QUESTS = [
-  { week:1, title:'Business Snapshot — Who Are You Transforming?',
-    brief:'Every digital transformation begins with understanding the present state. This week you are detectives, mapping your chosen business\'s current digital landscape, technology stack, and strategic position before any transformation begins.',
-    deliverables:'1-page Business Snapshot (overview, industry, scale, key products/services)\nDigital Maturity Score (1–5) with justification using a recognised framework\nInitial Technology Landscape map (what tools/platforms does the business currently use?)\nGuild Working Contract signed by all members' },
-  { week:2, title:'Data Detectives — Uncovering the Numbers',
-    brief:'Data is the raw material of digital transformation. This week you will use descriptive analytics techniques to analyse publicly available data about your chosen business, looking for patterns that reveal opportunities and threats.',
-    deliverables:'Dataset identified and downloaded (financial, social media, customer, or operational data)\nDescriptive statistics summary (mean, median, distribution, outliers)\nAt least 3 key insights from the data with business implications\nReflection on data quality and limitations' },
-  { week:3, title:'Telling Stories with Data — Visualise the Transformation',
-    brief:'Raw numbers rarely move decision-makers. Powerful visualisations do. This week you will transform your data findings into compelling visual narratives that a Board of Directors could act on.',
-    deliverables:'3–5 data visualisations created (charts, graphs, or infographics)\nNarrative summary explaining what each visualisation reveals\nDashboard prototype or slide deck integrating your visuals\nReflection: which visualisation type worked best and why?' },
-  { week:4, title:'The Toolkit — Frameworks for Digital Transformation',
-    brief:'Digital transformation practitioners do not work from instinct alone — they use proven frameworks. This week you select and apply the right analytical tools to your business\'s transformation challenge.',
-    deliverables:'2 DT frameworks applied to your business (e.g. PESTLE, Porter\'s Five Forces, Digital Maturity Model, McKinsey 7S)\nComparison: which framework reveals more and why\nKey findings from framework application\nInitial outline of your CW1 presentation structure' },
-  { week:5, title:'Agile Strategy — Managing Transformation with Jira',
-    brief:'Digital transformation must be managed as well as envisioned. This week you will model your transformation roadmap as an agile project using Jira, turning strategy into trackable work.',
-    deliverables:'Jira board created with your transformation as an Epic\nAt least 8 user stories written for your transformation initiative\nSprint plan for first 3 months of transformation\nScreenshot evidence of your Jira board' },
-  { week:6, title:'CW1 Showcase — Present Your Transformation Vision',
-    brief:'Assessment week. Each student presents their individual 7–8 minute video presentation demonstrating their business understanding, analytical findings, and proposed transformation direction. Guilds provide peer support and feedback.',
-    deliverables:'CW1 Video submitted via Blackboard (7–8 minutes)\nPeer feedback form completed for at least 1 guild member\nPost-presentation reflection: what would you do differently?' },
-  { week:7, title:'Business Model Lab — How Does Digital Change the Game?',
-    brief:'Digital disruption does not just change how businesses operate — it changes the rules of competition entirely. This week you explore how digital technologies enable entirely new business models and what that means for your chosen business.',
-    deliverables:'Business Model Canvas completed for your business (current state)\nIdentification of 2–3 digital disruptors threatening your business\nAnalysis of one digital-native competitor using the same canvas\nOpportunity gap: where could your business pivot its model?' },
-  { week:8, title:'Transformation Blueprint — Building Your CW2 Argument',
-    brief:'CW2 is now firmly in view. This week is about consolidating your research and building the intellectual architecture of your written report. Strong reports are built on clear arguments — this session helps you find yours.',
-    deliverables:'CW2 Report outline completed (all 6 sections with key arguments per section)\nLiterature review extended to at least 8 academic sources\nCore argument statement: one paragraph explaining your transformation thesis\nAction plan: milestones for completing CW2 by the deadline' },
-  { week:9, title:'Forecasting the Future — Predictive Analytics in Action',
-    brief:'Digital transformation strategies must be grounded in evidence, not just vision. This week you use RapidMiner to build predictive models that forecast future trends for your chosen business.',
-    deliverables:'Predictive model built in RapidMiner (regression, classification, or clustering)\nModel evaluation report (accuracy, key variables, limitations)\n3 strategic recommendations derived from your predictions\nScreenshot evidence and brief methodology section for CW2' },
-  { week:10, title:'Strategy Convergence — Mind Mapping Your Way to Clarity',
-    brief:'Ten weeks of research, data, frameworks and ideas. Now it is time to synthesise. This studio session uses mind mapping and group discussion to help each student find the strongest version of their digital transformation strategy.',
-    deliverables:'Mind map created integrating all key themes from your research\nDigital transformation strategy statement (200 words, clear and specific)\nPeer review: review one guild member\'s strategy statement and provide written feedback\nRevised CW2 outline based on today\'s session' },
-  { week:11, title:'Innovation Engine — Knowledge, People and Transformation',
-    brief:'Sustainable digital transformation requires more than technology — it requires people who innovate, share knowledge, and work collaboratively. This week you examine the human and organisational dimensions of transformation.',
-    deliverables:'Innovation strategy for your business (incremental vs disruptive vs architectural innovation)\nKnowledge management plan: how will your business capture and share digital expertise?\nStakeholder impact analysis: who wins, who loses, who resists?\nCW2 draft introduction and conclusion submitted for guild peer review' },
-  { week:12, title:'Power BI Dashboard — Transformation Intelligence at a Glance',
-    brief:'The final studio session. You will build a professional Power BI dashboard that visualises the key metrics, trends and insights from your entire semester of research — a strategic intelligence tool that could sit in a real boardroom.',
-    deliverables:'Power BI dashboard created with at least 5 interactive visualisations\nExecutive summary slide (1 page) summarising your transformation strategy\nFinal CW2 draft ready for submission review\nGuild retrospective: what did your guild learn this semester?' },
+  { week:1, title:'Business Snapshot — Know Your Organisation',
+    brief:'Welcome to the CMP701 Digital Transformation Studio. You will not just learn digital transformation concepts — you will apply them continuously to a real organisation across the semester.\n\nThis week your Guild confirms its identity and builds its foundation. Working together, you will review and deeply understand your assigned business, agree on rotating studio roles, and produce two essential artefacts that will anchor everything you do for the next 12 weeks.\n\nRemember: CW1 (Week 6) and CW2 (Week 12) are INDIVIDUAL submissions. Group work supports your learning, but all assessment writing, analysis and reflection must be your own.',
+    deliverables:'Business Snapshot slide (1 slide max): Company name · Industry/sector · What the business does · Why digital transformation matters for this organisation\nGuild Working Contract (bullet points): Attendance expectations · Communication method · How tasks will be shared · How disagreements will be resolved\nRotating roles agreed for the semester (Facilitator, Analyst, Strategist, Innovator, Reporter)\nUpload one combined PDF or PowerPoint to the Studio' },
+
+  { week:2, title:'Data-Driven — Using Analytics to Justify Transformation',
+    brief:'Digital transformation is driven by data, not guesswork. Before any organisation can transform, it must understand what its data reveals about its current state, its customers, and the gaps that digital technology could close.\n\nThis week you focus on descriptive analytics — the foundation of all data-driven decision-making. You will identify, collect and analyse data relevant to your assigned business, then draw connections between what the numbers show and what transformation could achieve.\n\nThis work feeds directly into the data strategy and justification sections of your CW2 report.',
+    deliverables:'Data & Analytics Overview document covering:\n  – Types of data relevant to your business (operational, customer, financial, social)\n  – At least 3 descriptive insights drawn from publicly available data\n  – Clear link between each insight and a digital transformation opportunity\nData sources referenced (e.g. company reports, Statista, ONS, industry publications)\nReflection: what does the data suggest your business must prioritise?' },
+
+  { week:3, title:'Industry Intelligence — PESTLE & Porter\'s Five Forces',
+    brief:'No digital transformation happens in isolation. Every organisation operates within an industry shaped by political decisions, economic forces, social shifts, technological change, legal constraints and environmental pressures — and by the competitive forces that determine profitability and survival.\n\nThis week you conduct a rigorous industry environment analysis of your assigned business using two of the most powerful strategic frameworks available. The insights you generate this week feed directly into the industry analysis section of your CW2 report.',
+    deliverables:'PESTLE Analysis: one substantive point per factor (Political, Economic, Social, Technological, Legal, Environmental) with specific digital transformation implications for your business\nPorter\'s Five Forces Analysis: assess each force (Supplier Power, Buyer Power, Competitive Rivalry, Threat of New Entrants, Threat of Substitutes) and its digital dimension\nSynthesis statement: based on your analysis, what is the single greatest external driver pushing your business to transform digitally?\nFormat: structured document or annotated diagram — clear and evidence-based' },
+
+  { week:4, title:'AS-IS to TO-BE — Mapping Organisational Impact',
+    brief:'Digital transformation does not only change technology — it changes people, roles, structures and ways of working. Understanding the gap between where an organisation is now (AS-IS) and where it needs to be (TO-BE) is one of the most critical skills a digital transformation practitioner must have.\n\nThis week you map your assigned business\'s current organisational state and design the future state that digital transformation would create. This directly supports the Business–Technology Interface section of your CW2 report.',
+    deliverables:'AS-IS Organisational Overview: current structure, key roles, existing digital capabilities, and identified gaps\nTO-BE Vision: how the organisation should look after digital transformation — changes to structure, roles, skills, and processes\nPeople & Skills Impact Assessment: which roles change, which are created, which become redundant, and what upskilling is required\nTransition narrative: a brief explanation of how the organisation moves from AS-IS to TO-BE' },
+
+  { week:5, title:'Transformation Strategy — Roadmap, Technologies & KPIs',
+    brief:'A digital transformation strategy is not a wish list — it is a structured plan that connects business objectives to specific digital technologies, sets out a realistic roadmap, and defines measurable outcomes.\n\nThis week you build the strategic core of your transformation plan for your assigned business. The work you produce here feeds directly into the Digital Transformation Strategy section of your CW2 report — one of the highest-weighted components of the assessment.',
+    deliverables:'Business Objective: the specific business problem or opportunity that digital transformation will address\nDigital Technologies Selected: identify 2–3 technologies (e.g. cloud, AI/ML, IoT, automation, data analytics platform) with justification for each\nTransformation Roadmap: a phased plan (short/medium/long term) showing what gets implemented when and why\nKPIs: 4–6 measurable indicators that will confirm the transformation is succeeding\nDocument format: structured strategy brief suitable for a board audience' },
+
+  { week:6, title:'CW1 — Individual Video Presentation',
+    brief:'This is CW1 assessment week. Each student submits their individual 7–8 minute video presentation demonstrating their understanding of their assigned business, the analytical insights developed over the first five weeks, and their proposed direction for digital transformation.\n\nThis is an INDIVIDUAL submission — your video must reflect your own analysis, your own voice, and your own recommendations. You may draw on ideas developed in your Guild, but the content, structure and delivery must be entirely your own work.\n\nSubmit via the Blackboard assignment link before the deadline.',
+    deliverables:'CW1 Video Presentation submitted via Blackboard (7–8 minutes)\nCovers: business context · data/analytical findings · industry analysis · proposed transformation direction\nMarking criteria: Content Understanding (25pts) · Clarity & Engagement (20pts) · Structure & Organisation (20pts) · Visual Aids (20pts) · Delivery & Time Management (15pts)\nGuild activity: provide peer support and verbal feedback to at least one guild member after their presentation' },
+
+  { week:7, title:'Business Model Redesign — How Digital Changes the Game',
+    brief:'Digital disruption does not just change how businesses operate — it fundamentally changes the rules of competition and the logic of value creation. Entirely new business models become possible when digital technologies are applied strategically.\n\nThis week your Guild analyses your assigned business\'s current value proposition and business model, identifies digital disruptors and threats, and designs a proposed digital business model that could reposition the organisation for the future.\n\nThis work contributes directly to the industry analysis, platform models, new business models, and customer networks sections of your CW2 report.',
+    deliverables:'Current Value Proposition: what does the business currently offer, to whom, and how?\nDigital Disruption Analysis: 2–3 digital forces or competitors threatening the existing model\nProposed Digital Business Model: how should the business model change to remain competitive?\nBusiness Model Canvas: completed for both current state and proposed future state\nRevenue Model: how does the digital transformation change how the business makes money?' },
+
+  { week:8, title:'Strategy Alignment — Linking Business & Digital Transformation',
+    brief:'A digital transformation strategy that exists in isolation from the organisation\'s core business strategy will fail. The most successful transformations are those where digital goals are inseparable from business goals — where technology choices are made in service of strategic priorities.\n\nThis week you analyse how your assigned business\'s existing strategy connects (or fails to connect) to digital transformation, and you design the linkage that would make transformation strategically coherent.\n\nThis contributes to the strategy linkage, business process transformation, and innovation planning sections of your CW2 report.',
+    deliverables:'Current Business Strategy Summary: what is the organisation\'s core strategic direction?\nDigital Strategy Linkage: how do (or should) digital initiatives reinforce the business strategy?\nStrategic Digital Initiatives: 2–3 specific initiatives with rationale, timeline, and expected impact\nOrganisational Impact: what changes to culture, structure or capability are needed to execute these initiatives?' },
+
+  { week:9, title:'Predictive Analytics — Forecasting with RapidMiner',
+    brief:'This is one of the most important technical weeks in the module. Digital transformation strategies must be grounded in evidence, not just vision — and Business Intelligence tools give organisations the power to move from describing what happened to forecasting what will happen.\n\nThis week you use RapidMiner to build a predictive model relevant to your assigned business, generating forecast results that can directly inform your transformation recommendations.\n\nThis work contributes to the Data Strategy, Predictive Analytics, and Innovation Planning sections of your CW2 report.',
+    deliverables:'BI Application: how could Business Intelligence and predictive analytics be applied in your business context?\nPredictive Model: built in RapidMiner (regression, classification, or clustering) using a relevant dataset\nForecast Results: what does the model predict, and with what confidence?\nBusiness Insights: 3 actionable recommendations derived from your model\'s output\nCW2 Link: a brief methodology paragraph (100–150 words) suitable for inclusion in your report' },
+
+  { week:10, title:'Strategy Convergence — Mind Mapping Your Transformation Plan',
+    brief:'Ten weeks of research, data, frameworks, models and strategic thinking. Now it is time to synthesise everything into a coherent, integrated digital transformation strategy.\n\nThis week your Guild uses mind mapping (Miro recommended) and structured discussion to help each member clarify and strengthen their individual strategy. The goal is a fully developed digital transformation strategy mind map that is directly aligned to the structure of your CW2 report.\n\nThis is a Guild Milestone week — your collective output should demonstrate the depth and breadth of your collaborative learning.',
+    deliverables:'Current State Analysis: a summary of key findings from weeks 1–9\nTransformation Goals: 3–5 clear, specific goals for your business\'s digital transformation\nTechnologies & Frameworks: the core technologies and strategic frameworks underpinning your plan\nChallenges & Opportunities Mind Map: created in Miro (or equivalent), shared as a link or export\nBusiness Model Integration: how does your transformation strategy connect to the business model redesign from Week 7?' },
+
+  { week:11, title:'Innovation & Knowledge Management — The Human Side of Transformation',
+    brief:'Sustainable digital transformation requires more than technology — it requires organisations that innovate continuously, manage knowledge deliberately, and develop people who can adapt and lead change.\n\nThis is one of the final strategic components of your CW2 report. This week you design the innovation and knowledge management dimensions of your transformation plan — addressing not just what technology will be implemented, but how the organisation will learn, adapt, and improve continuously.\n\nThis contributes to the Innovation Strategy, Knowledge Management, AI-enabled learning systems, and continuous improvement planning sections of CW2.',
+    deliverables:'Innovation Proposal: a specific innovation initiative for your business\nInnovation Type: classify as Product Innovation, Process Innovation, or Business Model Innovation — and justify\nKnowledge Management Strategy: how will your business capture, store, share and apply digital expertise across the organisation?\nVisual Representation: a diagram or framework showing how innovation and knowledge management connect to your overall transformation strategy' },
+
+  { week:12, title:'Power BI Dashboard — Final Artefact & CW2 Review',
+    brief:'The final studio session of the semester. You will build a professional Power BI dashboard that visualises the key metrics, trends and insights from your entire semester of research — a strategic intelligence tool that a real boardroom could use to monitor transformation progress.\n\nThis is also CW2 review week. Use guild time to do a final check of your individual reports, share last feedback, and ensure your submission is ready. CW2 is an INDIVIDUAL written report — all content must be your own.\n\nSubmit CW2 via the Blackboard assignment link before the deadline.',
+    deliverables:'Power BI Dashboard: at least 5 interactive visualisations covering KPIs, trends and insights relevant to your transformation strategy\nExecutive Summary Slide: 1 page summarising your digital transformation strategy and key findings\nFinal CW2 draft reviewed and ready for individual submission via Blackboard\nGuild Retrospective: what did your Guild learn this semester? What would you do differently?' },
 ];
 
 async function seedDefaultQuests() {

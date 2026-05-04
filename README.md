@@ -1,71 +1,175 @@
 # CMP701 Digital Transformation Studio
 
-Automated studio management system for the CMP701 Digital Transformation module at Ulster University QAHE (London, Birmingham, Manchester campuses).
+Automated studio management system for the CMP701 Digital Transformation module at Ulster University QAHE, delivered across London, Birmingham, and Manchester campuses.
 
 **Live app:** https://tertsegha1.github.io/cmp701-studio/
 
+**Creator & Module Leader:** Dr Tertsegha Anande · Ulster University QAHE
+
 ---
 
-## What This Does
+## Overview
 
-A single-page web app that automates the full lifecycle of the Digital Transformation Studio — from guild setup and weekly quest publishing through to submission tracking, peer review, and AI-powered assessment feedback. All data syncs live via Firebase.
+A single-page web application that manages the full lifecycle of the Digital Transformation Studio — from cohort setup and guild formation through to weekly quest publishing, artefact submission, peer review, inline AI grading, and semester-end assessment. All data syncs live via Firebase Realtime Database; no installation, no login accounts, no manual saving.
+
+The system supports three access roles and scales across multiple semesters through its cohort management feature.
+
+---
+
+## Access Roles
+
+| Role | Who | Access |
+|---|---|---|
+| **Module Leader** | Dr Tertsegha Anande | Full access — all tabs including cohort management and configuration |
+| **Lecturer** | Seminar leaders, visiting tutors | Operational access — dashboard, submissions, AI grading, peer review, announcements, timeline. No config or admin |
+| **Student** | Enrolled students | Student portal — quest brief, guild info, artefact submission, peer review, AI feedback, progress tracker |
+
+### URLs
+
+| Role | URL |
+|---|---|
+| Module Leader | `https://tertsegha1.github.io/cmp701-studio/` (default) |
+| Lecturer | `https://tertsegha1.github.io/cmp701-studio/?role=lecturer` |
+| Student | `https://tertsegha1.github.io/cmp701-studio/?role=student` |
+
+For a specific cohort, append `&cohort=<cohort-id>` to the Lecturer URL. The **Copy Lecturer Link** button on each cohort card in the Cohorts tab generates this automatically.
 
 ---
 
 ## Features
 
-| Feature | Description |
+### Cohort Management
+Each semester/intake is a fully isolated **cohort** with its own students, guilds, quests, submissions, peer reviews, announcements, and deadlines. Cohorts are created in the **Cohorts** tab. Switching cohorts in the header dropdown hot-swaps all Firebase subscriptions instantly — historical data from previous semesters is preserved and browsable.
+
+Each cohort stores:
+- Name, academic year, semester
+- Semester start date and current week
+- CW1 submission and marking deadlines
+- CW2 submission and marking deadlines
+- Campus list
+
+The **default** cohort (`studio/` in Firebase) holds the 2025–26 Semester 2 data for backward compatibility. New cohorts are stored at `studio/c_{id}/`.
+
+### Guild Manager
+- Create guilds per campus; assign students manually, via CSV import, or using **Auto-assign**
+- Five rotating weekly roles: **Facilitator, Analyst, Strategist, Innovator, Reporter**
+- **Rotate Roles** button advances all assignments by one position each week
+- Guild working contract stored and visible to students
+
+### Quest Manager
+- Create and publish weekly studio quest briefs
+- **Seed 12 Default Quests** loads pre-written quest briefs for all 12 weeks, derived from the actual seminar topics:
+
+  | Week | Topic |
+  |---|---|
+  | 1 | Use of Cloud Computing |
+  | 2 | Descriptive Analysis for DT |
+  | 3 | Visualise the Data |
+  | 4 | Digital Transformation Tools |
+  | 5 | Implementing DT Strategies using Jira |
+  | 6 | CW1 Video Presentations |
+  | 7 | Exploring Digital Business Models |
+  | 8 | Business Models for CW2 |
+  | 9 | Forecasting Data using RapidMiner |
+  | 10 | CW2 Mind Mapping & Group Discussion |
+  | 11 | Innovation & Knowledge Management |
+  | 12 | Visualisation using Power BI |
+
+- **AI-Generate Quest** uses Claude to write a fresh quest brief for any week
+- Quests have Draft / Published status; students only see published quests
+
+### Submission Tracker
+- Students submit artefact title, link (OneDrive, Google Drive, etc.), description, and reflection
+- Module leader and lecturers see all submissions filterable by week, guild, status, and student name
+- **Inline grading**: click **Grade** on any submission row to open a pre-filled AI grading panel — no copy-pasting, no tab-switching
+- Saved AI feedback is stored on the submission record and shown to the student in their My Progress view
+- Export all submissions to CSV at any time
+
+### Inline AI Grading (Submissions tab)
+Lecturers can grade any artefact submission without leaving the Submissions tab:
+
+1. Click **Grade** on a submission row
+2. A panel opens showing the student's artefact content
+3. Select assessment type (CW1, CW2, or Weekly Artefact) and confirm/edit the student's business
+4. Click **Generate AI Feedback** — the submission text is sent to Claude with the full rubric prompt
+5. Review the structured output (criterion scores, strengths, improvements)
+6. Click **Save Feedback** — stored to Firebase on that submission record
+7. Student sees the feedback in their **My Progress** tab
+
+### Peer Review
+- Module leader creates weekly review rounds with one click — guilds are auto-assigned to review each other using a rotation offset (so no guild reviews the same guild twice)
+- Students submit structured peer feedback (strengths, improvements, rating out of 5) from the Peer Review tab
+- Leader sees all review submissions in the Peer Review table
+
+### AI Assessment (standalone tab)
+Full-featured AI assessment tool for CW1 and CW2 formal assessments:
+
+**CW1 — Video Presentation (25% of module grade)**
+
+| Criterion | Points |
 |---|---|
-| **Guild Manager** | Create guilds per campus, assign students, auto-rotate weekly roles (Facilitator, Analyst, Strategist, Innovator, Reporter) |
-| **Quest Manager** | Publish weekly studio quest briefs; 12 default quests pre-built from the actual seminar topics; AI-generate custom quests |
-| **Submission Tracker** | Students submit weekly artefact links and reflections; leader sees all submissions by guild, week, or status |
-| **Peer Review** | Auto-assign cross-guild review pairs each week with rotation logic; students submit structured feedback |
-| **AI Assessment** | Claude-powered assessment tool aligned to the official CW1 and CW2 rubrics; also supports weekly artefact feedback |
-| **Announcements** | Module leader posts notices (info / important / urgent / good news); pinned announcements appear on the student quest page |
-| **Timeline** | Visual semester schedule with countdown to CW1 and CW2 deadlines; week-by-week topic grid |
-| **Blackboard Setup** | Step-by-step embed guide with copy-ready iframe code and direct student URL |
-| **CSV Import / Export** | Upload a student roster CSV; export submissions or student lists at any time |
+| Content Understanding | 25 |
+| Clarity and Engagement | 20 |
+| Structure and Organization | 20 |
+| Use of Visual Aids | 20 |
+| Delivery and Time Management | 15 |
+| **Total** | **100** |
 
----
+**CW2 — Written Report (75% of module grade)**
 
-## For Students
+| Criterion | Points |
+|---|---|
+| Introduction & Content Understanding | 15 |
+| Critical Analysis (Business & Digital Tech) | 20 |
+| Digital Transformation Strategy | 20 |
+| Documentation and Structure | 15 |
+| Use of Evidence and Literature | 15 |
+| Presentation of Artefacts & Communication | 15 |
+| **Total** | **100** |
 
-1. Open the [Studio link](https://tertsegha1.github.io/cmp701-studio/?role=student) (share this or embed in Blackboard)
-2. Select your name from the yellow bar at the top
-3. Use the tabs to:
-   - **This Week's Quest** — read the brief and deliverables
-   - **My Guild** — see your team members and your role this week
-   - **Submit Artefact** — submit your weekly artefact link and reflection
-   - **Peer Review** — review another guild's work
-   - **AI Feedback** — get formative AI feedback on your draft CW1 or CW2
-   - **My Progress** — track your submission history
-   - **Timeline** — see all key deadlines and announcements
+Grade bands: Poor (0–49%) · Satisfactory (50–59%) · Good (60–69%) · Excellent (70%+)
+
+Paste a video transcript/script for CW1 or report text for CW2. The AI returns criterion-by-criterion scores, a total, grade band, 2–3 strengths, and 2–3 improvement priorities. Feedback can be saved directly to a student submission record.
+
+### Announcements
+- Module leader or lecturer posts notices categorised as: ℹ Info · ⚠ Important · ✓ Good news · 🔴 Urgent
+- Pinned announcements appear as a banner on the student quest page
+- Students see the full announcement feed in their Timeline tab
+
+### Timeline
+- Countdown cards to CW1 submission, CW1 marking, CW2 submission, and CW2 marking deadlines (all per-cohort)
+- 12-week topic grid with the current week highlighted
+- Quest publication status shown on each week tile
+- Identical view available to students in their Timeline tab
 
 ---
 
 ## For the Module Leader
 
-### First-Time Setup
+### First-Time Setup (new semester)
 
-1. Open the app (defaults to Leader View)
-2. Go to **Blackboard Setup → Module Configuration** and set the current week and semester start date
-3. Go to **Students → Import Students CSV** and upload your student roster
+1. Go to the **Cohorts** tab → **+ New Cohort**
+2. Fill in: cohort name, academic year, semester, semester start date, all four deadlines, and campus list
+3. The new cohort appears in the header dropdown — select it
+4. Go to **Students** → **↑ Import Students CSV**
    - Required columns: `Name, Campus, Guild, Business`
-4. Go to **Guilds** — guilds are auto-created from the CSV import; use **Auto-assign Roles** if needed
-5. Go to **Quest Manager → Seed 12 Default Quests** to load all 12 pre-built quest briefs
-6. Publish the current week's quest (click **Publish** on the quest card)
+   - Guilds are auto-created from the CSV; students are assigned automatically
+5. Go to **Quest Manager** → **📚 Seed 12 Default Quests** → then publish Week 1
+6. Go to **Peer Review** → **+ New Review Round** to set up Week 1 guild pairings
 7. Post a welcome announcement in the **Announcements** tab
+8. Share the student URL in a Blackboard announcement (see Blackboard Integration below)
 
 ### Weekly Workflow
 
-| Step | Where |
-|---|---|
-| Advance the week number | Blackboard Setup → Module Configuration |
-| Publish next week's quest | Quest Manager → click Publish |
-| Create peer review pairs | Peer Review → New Review Round |
-| Monitor submissions | Submissions tab |
-| Post announcements | Announcements tab |
-| Run AI assessment | AI Assessment tab |
+| Step | Where | Notes |
+|---|---|---|
+| Advance week number | Blackboard Setup → Module Configuration | Updates the week badge and Timeline |
+| Publish next quest | Quest Manager → Publish | Students see it immediately |
+| Create peer review round | Peer Review → + New Review Round | Auto-assigns guilds with rotation |
+| Monitor submissions | Submissions tab | Filter by guild or week |
+| Grade artefacts | Submissions tab → Grade button | AI-assisted inline grading |
+| Post announcements | Announcements tab | Pin for high-visibility notices |
+| Share Lecturer link | Cohorts tab → Copy Lecturer Link | Per-cohort URL for seminar leaders |
 
 ### Key Dates — 2025–26 Cohort
 
@@ -76,58 +180,139 @@ A single-page web app that automates the full lifecycle of the Digital Transform
 
 ---
 
+## For Lecturers / Tutors
+
+Lecturers receive a per-cohort URL from the Module Leader (generated via **Cohorts → Copy Lecturer Link**). Opening it sets Lecturer View automatically.
+
+### What Lecturers Can Do
+
+| Tab | Capability |
+|---|---|
+| **Dashboard** | See KPIs: guild count, submission progress, pending artefacts |
+| **Submissions** | View all submissions; filter by guild/week/status; grade any artefact inline with AI |
+| **Peer Review** | View all peer review submissions for the cohort |
+| **AI Assessment** | Run standalone CW1/CW2 assessment by pasting submission text |
+| **Announcements** | Post notices to all students in the cohort |
+| **Timeline** | View semester schedule and all deadlines |
+
+Lecturers cannot: manage cohorts, import/delete students, configure the module, manage guilds, or access the Blackboard Setup tab.
+
+### Typical Lecturer Workflow (per week)
+
+1. Open the Lecturer link for your cohort
+2. Go to **Submissions** — filter by your campus or assigned guilds
+3. For each submission, click **Grade** → review content → generate AI feedback → save
+4. Post any relevant announcement (e.g. "Week 5 feedback returned — check My Progress")
+5. Check **Peer Review** to see if all guilds have submitted their cross-reviews
+
+---
+
+## For Students
+
+1. Open the student link (shared by the module leader or embedded in Blackboard)
+2. Select your name from the yellow bar at the top — your submissions and guild are stored under your name
+3. Use the tabs:
+
+| Tab | What it does |
+|---|---|
+| **This Week's Quest** | Current quest brief and deliverables; pinned announcements shown here |
+| **My Guild** | Your guild name, your role this week, all members and their submission status |
+| **Submit Artefact** | Submit title, link (OneDrive/Drive/etc.), description, and reflection |
+| **Peer Review** | See which guild you're reviewing; submit structured feedback |
+| **AI Feedback** | Paste draft CW1 script or CW2 text for formative AI feedback |
+| **My Progress** | Full submission timeline; saved lecturer feedback shown per week |
+| **Timeline** | All key deadlines and module schedule; latest announcements |
+
+---
+
 ## Blackboard Integration
 
-### Option 1 — Web Link (recommended)
-In Blackboard: **Build Content → Web Link**
-- URL: `https://tertsegha1.github.io/cmp701-studio/?role=student`
-- Check "Open in New Window"
+Blackboard Learn supports external web links without requiring IT/LTI setup.
 
-### Option 2 — Embedded iFrame
-In a Blackboard Item, switch to HTML source and paste:
+### Recommended: Web Link in Content Area
+
+1. In your Blackboard module, go to **Build Content → Web Link**
+2. Name: *Digital Transformation Studio*
+3. URL: `https://tertsegha1.github.io/cmp701-studio/?role=student`
+4. Tick **Open in New Window**
+5. Set availability → Submit
+
+### Embedded iFrame (alternative)
+
+In a Blackboard Item → HTML source view:
 
 ```html
 <iframe
   src="https://tertsegha1.github.io/cmp701-studio/?role=student"
-  width="100%" height="800" frameborder="0"
+  width="100%"
+  height="800"
+  frameborder="0"
   style="border-radius:8px;border:none">
 </iframe>
 ```
 
-The `?role=student` parameter automatically opens the student view. Without it, the app defaults to Leader View.
+> Note: Some Blackboard instances block external iframes. The Web Link method is more reliable.
+
+### Guild Workspace on Blackboard
+
+The Blackboard Guild Workspace is not required once this system is live. The **Submit Artefact** tab replaces it — students submit links to their work (OneDrive, Google Drive, SharePoint) which the system tracks with timestamps and lecturer feedback. For formal CW1/CW2 Turnitin submissions, students continue to use Blackboard's standard assignment submission tool as normal.
 
 ---
 
-## AI Assessment
+## Technical Architecture
 
-The AI Assessment tab uses the Anthropic Claude API to generate structured feedback aligned to the official rubrics:
+### Stack
+- **Frontend:** Vanilla HTML/CSS/JavaScript — no framework, no build step, no npm
+- **Database:** Firebase Realtime Database (`cmp701markingtracker` project)
+- **Hosting:** GitHub Pages, auto-deploys from `master` branch on push
+- **AI:** Anthropic Claude API (`claude-sonnet-4-6`), called directly from the browser
 
-- **CW1 (25%)** — scored against 5 criteria (Content Understanding 25pt, Clarity 20pt, Structure 20pt, Visual Aids 20pt, Delivery 15pt)
-- **CW2 (75%)** — scored against 6 criteria (Introduction 15pt, Critical Analysis 20pt, DT Strategy 20pt, Documentation 15pt, Evidence 15pt, Artefacts 15pt)
-- **Weekly Artefact** — formative feedback on studio work
+### Firebase Data Structure
 
-Enter your Anthropic API key in the AI Assessment tab. It is stored locally in your browser only.
+```
+studio/                          ← default cohort (2025–26 S2)
+  guilds/{guildId}
+  students/{studentId}
+  quests/week-{n}
+  submissions/{studentId}/week-{n}
+  peerReviews/week-{n}/{guildId}
+  announcements/{id}
+  config
+
+studio/__cohorts/{cohortId}      ← cohort metadata registry
+  name, year, semester
+  semesterStart, currentWeek
+  cw1Sub, cw1Mark, cw2Sub, cw2Mark
+  campuses[]
+
+studio/c_{cohortId}/             ← per-cohort data (same structure as default)
+  guilds / students / quests / submissions / peerReviews / announcements / config
+```
+
+### API Key Security
+The Anthropic API key is entered by the user and stored in `localStorage` only. It is never written to Firebase or sent anywhere other than the Anthropic API. Each user (Module Leader, Lecturer) stores their own key in their own browser.
+
+### Offline Behaviour
+Data is cached in `localStorage` so the app loads instantly without a network connection. Changes made offline will not sync until reconnected — a `● Offline` badge appears in the header.
 
 ---
 
-## Technical Notes
-
-- **Stack:** Vanilla HTML/CSS/JS — no build step, no dependencies beyond Firebase
-- **Sync:** Firebase Realtime Database (`cmp701markingtracker` project), path prefix `studio/`
-- **Hosting:** GitHub Pages, auto-deployed from the `master` branch
-- **Offline:** Data cached in `localStorage`; changes made offline will not sync until reconnected
-
-### Updating the App
+## Updating the App
 
 ```powershell
 cd C:\Users\terts\cmp701-studio
 git add index.html README.md
-git commit -m "your change description"
+git commit -m "describe your change"
 git push
 ```
 
-GitHub Pages redeploys within ~1 minute.
+GitHub Pages redeploys within ~1 minute of a push to `master`.
 
 ---
 
-*Module Leader: Dr. Tertsegha Anande · Ulster University QAHE*
+## Repository
+
+**GitHub:** https://github.com/Tertsegha1/cmp701-studio  
+**Live app:** https://tertsegha1.github.io/cmp701-studio/
+
+*Creator & Module Leader: Dr Tertsegha Anande · Ulster University QAHE*
