@@ -21,7 +21,7 @@ The system supports three access roles and scales across multiple semesters thro
 | Role | Who | Access |
 |---|---|---|
 | **Module Leader** | Dr Tertsegha Anande | Full access — all tabs including cohort management and configuration |
-| **Lecturer** | Seminar leaders, visiting tutors | Operational access — dashboard, submissions, AI grading, peer review, announcements, timeline. No config or admin |
+| **Lecturer** | Seminar leaders, visiting tutors | Operational access — dashboard, submissions, formative artefact feedback, peer review, announcements, timeline. No config or admin. CW1/CW2 formal marking is done in the separate Marking Tracker. |
 | **Student** | Enrolled students | Student portal — quest brief, guild info, artefact submission, peer review, AI feedback, progress tracker |
 
 ### URLs
@@ -33,6 +33,8 @@ The system supports three access roles and scales across multiple semesters thro
 | Student | `https://tertsegha1.github.io/cmp701-studio/?role=student` |
 
 For a specific cohort, append `&cohort=<cohort-id>` to the Lecturer URL. The **Copy Lecturer Link** button on each cohort card in the Cohorts tab generates this automatically.
+
+> **Note:** This system is not used for formal CW1 or CW2 marking. Formal marking is done in the [CMP701 Marking Tracker](https://tertsegha1.github.io/cmp701-tracker/). The Studio supports formative AI feedback on weekly artefacts and student draft work only.
 
 ---
 
@@ -81,18 +83,20 @@ The **default** cohort (`studio/` in Firebase) holds the 2025–26 Semester 2 da
 ### Submission Tracker
 - Students submit artefact title, link (OneDrive, Google Drive, etc.), description, and reflection
 - Module leader and lecturers see all submissions filterable by week, guild, status, and student name
-- **Inline grading**: click **Grade** on any submission row to open a pre-filled AI grading panel — no copy-pasting, no tab-switching
-- Saved AI feedback is stored on the submission record and shown to the student in their My Progress view
+- **Inline artefact feedback**: click **Grade** on any submitted row to open a pre-filled feedback panel — student name, business, description and reflection are pre-loaded
+- Generated AI feedback is stored on the submission record and shown to the student in their My Progress view
 - Export all submissions to CSV at any time
 
-### Inline AI Grading (Submissions tab)
-Lecturers can grade any artefact submission without leaving the Submissions tab:
+> **Important:** The Grade panel is for formative feedback on weekly studio artefacts only. CW1 and CW2 formal marking is done in the separate Marking Tracker system.
+
+### Inline Artefact Feedback (Submissions tab)
+Lecturers can give AI-assisted formative feedback on any artefact submission without leaving the Submissions tab:
 
 1. Click **Grade** on a submission row
-2. A panel opens showing the student's artefact content
-3. Select assessment type (CW1, CW2, or Weekly Artefact) and confirm/edit the student's business
-4. Click **Generate AI Feedback** — the submission text is sent to Claude with the full rubric prompt
-5. Review the structured output (criterion scores, strengths, improvements)
+2. A panel opens showing the student's artefact title, link, description, and reflection
+3. Confirm or edit the student's business name
+4. Click **Generate AI Feedback** — the submission text is sent to Claude aligned to the weekly artefact criteria
+5. Review the output (strengths, improvements, suggestions)
 6. Click **Save Feedback** — stored to Firebase on that submission record
 7. Student sees the feedback in their **My Progress** tab
 
@@ -101,35 +105,12 @@ Lecturers can grade any artefact submission without leaving the Submissions tab:
 - Students submit structured peer feedback (strengths, improvements, rating out of 5) from the Peer Review tab
 - Leader sees all review submissions in the Peer Review table
 
-### AI Assessment (standalone tab)
-Full-featured AI assessment tool for CW1 and CW2 formal assessments:
+### Formative Feedback (standalone tab — leader and lecturer)
+A standalone tool for generating AI formative feedback on weekly studio artefacts. Paste any student's artefact description, and Claude returns structured developmental feedback (strengths, areas for improvement, suggestions). Feedback can be saved to the student's submission record.
 
-**CW1 — Video Presentation (25% of module grade)**
+**This tab is for weekly artefact feedback only.** CW1 and CW2 formal marking is done in the [CMP701 Marking Tracker](https://tertsegha1.github.io/cmp701-tracker/).
 
-| Criterion | Points |
-|---|---|
-| Content Understanding | 25 |
-| Clarity and Engagement | 20 |
-| Structure and Organization | 20 |
-| Use of Visual Aids | 20 |
-| Delivery and Time Management | 15 |
-| **Total** | **100** |
-
-**CW2 — Written Report (75% of module grade)**
-
-| Criterion | Points |
-|---|---|
-| Introduction & Content Understanding | 15 |
-| Critical Analysis (Business & Digital Tech) | 20 |
-| Digital Transformation Strategy | 20 |
-| Documentation and Structure | 15 |
-| Use of Evidence and Literature | 15 |
-| Presentation of Artefacts & Communication | 15 |
-| **Total** | **100** |
-
-Grade bands: Poor (0–49%) · Satisfactory (50–59%) · Good (60–69%) · Excellent (70%+)
-
-Paste a video transcript/script for CW1 or report text for CW2. The AI returns criterion-by-criterion scores, a total, grade band, 2–3 strengths, and 2–3 improvement priorities. Feedback can be saved directly to a student submission record.
+The CW assessment criteria tables are shown in this tab for reference only — they guide the formative feedback prompt but do not produce a formal grade.
 
 ### Announcements
 - Module leader or lecturer posts notices categorised as: ℹ Info · ⚠ Important · ✓ Good news · 🔴 Urgent
@@ -167,7 +148,7 @@ Paste a video transcript/script for CW1 or report text for CW2. The AI returns c
 | Publish next quest | Quest Manager → Publish | Students see it immediately |
 | Create peer review round | Peer Review → + New Review Round | Auto-assigns guilds with rotation |
 | Monitor submissions | Submissions tab | Filter by guild or week |
-| Grade artefacts | Submissions tab → Grade button | AI-assisted inline grading |
+| Give artefact feedback | Submissions tab → Grade button | AI-assisted formative feedback; saved to student record |
 | Post announcements | Announcements tab | Pin for high-visibility notices |
 | Share Lecturer link | Cohorts tab → Copy Lecturer Link | Per-cohort URL for seminar leaders |
 
@@ -184,14 +165,19 @@ Paste a video transcript/script for CW1 or report text for CW2. The AI returns c
 
 Lecturers receive a per-cohort URL from the Module Leader (generated via **Cohorts → Copy Lecturer Link**). Opening it sets Lecturer View automatically.
 
+**Lecturer URL:** `https://tertsegha1.github.io/cmp701-studio/?role=lecturer`
+For a specific cohort: `https://tertsegha1.github.io/cmp701-studio/?role=lecturer&cohort=<cohort-id>`
+
+> Lecturers do **not** mark CW1 or CW2 in this system. Formal marking is done in the [CMP701 Marking Tracker](https://tertsegha1.github.io/cmp701-tracker/). The Studio is used for weekly artefact feedback and studio management only.
+
 ### What Lecturers Can Do
 
 | Tab | Capability |
 |---|---|
 | **Dashboard** | See KPIs: guild count, submission progress, pending artefacts |
-| **Submissions** | View all submissions; filter by guild/week/status; grade any artefact inline with AI |
+| **Submissions** | View all submissions; filter by guild/week/status; give AI formative feedback on artefacts |
 | **Peer Review** | View all peer review submissions for the cohort |
-| **AI Assessment** | Run standalone CW1/CW2 assessment by pasting submission text |
+| **Formative Feedback** | Standalone AI feedback tool for weekly studio artefacts |
 | **Announcements** | Post notices to all students in the cohort |
 | **Timeline** | View semester schedule and all deadlines |
 
@@ -199,9 +185,9 @@ Lecturers cannot: manage cohorts, import/delete students, configure the module, 
 
 ### Typical Lecturer Workflow (per week)
 
-1. Open the Lecturer link for your cohort
+1. Open the Lecturer link for your cohort (sent by the Module Leader)
 2. Go to **Submissions** — filter by your campus or assigned guilds
-3. For each submission, click **Grade** → review content → generate AI feedback → save
+3. For each submission, click **Grade** → review the artefact content → generate AI formative feedback → save
 4. Post any relevant announcement (e.g. "Week 5 feedback returned — check My Progress")
 5. Check **Peer Review** to see if all guilds have submitted their cross-reviews
 

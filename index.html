@@ -214,7 +214,7 @@ textarea{resize:vertical;min-height:80px}
   <button class="tab" onclick="showTab('quests',this)">Quest Manager</button>
   <button class="tab" onclick="showTab('submissions',this)">Submissions</button>
   <button class="tab" onclick="showTab('peer-review',this)">Peer Review</button>
-  <button class="tab" onclick="showTab('ai-tool',this)">AI Assessment</button>
+  <button class="tab" onclick="showTab('ai-tool',this)">Formative Feedback</button>
   <button class="tab" onclick="showTab('students',this)">Students</button>
   <button class="tab" onclick="showTab('announcements',this)">Announcements</button>
   <button class="tab" onclick="showTab('timeline',this)">Timeline</button>
@@ -227,7 +227,7 @@ textarea{resize:vertical;min-height:80px}
   <button class="tab on" onclick="showTab('dashboard',this)">Dashboard</button>
   <button class="tab" onclick="showTab('submissions',this)">Submissions</button>
   <button class="tab" onclick="showTab('peer-review',this)">Peer Review</button>
-  <button class="tab" onclick="showTab('ai-tool',this)">AI Assessment</button>
+  <button class="tab" onclick="showTab('ai-tool',this)">Formative Feedback</button>
   <button class="tab" onclick="showTab('announcements',this)">Announcements</button>
   <button class="tab" onclick="showTab('timeline',this)">Timeline</button>
 </div>
@@ -330,7 +330,7 @@ textarea{resize:vertical;min-height:80px}
   <div id="gradePanel" style="display:none">
     <div class="card" style="border:2px solid #7C3AED">
       <div class="card-hdr purple" style="display:flex;align-items:center;justify-content:space-between">
-        <span>Grade Artefact — <span id="gpStudentLabel">Student</span> · <span id="gpWeekLabel">Week —</span></span>
+        <span>Artefact Feedback — <span id="gpStudentLabel">Student</span> · <span id="gpWeekLabel">Week —</span></span>
         <button class="btn btn-ghost btn-sm" onclick="closeGradePanel()">✕ Close</button>
       </div>
       <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
@@ -343,13 +343,8 @@ textarea{resize:vertical;min-height:80px}
             <p style="font-size:11px;color:#475569;margin-bottom:4px"><strong>Description:</strong> <span id="gpDescription">—</span></p>
             <p style="font-size:11px;color:#475569"><strong>Reflection:</strong> <span id="gpReflection">—</span></p>
           </div>
-          <div class="form-group" style="margin-bottom:10px">
-            <label>Assessment Type</label>
-            <select id="gpAssessType" onchange="updateGPForm()">
-              <option value="artefact">Weekly Studio Artefact</option>
-              <option value="cw1">CW1 — Video Presentation (25%)</option>
-              <option value="cw2">CW2 — Written Report (75%)</option>
-            </select>
+          <div id="gpNotice" style="background:#fef9c3;border:1px solid #fbbf24;border-radius:6px;padding:8px 12px;font-size:11px;color:#854d0e;margin-bottom:10px">
+            Formative feedback only — for weekly studio artefacts. Formal CW1/CW2 marking is done in the Marking Tracker.
           </div>
           <div class="form-group" style="margin-bottom:10px">
             <label>Business Chosen</label>
@@ -375,18 +370,19 @@ textarea{resize:vertical;min-height:80px}
   </div>
 </div>
 
-<!-- AI ASSESSMENT TOOL -->
+<!-- FORMATIVE FEEDBACK TOOL -->
 <div class="pg" id="pg-ai-tool">
+  <div class="alert alert-warn" style="margin-bottom:12px">
+    <strong>Formative feedback only.</strong> This tool gives AI-generated feedback on weekly studio artefacts to support student development. CW1 and CW2 formal marking is done in the separate <strong>Marking Tracker</strong> system — do not use this tool to award or record formal grades.
+  </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
     <div>
       <div class="card">
-        <div class="card-hdr purple">AI Assessment — Input</div>
+        <div class="card-hdr purple">Formative Feedback — Input</div>
         <div class="card-body">
           <div class="form-group" style="margin-bottom:12px">
-            <label>Assessment Type</label>
+            <label>Week</label>
             <select id="aiAssessType" onchange="updateAIForm()">
-              <option value="cw1">CW1 — Video Presentation (25%)</option>
-              <option value="cw2">CW2 — Written Report (75%)</option>
               <option value="artefact">Weekly Studio Artefact</option>
             </select>
           </div>
@@ -415,16 +411,16 @@ textarea{resize:vertical;min-height:80px}
             API key not configured. Set it in the <strong>Blackboard Setup</strong> tab.
           </div>
           <button class="btn btn-purple" style="width:100%" onclick="runAIAssessment()">
-            ⚡ Generate AI Assessment
+            ⚡ Generate Formative Feedback
           </button>
         </div>
       </div>
     </div>
     <div>
       <div class="card">
-        <div class="card-hdr purple">AI Assessment — Output</div>
+        <div class="card-hdr purple">Formative Feedback — Output</div>
         <div class="card-body">
-          <div class="ai-output loading" id="aiOutput">AI assessment will appear here after you submit…</div>
+          <div class="ai-output loading" id="aiOutput">AI feedback will appear here after you submit…</div>
           <div style="display:flex;gap:8px;margin-top:12px">
             <button class="btn btn-ghost btn-sm" onclick="copyAIOutput()">Copy</button>
             <button class="btn btn-ghost btn-sm" onclick="saveAIFeedback()">Save to Submission</button>
@@ -437,7 +433,7 @@ textarea{resize:vertical;min-height:80px}
 
   <!-- Rubrics Reference -->
   <div class="card" style="margin-top:0">
-    <div class="card-hdr amber">Marking Rubrics Reference</div>
+    <div class="card-hdr amber">CW Assessment Criteria (Reference Only — formal marking done in Marking Tracker)</div>
     <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
       <div>
         <p style="font-size:12px;font-weight:700;color:#1B3A6B;margin-bottom:8px">CW1 — Video Presentation (100 pts)</p>
@@ -752,13 +748,13 @@ textarea{resize:vertical;min-height:80px}
   <div class="card">
     <div class="card-hdr purple">Get AI Feedback on Your Work</div>
     <div class="card-body">
-      <div class="alert alert-info">Paste your draft work below to receive preliminary AI feedback aligned to the CMP701 assessment criteria. This is formative only — final marks are awarded by your marker.</div>
+      <div class="alert alert-info"><strong>Formative feedback only.</strong> Paste a draft of your CW1 script, CW2 report, or weekly artefact to receive AI feedback aligned to the module criteria. This does <em>not</em> replace your marker's assessment — use it to improve your work before submission.</div>
       <div class="form-row">
         <div class="form-group">
-          <label>Feedback Type</label>
+          <label>What are you getting feedback on?</label>
           <select id="sAiType">
-            <option value="cw1">CW1 — Video Script / Presentation Plan</option>
-            <option value="cw2">CW2 — Written Report Draft</option>
+            <option value="cw1">CW1 Draft — Video Script / Presentation Plan</option>
+            <option value="cw2">CW2 Draft — Written Report</option>
             <option value="artefact">Weekly Studio Artefact</option>
           </select>
         </div>
@@ -1970,11 +1966,7 @@ function openGradePanel(sid, wk) {
   const combined = [sub.title, sub.description, sub.reflection].filter(Boolean).join('\n\n');
   document.getElementById('gpText').value = combined;
 
-  // Auto-detect type: week 6 = CW1, week 12 = CW2, else artefact
-  const n = parseInt(weekNum);
-  const type = n === 6 ? 'cw1' : n === 12 ? 'cw2' : 'artefact';
-  document.getElementById('gpAssessType').value = type;
-  updateGPForm();
+  document.getElementById('gpTextLabel').textContent = 'Artefact Description & Reflection';
 
   // If feedback already saved, show it
   const out = document.getElementById('gpOutput');
@@ -1997,18 +1989,13 @@ function closeGradePanel() {
   _gpSid = null; _gpWk = null;
 }
 
-function updateGPForm() {
-  const type = document.getElementById('gpAssessType').value;
-  document.getElementById('gpTextLabel').textContent =
-    type === 'cw1' ? 'Presentation Script / Transcript' :
-    type === 'cw2' ? 'Report Text' : 'Artefact Description & Reflection';
-}
+function updateGPForm() {}
 
 async function runInlineAI() {
   const apiKey = getStoredApiKey();
   if (!apiKey) { toast('API key not configured — set it in Blackboard Setup', 'err'); return; }
 
-  const type = document.getElementById('gpAssessType').value;
+  const type = 'artefact';
   const student = document.getElementById('gpStudentLabel').textContent;
   const business = document.getElementById('gpBusiness').value.trim() || 'their chosen business';
   const text = document.getElementById('gpText').value.trim();
