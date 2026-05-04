@@ -14,7 +14,7 @@ A single-page web application that manages the full lifecycle of the Digital Tra
 
 The system supports three access roles and scales across multiple semesters through its cohort management feature.
 
-> **Scope:** This system is for studio management and formative feedback only. Formal CW1 and CW2 marking is done in the separate [CMP701 Marking Tracker](https://tertsegha1.github.io/cmp701-tracker/). Do not use this system to record or award formal grades.
+> **Scope:** This system is for studio management and formative feedback only. Formal CW1 and CW2 marking is done in the separate [CMP701 Grading System](https://github.com/Tertsegha1/cmp701-grading-system). Do not use this system to record or award formal grades.
 
 ---
 
@@ -87,7 +87,7 @@ The **default** cohort (`studio/` in Firebase) holds the 2025–26 Semester 2 da
 - AI feedback is stored on the submission record and shown to the student in their My Progress timeline
 - Export all submissions to CSV at any time
 
-> **Important:** The Grade panel is for formative feedback on weekly studio artefacts only. CW1 and CW2 formal marking is done in the separate Grading System — do not use this panel to record formal grades.
+> **Important:** The Grade panel is for formative feedback on weekly studio artefacts only. CW1 and CW2 formal marking is done in the [CMP701 Grading System](https://github.com/Tertsegha1/cmp701-grading-system) — do not use this panel to record formal grades.
 
 ### Inline Artefact Feedback (Submissions tab)
 Lecturers can give AI-assisted formative feedback on any artefact without leaving the Submissions tab:
@@ -107,7 +107,7 @@ Lecturers can give AI-assisted formative feedback on any artefact without leavin
 ### Formative Feedback tab (Module Leader and Lecturer)
 A standalone tool for generating AI formative feedback on weekly studio artefacts. Paste any student's artefact description and Claude returns structured feedback including strengths, areas for improvement, and an AI writing estimate.
 
-This tab is for **weekly artefact feedback only**. CW1 and CW2 formal marking is done in the separate Grading System. The CW assessment criteria tables shown in this tab are for reference only — they guide the feedback prompt but do not produce a formal grade.
+This tab is for **weekly artefact feedback only**. CW1 and CW2 formal marking is done in the [CMP701 Grading System](https://github.com/Tertsegha1/cmp701-grading-system). The CW assessment criteria tables shown in this tab are for reference only — they guide the feedback prompt but do not produce a formal grade.
 
 ### Student AI Feedback tab
 Students can paste their own draft work at any time and receive immediate formative AI feedback aligned to the module criteria:
@@ -187,7 +187,7 @@ Lecturers receive a per-cohort URL from the Module Leader (generated via **Cohor
 **Lecturer URL:** `https://tertsegha1.github.io/cmp701-studio/?role=lecturer`
 For a specific cohort: `https://tertsegha1.github.io/cmp701-studio/?role=lecturer&cohort=<cohort-id>`
 
-> Lecturers do **not** mark CW1 or CW2 in this system. Formal marking is done in the separate Grading System. The Studio is used for weekly artefact feedback and studio management only.
+> Lecturers do **not** mark CW1 or CW2 in this system. Formal marking is done in the [CMP701 Grading System](https://github.com/Tertsegha1/cmp701-grading-system). The Studio is used for weekly artefact feedback and studio management only.
 
 ### What Lecturers Can Do
 
