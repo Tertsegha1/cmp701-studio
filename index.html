@@ -1830,6 +1830,13 @@ async function runStudentAI() {
 
 function buildAssessmentPrompt(type, student, business, text, isStudent = false) {
   const tone = isStudent ? 'formative feedback for the student directly (address them as "you"), encouraging but honest' : 'detailed assessment feedback for a marker';
+  const aiSection = `
+AI WRITING ESTIMATE:
+Analyse the text above for signs of AI generation (e.g. generic phrasing, uniform sentence structure, absence of personal voice or specific real-world examples, overly polished but impersonal language). Estimate the percentage of the content that appears to be AI-generated or heavily AI-assisted.
+Format exactly as:
+Estimated AI-generated content: [X]%
+Signals observed: [2-3 specific linguistic observations, e.g. "Formulaic transitions", "Lacks named examples specific to ${business}", "No hedging or personal reflection"]
+${isStudent ? 'Advice: [one practical tip for making the writing sound more authentically yours before submission — e.g. add specific data points, rewrite generic sentences in your own voice, include a personal observation]' : 'Note: This is a linguistic pattern estimate only — not a definitive detection result.'}`;
 
   if (type === 'cw1') {
     return `You are assessing a CMP701 Digital Transformation video presentation (CW1, 25% of module grade) at Ulster University QAHE.
@@ -1859,7 +1866,8 @@ STRENGTHS (2-3 bullet points):
 
 AREAS FOR IMPROVEMENT (2-3 bullet points):
 
-PRIORITY ACTION FOR CW2:`;
+PRIORITY ACTION FOR CW2:
+${aiSection}`;
   }
 
   if (type === 'cw2') {
@@ -1892,7 +1900,8 @@ STRENGTHS (2-3 bullet points):
 
 AREAS FOR IMPROVEMENT (2-3 bullet points):
 
-REFLECTION ON CW1 FEEDBACK (did student incorporate it?):`;
+REFLECTION ON CW1 FEEDBACK (did student incorporate it?):
+${aiSection}`;
   }
 
   return `You are providing ${tone} on a weekly studio artefact for CMP701 Digital Transformation at Ulster University QAHE.
@@ -1902,7 +1911,8 @@ ARTEFACT:
 ${text}
 
 Evaluate: (1) relevance to digital transformation, (2) depth of analysis, (3) practical application, (4) evidence of guild collaboration, (5) preparation for CW1/CW2.
-Provide 3 strengths and 3 specific improvements. Keep feedback concise (under 300 words).`;
+Provide 3 strengths and 3 specific improvements. Keep feedback concise (under 300 words).
+${aiSection}`;
 }
 
 async function callClaude(apiKey, prompt, maxTokens) {
