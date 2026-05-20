@@ -169,6 +169,17 @@ textarea{resize:vertical;min-height:80px}
 .tl-dot.amber{background:#B45309}
 .tl-dot.slate{background:#94a3b8}
 .tl-dot.teal{background:#0D7377}
+/* Gamification */
+.xp-bar-wrap{background:#e2e8f0;border-radius:8px;height:12px;overflow:hidden;margin:6px 0}
+.xp-bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,#7C3AED,#0D7377);transition:width .6s ease}
+.badge-chip{display:inline-flex;align-items:center;gap:5px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:#4C1D95;margin:3px}
+.badge-chip.earned{background:#f0fdf4;border-color:#bbf7d0;color:#14532d}
+.lb-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f1f5f9}
+.lb-row:last-child{border:none}
+.lb-rank{width:22px;height:22px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0}
+.lb-rank.gold{background:#fef08a;color:#713f12}
+.lb-rank.silver{background:#e2e8f0;color:#1e293b}
+.lb-rank.bronze{background:#fed7aa;color:#431407}
 .drop-zone{border:2px dashed #cbd5e1;border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:.15s;color:#94a3b8;font-size:11px;background:#fafafa}
 .drop-zone:hover,.drop-zone.drag-over{border-color:#0D7377;background:#f0fdfa;color:#0D7377}
 .file-chip{display:flex;align-items:center;gap:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:700;color:#15803D}
@@ -282,6 +293,12 @@ textarea{resize:vertical;min-height:80px}
   <div class="card">
     <div class="card-hdr slate">Recent Activity</div>
     <div class="card-body" id="dashActivity"><p style="color:#94a3b8;font-size:12px">No recent activity</p></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr" style="background:linear-gradient(135deg,#7C3AED 0%,#1B3A6B 100%)">🎮 Gamification Overview</div>
+    <div class="card-body" id="gamificationDashBody">
+      <p style="color:#94a3b8;font-size:12px">No data yet.</p>
+    </div>
   </div>
 </div>
 
@@ -769,6 +786,12 @@ textarea{resize:vertical;min-height:80px}
       <p style="color:#94a3b8;font-size:12px">Your guild's working contract will appear here.</p>
     </div>
   </div>
+  <div class="card">
+    <div class="card-hdr" style="background:linear-gradient(135deg,#7C3AED 0%,#1B3A6B 100%)">🏆 Guild XP Leaderboard</div>
+    <div class="card-body" id="guildLeaderboardBody">
+      <p style="color:#94a3b8;font-size:12px">Loading leaderboard…</p>
+    </div>
+  </div>
 </div>
 
 <!-- STUDENT: Submit Artefact -->
@@ -845,6 +868,14 @@ textarea{resize:vertical;min-height:80px}
     <div class="kpi bl"><div class="v" id="spk-weeks">—</div><div class="l">Weeks Submitted</div></div>
     <div class="kpi gr"><div class="v" id="spk-pct">—</div><div class="l">Completion %</div></div>
     <div class="kpi am"><div class="v" id="spk-pending">—</div><div class="l">Weeks Pending</div></div>
+    <div class="kpi pu"><div class="v" id="spk-xp">—</div><div class="l">Total XP</div></div>
+  </div>
+  <!-- XP / Level card -->
+  <div class="card" id="studentXPCard">
+    <div class="card-hdr" style="background:linear-gradient(135deg,#1B3A6B 0%,#7C3AED 100%)">🎮 My Level &amp; XP</div>
+    <div class="card-body" id="studentXPBody">
+      <p style="color:#94a3b8;font-size:12px">Select your name to see your XP and badges.</p>
+    </div>
   </div>
   <div class="card">
     <div class="card-hdr blue">My Submission Timeline</div>
@@ -1476,6 +1507,8 @@ function updateDashboard() {
       <span style="font-size:10px;color:#94a3b8">${new Date(a.time).toLocaleDateString()}</span>
     </div>`).join('');
   document.getElementById('dashActivity').innerHTML = recentHTML || '<p style="color:#94a3b8;font-size:12px">No recent activity</p>';
+
+  renderGamificationDashboard();
 }
 
 // ─── Guilds ───────────────────────────────────────────────────
@@ -2344,6 +2377,8 @@ function refreshStudentViews() {
   renderStudentQuest();
   renderStudentGuild();
   renderStudentProgress();
+  renderStudentXP();
+  renderGuildLeaderboard();
   populateSubmitWeeks();
 }
 
@@ -2457,6 +2492,8 @@ async function submitArtefact() {
   document.getElementById('submitReflection').value = '';
   toast('Artefact submitted!', 'ok');
   renderStudentProgress();
+  renderStudentXP();
+  renderGuildLeaderboard();
 }
 
 function renderStudentProgress() {
@@ -3318,6 +3355,292 @@ window.addEventListener('DOMContentLoaded', () => {
     questHero.insertBefore(banner, questHero.firstChild);
   }
 }, { once: true });
+
+// ─── Gamification ─────────────────────────────────────────────
+
+const XP_SUBMIT = 50;   // XP per artefact submitted
+const XP_PEER   = 30;   // XP per week the student's guild submitted a peer review
+
+const LEVELS = [
+  { min:    0, label: 'Digital Apprentice',        icon: '🌱', color: '#64748b' },
+  { min:  100, label: 'Data Explorer',             icon: '🔍', color: '#1D4ED8' },
+  { min:  250, label: 'Strategy Analyst',          icon: '📊', color: '#0D7377' },
+  { min:  450, label: 'Innovation Champion',       icon: '💡', color: '#B45309' },
+  { min:  700, label: 'Transformation Strategist', icon: '🚀', color: '#7C3AED' },
+  { min: 1000, label: 'Digital Leader',            icon: '🏆', color: '#B91C1C' },
+];
+
+// Count how many weeks this student has a submission record
+function countStudentSubmissions(studentId) {
+  const subs = appData.submissions[studentId] || {};
+  return Object.values(subs).filter(s => s && s.submittedAt).length;
+}
+
+// Count how many weeks the student's guild submitted a peer review
+function countGuildPeerReviews(guildId) {
+  if (!guildId) return 0;
+  const guild = appData.guilds[guildId];
+  if (!guild) return 0;
+  let count = 0;
+  Object.values(appData.peerReviews || {}).forEach(weekPRs => {
+    if (weekPRs && weekPRs[guildId]) count++;
+  });
+  return count;
+}
+
+// Consecutive submission streak from Week 1 (stops at first gap)
+function getSubmissionStreak(studentId) {
+  const subs = appData.submissions[studentId] || {};
+  let streak = 0;
+  for (let w = 1; w <= 12; w++) {
+    if (subs['week-' + w] && subs['week-' + w].submittedAt) streak++;
+    else break;
+  }
+  return streak;
+}
+
+// Compute badges for a student — returns array of {id, icon, label, desc, bonus}
+function computeStudentBadges(studentId, submCount, prCount) {
+  const badges = [];
+  if (submCount >= 1)  badges.push({ id:'first',  icon:'🚀', label:'First Launch',    desc:'Submitted your first artefact',           bonus:25  });
+  if (submCount >= 6)  badges.push({ id:'half',   icon:'⭐', label:'Halfway There',   desc:'Submitted artefacts for 6 weeks',         bonus:30  });
+  if (submCount >= 12) badges.push({ id:'master', icon:'🏅', label:'Quest Master',     desc:'Completed all 12 weekly quests',          bonus:100 });
+  if (getSubmissionStreak(studentId) >= 3)
+                       badges.push({ id:'streak', icon:'🔥', label:'On a Roll',        desc:'3+ consecutive weekly submissions',       bonus:50  });
+  if (prCount >= 5)    badges.push({ id:'peer',   icon:'🤝', label:'Peer Champion',    desc:'Guild completed 5+ peer reviews',         bonus:50  });
+  return badges;
+}
+
+// Compute total XP for a student
+function computeStudentXP(studentId) {
+  const student = appData.students[studentId];
+  if (!student) return 0;
+  const submCount = countStudentSubmissions(studentId);
+  const guildId   = student.guildId || null;
+  const prCount   = countGuildPeerReviews(guildId);
+  const badges    = computeStudentBadges(studentId, submCount, prCount);
+  const bonusXP   = badges.reduce((sum, b) => sum + b.bonus, 0);
+  return submCount * XP_SUBMIT + prCount * XP_PEER + bonusXP;
+}
+
+// Get level object for an XP value
+function getLevel(xp) {
+  for (let i = LEVELS.length - 1; i >= 0; i--) {
+    if (xp >= LEVELS[i].min) return { ...LEVELS[i], index: i };
+  }
+  return { ...LEVELS[0], index: 0 };
+}
+
+// Get XP bar progress within the current level
+function getLevelProgress(xp) {
+  const level = getLevel(xp);
+  const nextLevel = LEVELS[level.index + 1];
+  if (!nextLevel) return { pct: 100, xpToNext: 0, nextLabel: null };
+  const xpInLevel = xp - level.min;
+  const xpNeeded  = nextLevel.min - level.min;
+  return { pct: Math.round((xpInLevel / xpNeeded) * 100), xpToNext: nextLevel.min - xp, nextLabel: nextLevel.label };
+}
+
+// Compute total XP for a guild (sum of all members)
+function computeGuildXP(guildId) {
+  let total = 0;
+  Object.entries(appData.students || {}).forEach(([sid, s]) => {
+    if (s.guildId === guildId) total += computeStudentXP(sid);
+  });
+  return total;
+}
+
+// Get sorted guild leaderboard [{guildId, guild, xp, rank}]
+function getGuildLeaderboard() {
+  return Object.entries(appData.guilds || {})
+    .map(([gid, g]) => ({ guildId: gid, guild: g, xp: computeGuildXP(gid) }))
+    .sort((a, b) => b.xp - a.xp)
+    .map((entry, i) => ({ ...entry, rank: i + 1 }));
+}
+
+// Render XP card in My Progress tab
+function renderStudentXP() {
+  const xpKpi = document.getElementById('spk-xp');
+  const body  = document.getElementById('studentXPBody');
+  if (!currentStudent || !appData.students[currentStudent]) {
+    if (xpKpi) xpKpi.textContent = '—';
+    if (body)  body.innerHTML = '<p style="color:#94a3b8;font-size:12px">Select your name to see your XP and badges.</p>';
+    return;
+  }
+
+  const student    = appData.students[currentStudent];
+  const submCount  = countStudentSubmissions(currentStudent);
+  const guildId    = student.guildId || null;
+  const prCount    = countGuildPeerReviews(guildId);
+  const badges     = computeStudentBadges(currentStudent, submCount, prCount);
+  const xp         = submCount * XP_SUBMIT + prCount * XP_PEER + badges.reduce((s, b) => s + b.bonus, 0);
+  const level      = getLevel(xp);
+  const progress   = getLevelProgress(xp);
+
+  if (xpKpi) xpKpi.textContent = xp;
+
+  const nextInfo = progress.nextLabel
+    ? `<span style="font-size:10px;color:#94a3b8">${progress.xpToNext} XP to <strong>${progress.nextLabel}</strong></span>`
+    : `<span style="font-size:10px;color:#15803D;font-weight:700">Max level reached!</span>`;
+
+  const badgeHTML = badges.length
+    ? badges.map(b => `<span class="badge-chip earned" title="${b.desc}">${b.icon} ${b.label} <span style="color:#64748b;font-weight:400">(+${b.bonus} XP)</span></span>`).join('')
+    : `<span style="font-size:11px;color:#94a3b8">Keep submitting to earn badges!</span>`;
+
+  const allBadgeDefs = [
+    { id:'first',  icon:'🚀', label:'First Launch',    desc:'Submit your first artefact' },
+    { id:'half',   icon:'⭐', label:'Halfway There',   desc:'Submit 6 weekly artefacts' },
+    { id:'master', icon:'🏅', label:'Quest Master',     desc:'Complete all 12 quests' },
+    { id:'streak', icon:'🔥', label:'On a Roll',        desc:'3 consecutive submissions' },
+    { id:'peer',   icon:'🤝', label:'Peer Champion',    desc:'Guild completes 5 peer reviews' },
+  ];
+  const earnedIds = new Set(badges.map(b => b.id));
+  const allBadgesHTML = allBadgeDefs.map(b =>
+    `<span class="badge-chip ${earnedIds.has(b.id) ? 'earned' : ''}" title="${b.desc}" style="${earnedIds.has(b.id)?'':'opacity:.4'}">${b.icon} ${b.label}</span>`
+  ).join('');
+
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="font-size:42px;line-height:1">${level.icon}</div>
+      <div style="flex:1">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;font-weight:700">Current Level</div>
+        <div style="font-size:18px;font-weight:800;color:${level.color}">${level.label}</div>
+        <div style="font-size:11px;color:#475569;margin-top:2px"><strong>${xp} XP</strong> total earned</div>
+      </div>
+      <div style="background:#f5f3ff;border-radius:8px;padding:10px 16px;text-align:center;min-width:80px">
+        <div style="font-size:22px;font-weight:800;color:#7C3AED">${xp}</div>
+        <div style="font-size:9px;color:#7C3AED;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Total XP</div>
+      </div>
+    </div>
+    <div style="margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:10px;font-weight:700;color:#475569">Level Progress</span>
+      ${nextInfo}
+    </div>
+    <div class="xp-bar-wrap"><div class="xp-bar-fill" style="width:${progress.pct}%"></div></div>
+    <div style="margin-top:4px;font-size:10px;color:#94a3b8">${progress.pct}% to next level</div>
+
+    <div style="margin-top:14px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:6px">Badges</div>
+      <div>${allBadgesHTML}</div>
+    </div>
+
+    <div style="margin-top:12px;background:#f8fafc;border-radius:6px;padding:10px;font-size:10px;color:#64748b">
+      <strong>How XP is earned:</strong>
+      🎯 Artefact submitted = +${XP_SUBMIT} XP &nbsp;·&nbsp;
+      🤝 Guild peer review = +${XP_PEER} XP per week &nbsp;·&nbsp;
+      🏅 Badges give bonus XP
+    </div>`;
+}
+
+// Render guild leaderboard in My Guild tab (visible to all students)
+function renderGuildLeaderboard() {
+  const body = document.getElementById('guildLeaderboardBody');
+  if (!body) return;
+
+  const lb = getGuildLeaderboard();
+  if (!lb.length) {
+    body.innerHTML = '<p style="color:#94a3b8;font-size:12px">No guilds yet.</p>';
+    return;
+  }
+
+  const studentGuildId = currentStudent && appData.students[currentStudent]
+    ? appData.students[currentStudent].guildId : null;
+
+  const rankClass = r => r === 1 ? 'gold' : r === 2 ? 'silver' : r === 3 ? 'bronze' : '';
+  const rankMedal = r => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r;
+
+  body.innerHTML = lb.map(({ guildId, guild, xp, rank }) => {
+    const isMyGuild = guildId === studentGuildId;
+    const maxXP = lb[0].xp || 1;
+    const pct   = Math.round((xp / maxXP) * 100);
+    const memberCount = guild.members ? Object.values(guild.members).length : 0;
+    return `<div class="lb-row" style="${isMyGuild ? 'background:#eff6ff;margin:0 -12px;padding:7px 12px;border-radius:6px' : ''}">
+      <div class="lb-rank ${rankClass(rank)}">${rankMedal(rank)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:800;color:#1B3A6B">${guild.name} ${isMyGuild ? '<span style="font-size:10px;color:#1D4ED8;font-weight:400">(your guild)</span>' : ''}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
+          <div class="xp-bar-wrap" style="flex:1;height:6px;margin:0"><div class="xp-bar-fill" style="width:${pct}%;background:${rank===1?'#B45309':rank===2?'#94a3b8':'#7C3AED'}"></div></div>
+          <span style="font-size:10px;color:#64748b;white-space:nowrap">${xp} XP</span>
+        </div>
+      </div>
+      <div style="text-align:right;font-size:10px;color:#94a3b8;white-space:nowrap">${memberCount} members<br><span style="color:#64748b">${guild.campus || ''}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// Render gamification overview in leader/lecturer dashboard
+function renderGamificationDashboard() {
+  const body = document.getElementById('gamificationDashBody');
+  if (!body) return;
+
+  const lb = getGuildLeaderboard();
+  const totalStudents = Object.keys(appData.students || {}).length;
+  if (!totalStudents) {
+    body.innerHTML = '<p style="color:#94a3b8;font-size:12px">No students enrolled yet.</p>';
+    return;
+  }
+
+  // Aggregate stats
+  let totalXP = 0, totalBadges = 0;
+  const studentXPs = [];
+  Object.entries(appData.students || {}).forEach(([sid, s]) => {
+    const xp = computeStudentXP(sid);
+    totalXP += xp;
+    const submCount = countStudentSubmissions(sid);
+    const prCount   = countGuildPeerReviews(s.guildId);
+    totalBadges += computeStudentBadges(sid, submCount, prCount).length;
+    studentXPs.push({ name: s.name, xp, guild: s.guild || '' });
+  });
+  studentXPs.sort((a, b) => b.xp - a.xp);
+
+  const topGuild    = lb[0];
+  const avgXP       = totalStudents ? Math.round(totalXP / totalStudents) : 0;
+
+  // KPI strip
+  const kpis = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <div class="kpi pu" style="flex:1 1 110px"><div class="v">${totalXP}</div><div class="l">Total XP Earned</div></div>
+      <div class="kpi bl" style="flex:1 1 110px"><div class="v">${avgXP}</div><div class="l">Avg XP / Student</div></div>
+      <div class="kpi gr" style="flex:1 1 110px"><div class="v">${totalBadges}</div><div class="l">Badges Awarded</div></div>
+      <div class="kpi am" style="flex:1 1 110px"><div class="v">${topGuild ? topGuild.guild.name : '—'}</div><div class="l">Top Guild</div></div>
+    </div>`;
+
+  // Top 5 students
+  const top5 = studentXPs.slice(0, 5).map((s, i) => {
+    const lv = getLevel(s.xp);
+    return `<div class="lb-row">
+      <div class="lb-rank ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i+1}</div>
+      <div style="flex:1"><span style="font-size:12px;font-weight:700;color:#1B3A6B">${s.name}</span>
+        <span style="font-size:10px;color:#64748b;margin-left:6px">${lv.icon} ${lv.label}</span></div>
+      <div style="font-size:11px;font-weight:800;color:#7C3AED">${s.xp} XP</div>
+    </div>`;
+  }).join('');
+
+  // Guild leaderboard strip
+  const guildStrip = lb.map(({ guild, xp, rank }) => {
+    const pct = lb[0].xp ? Math.round((xp / lb[0].xp) * 100) : 0;
+    return `<div class="lb-row">
+      <div class="lb-rank ${rank===1?'gold':rank===2?'silver':rank===3?'bronze':''}">${rank}</div>
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:700;color:#1B3A6B">${guild.name} <span style="color:#94a3b8;font-weight:400">${guild.campus||''}</span></div>
+        <div class="xp-bar-wrap" style="margin-top:3px;height:6px"><div class="xp-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div style="font-size:11px;font-weight:800;color:#7C3AED;white-space:nowrap;margin-left:10px">${xp} XP</div>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = kpis +
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#7C3AED;margin-bottom:8px">Top Students</div>
+        ${top5 || '<p style="color:#94a3b8;font-size:12px">No data yet.</p>'}
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#7C3AED;margin-bottom:8px">Guild Rankings</div>
+        ${guildStrip || '<p style="color:#94a3b8;font-size:12px">No guilds yet.</p>'}
+      </div>
+    </div>`;
+}
 </script>
 </body>
 </html>
