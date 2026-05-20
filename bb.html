@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CMP701 Digital Transformation Studio</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:13px;background:#f0f4f8;color:#1e293b;min-height:100vh}
+
+/* Compact header for Blackboard embed */
+.hdr{background:linear-gradient(135deg,#1B3A6B 0%,#0D7377 100%);color:#fff;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.hdr-title{font-size:14px;font-weight:800;letter-spacing:.2px}
+.hdr-meta{font-size:10px;opacity:.75;margin-top:2px}
+.hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.week-pill{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:800}
+.cohort-pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:4px 12px;font-size:10px;font-weight:700}
+
+/* Announcement banner */
+.announce-banner{background:#1D4ED8;color:#fff;padding:8px 18px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:10px}
+.announce-banner.urgent{background:#B91C1C}
+.announce-banner.good{background:#15803D}
+.announce-banner.warn{background:#B45309}
+
+/* Tabs */
+.tabs{display:flex;background:#162d55;border-bottom:3px solid #0D7377;overflow-x:auto}
+.tab{padding:10px 18px;color:rgba(255,255,255,.55);cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;border:none;background:none;transition:.15s;letter-spacing:.3px;flex-shrink:0}
+.tab:hover{color:#fff;background:rgba(255,255,255,.07)}
+.tab.on{color:#fff;background:#0D7377}
+
+/* Pages */
+.pg{display:none;padding:16px;max-width:1100px;margin:0 auto}
+.pg.on{display:block}
+
+/* Cards */
+.card{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:14px;overflow:hidden}
+.card-hdr{padding:10px 16px;font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+.card-hdr.blue{background:#1B3A6B}
+.card-hdr.teal{background:#0D7377}
+.card-hdr.green{background:#15803D}
+.card-hdr.purple{background:#7C3AED}
+.card-hdr.amber{background:#B45309}
+.card-hdr.grad{background:linear-gradient(135deg,#1B3A6B,#7C3AED)}
+.card-body{padding:14px 16px}
+
+/* Quest */
+.quest-week-nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.wk-btn{padding:5px 12px;border-radius:20px;border:1.5px solid #e2e8f0;background:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;color:#64748b}
+.wk-btn:hover{border-color:#0D7377;color:#0D7377}
+.wk-btn.current{background:#0D7377;color:#fff;border-color:#0D7377}
+.wk-btn.published{border-color:#1B3A6B;color:#1B3A6B}
+.wk-btn.future{opacity:.4;cursor:default}
+.deliverable-item{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f1f5f9}
+.deliverable-item:last-child{border:none}
+.del-num{width:22px;height:22px;border-radius:50%;background:#0D7377;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+
+/* Peer Review */
+.pr-match{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9}
+.pr-match:last-child{border:none}
+.guild-tag{background:#1B3A6B;color:#fff;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:800;min-width:90px;text-align:center}
+.guild-tag.reviewing{background:#0D7377}
+.arrow{font-size:18px;color:#94a3b8}
+
+/* Leaderboard */
+.lb-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.lb-row:last-child{border:none}
+.lb-rank{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.lb-rank.gold{background:#fef08a;color:#713f12}
+.lb-rank.silver{background:#e2e8f0;color:#1e293b}
+.lb-rank.bronze{background:#fed7aa;color:#431407}
+.lb-rank.other{background:#f1f5f9;color:#475569}
+.xp-bar-wrap{background:#e2e8f0;border-radius:8px;height:10px;overflow:hidden;flex:1}
+.xp-bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,#1B3A6B,#0D7377);transition:width .8s ease}
+.badge-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.badge-chip{font-size:13px;line-height:1;cursor:default}
+
+/* Timeline */
+.deadline-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px}
+.deadline-card{background:#fff;border-radius:8px;padding:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.deadline-card .days{font-size:28px;font-weight:800;line-height:1}
+.deadline-card .label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-top:2px;font-weight:700}
+.deadline-card .date{font-size:10px;color:#94a3b8;margin-top:4px}
+.deadline-card.urgent .days{color:#B91C1C}
+.deadline-card.warn .days{color:#B45309}
+.deadline-card.ok .days{color:#15803D}
+.deadline-card.past .days{color:#94a3b8;font-size:18px}
+
+.wk-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+@media(max-width:500px){.wk-grid{grid-template-columns:repeat(3,1fr)}}
+.wk-tile{background:#fff;border-radius:6px;padding:8px 6px;text-align:center;font-size:10px;border:2px solid transparent;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.wk-tile.current{border-color:#0D7377;background:#f0fdfa}
+.wk-tile.done{border-color:#e2e8f0;background:#f8fafc}
+.wk-tile .wn{font-size:15px;font-weight:800;color:#1B3A6B;line-height:1}
+.wk-tile .wt{font-size:9px;color:#64748b;margin-top:2px;line-height:1.3;min-height:22px}
+
+/* Util */
+.btn{padding:8px 16px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer;transition:.15s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1B3A6B;color:#fff}
+.btn-primary:hover{background:#162d55}
+.btn-teal{background:#0D7377;color:#fff}
+.btn-teal:hover{background:#0b5e62}
+.btn-ghost{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}
+.btn-ghost:hover{background:#e2e8f0}
+.frow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.alert{padding:10px 14px;border-radius:6px;font-size:12px;margin-bottom:12px;line-height:1.5}
+.alert-info{background:#eff6ff;border-left:4px solid #1D4ED8;color:#1e3a5f}
+.alert-success{background:#f0fdf4;border-left:4px solid #15803D;color:#14532d}
+.ai-output{background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:6px;padding:14px;font-size:12px;line-height:1.7;min-height:80px;white-space:pre-wrap;color:#334155}
+.ai-output.loading{color:#94a3b8;font-style:italic}
+select,input,textarea{width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px;font-family:Arial,sans-serif;outline:none;transition:.15s}
+select:focus,input:focus,textarea:focus{border-color:#0D7377}
+label{font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:4px}
+.form-group{margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+//  MODULE LEADER CONFIG
+//  Update this section each week. Push to GitHub — Blackboard updates live.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const STUDIO = {
+
+  // ── Cohort & Week ──────────────────────────────────────────────────────
+  cohortName:    "2025–26 Semester 2",
+  currentWeek:   1,         // ← update each week
+  semesterStart: "2026-01-20",  // Monday of Week 1 (YYYY-MM-DD)
+
+  // ── Key Dates ──────────────────────────────────────────────────────────
+  deadlines: {
+    cw1Sub:  "2026-03-13",   // CW1 submission
+    cw1Mark: "2026-03-27",   // CW1 marking
+    cw2Sub:  "2026-05-06",   // CW2 submission
+    cw2Mark: "2026-05-20",   // CW2 marking
+  },
+
+  // ── Announcement (leave body:"" to hide) ──────────────────────────────
+  announcement: {
+    body:  "",              // e.g. "Week 3 feedback returned — check your guild workspace"
+    type:  "info",         // "info" | "good" | "warn" | "urgent"
+  },
+
+  // ── Guilds  ────────────────────────────────────────────────────────────
+  //  Update xp after each week once submissions are reviewed in Blackboard.
+  //  badges: earned badge emojis shown next to guild name.
+  guilds: [
+    { name: "Alpha",   campus: "London",     xp: 0, badges: [] },
+    { name: "Beta",    campus: "London",     xp: 0, badges: [] },
+    { name: "Gamma",   campus: "Birmingham", xp: 0, badges: [] },
+    { name: "Delta",   campus: "Birmingham", xp: 0, badges: [] },
+    { name: "Epsilon", campus: "Manchester", xp: 0, badges: [] },
+    { name: "Zeta",    campus: "Manchester", xp: 0, badges: [] },
+  ],
+
+  // ── Peer Review Rotation ───────────────────────────────────────────────
+  //  offset: guild[i] reviews guild[(i + offset) % guilds.length]
+  //  Change offset each week so no guild reviews the same guild twice.
+  //  Week 1→offset 1, Week 2→offset 2, Week 3→offset 3, etc.
+  peerReviewOffset: 1,   // ← update each week (use the week number itself)
+
+  // ── Blackboard Links (paste your actual BB Ultra URLs) ─────────────────
+  bbLinks: {
+    currentAssignment: "",   // Link to this week's artefact submission
+    peerReviewForm:    "",   // Link to the peer review discussion/form
+    guildWorkspace:    "",   // Link to the Blackboard Groups area
+    gradebook:         "",   // Link to the gradebook
+  },
+
+  // ── AI Feedback ────────────────────────────────────────────────────────
+  //  Leave aiKey:"" to disable AI feedback (students see a message).
+  //  Do NOT commit a live key to a public GitHub repo.
+  //  Best practice: leave empty, instruct students to use the main Studio.
+  aiKey: "",
+
+  // ── Quest Briefs ───────────────────────────────────────────────────────
+  //  Pre-filled with the 12 CMP701 module quests.
+  //  Edit any quest content as needed.
+  quests: {
+    1: {
+      title: "Business Snapshot — Know Your Organisation",
+      brief: "This week you begin your Digital Transformation journey by grounding your analysis in a real organisation of your choice. You will produce a structured Business Snapshot that profiles your chosen organisation and establishes the baseline for all subsequent studio work.",
+      deliverables: [
+        "Organisation profile: name, sector, size, and key markets",
+        "Current digital maturity assessment (low / developing / advanced) with brief justification",
+        "Three key business challenges that digital transformation could address",
+        "One strategic question your organisation must answer to remain competitive",
+        "Submitted as a structured document or visual infographic (max 2 pages / slides)",
+      ],
+    },
+    2: {
+      title: "Data-Driven — Using Analytics to Justify Transformation",
+      brief: "Organisations that invest in digital transformation without data are guessing. This week you identify and interpret data that justifies your chosen organisation's need for transformation — using real analytics, performance indicators, or published benchmarks.",
+      deliverables: [
+        "Identify three data sources relevant to your organisation (industry reports, company reports, market data)",
+        "Present two or three key data points that signal a performance gap or opportunity",
+        "Explain what each data point tells you about the need for transformation",
+        "Suggest one analytics tool or approach your organisation could use to track progress",
+        "One-page data narrative — visuals encouraged",
+      ],
+    },
+    3: {
+      title: "Industry Intelligence — PESTLE & Porter's Five Forces",
+      brief: "Before designing a transformation strategy, you need to understand the forces shaping your organisation's environment. This week you apply two classic frameworks to build industry intelligence for your chosen organisation.",
+      deliverables: [
+        "Completed PESTLE analysis with at least two points per factor — focused on digital disruption",
+        "Porter's Five Forces diagram with a brief explanation of each force's intensity",
+        "Three strategic insights drawn from the combined analysis",
+        "Identification of the single greatest external threat and opportunity to your organisation",
+        "Presented as a structured visual framework (one or two pages)",
+      ],
+    },
+    4: {
+      title: "AS-IS to TO-BE — Mapping Organisational Impact",
+      brief: "Transformation is not just about technology — it changes how people work, how processes run, and how value is created. This week you map the gap between your organisation's current state and a transformed future state.",
+      deliverables: [
+        "AS-IS process map: one key business process as it currently operates",
+        "TO-BE process map: the same process after digital transformation",
+        "Stakeholder impact analysis: who is affected and how (at least four stakeholder groups)",
+        "Change readiness assessment: what capabilities or culture shifts are required",
+        "Side-by-side comparison diagram with commentary (max two pages)",
+      ],
+    },
+    5: {
+      title: "Transformation Strategy — Roadmap, Technologies & KPIs",
+      brief: "A transformation strategy without a roadmap is just a wish list. This week you design a realistic phased roadmap for your organisation, identifying the technologies that enable each phase and the KPIs that measure success.",
+      deliverables: [
+        "Three-phase transformation roadmap (short / medium / long term) with timelines",
+        "Two or three enabling technologies per phase with justification",
+        "Five measurable KPIs aligned to business outcomes — not just technology metrics",
+        "Risk register: three key risks to the strategy and proposed mitigations",
+        "Visual roadmap (Gantt-style or timeline — one page)",
+      ],
+    },
+    6: {
+      title: "CW1 — Individual Video Presentation",
+      brief: "This week is your CW1 submission week. You will record and submit a five-minute individual video presentation summarising your organisation's digital transformation case so far. Submit your video through the Blackboard assignment link — not through this Studio.",
+      deliverables: [
+        "Five-minute recorded video presentation (MP4, narrated slides, or talking-head format)",
+        "Covers: organisation overview, transformation need, key frameworks used, proposed direction",
+        "Submitted via the Blackboard CW1 Assignment before the deadline",
+        "No Studio artefact required this week — focus entirely on CW1",
+      ],
+    },
+    7: {
+      title: "Business Model Redesign — How Digital Changes the Game",
+      brief: "Post-CW1, you move into the second arc of the module: strategy alignment and deep transformation design. This week you analyse how digital transformation reshapes your organisation's business model using the Business Model Canvas.",
+      deliverables: [
+        "Current Business Model Canvas for your organisation (nine blocks completed)",
+        "Digitally transformed Business Model Canvas — showing what changes in each relevant block",
+        "Explanation of the three most significant model shifts",
+        "Revenue impact analysis: how does the transformed model affect revenue streams?",
+        "Two-canvas comparison (current vs transformed) with annotations",
+      ],
+    },
+    8: {
+      title: "Strategy Alignment — Linking Business & Digital Transformation",
+      brief: "Digital transformation only succeeds when IT strategy and business strategy are aligned. This week you assess your organisation's strategic alignment and identify where gaps exist.",
+      deliverables: [
+        "Strategic alignment audit: compare stated business goals with current digital capabilities",
+        "Identify three alignment gaps with evidence",
+        "Propose two strategic alignment initiatives to close the most critical gaps",
+        "Apply one alignment framework (e.g. Henderson-Venkatraman, Balanced Scorecard)",
+        "One-page alignment diagram with written commentary",
+      ],
+    },
+    9: {
+      title: "Predictive Analytics — Forecasting with RapidMiner",
+      brief: "Data is only valuable when it drives prediction and decision. This week you use RapidMiner to build a predictive model relevant to your organisation's transformation — demonstrating how analytics can inform strategic decisions.",
+      deliverables: [
+        "Dataset selected and prepared (publicly available or simulated — sourced and cited)",
+        "RapidMiner process built and executed: classification or regression model",
+        "Model performance metrics reported (accuracy, ROC, RMSE — as appropriate)",
+        "Interpretation: what does the model predict and what strategic decision does it inform?",
+        "Screenshot of RapidMiner process + one-page results summary",
+      ],
+    },
+    10: {
+      title: "Strategy Convergence — Mind Mapping Your Transformation Plan",
+      brief: "By Week 10 you have produced significant analytical work. This week you converge all your thinking into an integrated mind map that shows how your transformation components connect — preparing the structure for your CW2 report.",
+      deliverables: [
+        "Master mind map connecting: business context, data insights, frameworks, roadmap, business model, and analytics",
+        "At least four levels of hierarchy from the central transformation theme",
+        "Three convergence insights: what patterns or themes emerge across all your work?",
+        "CW2 outline: a structured plan for your final report based on the mind map",
+        "Mind map image (MindMeister, Coggle, or equivalent) plus one-page reflection",
+      ],
+    },
+    11: {
+      title: "Innovation & Knowledge Management — The Human Side of Transformation",
+      brief: "Technology transforms systems; people transform organisations. This week you address the human and knowledge dimensions of digital transformation — innovation culture, knowledge sharing, and change management.",
+      deliverables: [
+        "Innovation audit: how does your organisation currently foster (or hinder) innovation?",
+        "Knowledge management strategy: how should knowledge be captured and shared during transformation?",
+        "Change management plan: Kotter's 8-step model or equivalent applied to your organisation",
+        "Employee engagement proposal: one initiative to build a digital-first culture",
+        "One-page report with diagrams as appropriate",
+      ],
+    },
+    12: {
+      title: "Power BI Dashboard — Final Artefact & CW2 Review",
+      brief: "Your final studio artefact is a Power BI dashboard that visualises your organisation's transformation journey — bringing together the data, KPIs, and strategic insights from across the semester. This is also your final studio session before CW2 submission.",
+      deliverables: [
+        "Power BI dashboard with at least four visualisations relevant to your transformation case",
+        "Data connected to at least two sources (Excel, public API, or simulated dataset)",
+        "Dashboard narrative: a one-paragraph description of what each visual shows and why",
+        "CW2 readiness check: confirm your report structure covers all module learning outcomes",
+        "Submit the Power BI .pbix file or a published link via the Blackboard assignment",
+      ],
+    },
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  END CONFIG — everything below this line runs automatically
+// ═══════════════════════════════════════════════════════════════════════════
+
+
+// ── Utilities ────────────────────────────────────────────────────────────
+
+function daysUntil(dateStr) {
+  const now  = new Date(); now.setHours(0,0,0,0);
+  const then = new Date(dateStr); then.setHours(0,0,0,0);
+  return Math.round((then - now) / 86400000);
+}
+
+function fmtDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+}
+
+function showTab(id, el) {
+  document.querySelectorAll('.pg').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  document.getElementById('pg-' + id).classList.add('on');
+  if (el) el.classList.add('on');
+}
+
+// ── Peer review rotation ─────────────────────────────────────────────────
+
+function getPeerPairs(week) {
+  const g = STUDIO.guilds;
+  const offset = STUDIO.peerReviewOffset;
+  return g.map((guild, i) => ({
+    reviewer:  guild.name,
+    reviewing: g[(i + offset) % g.length].name,
+  }));
+}
+
+// ── Render: Quest ────────────────────────────────────────────────────────
+
+let _selectedWeek = STUDIO.currentWeek;
+
+function renderQuestNav() {
+  const nav = document.getElementById('questWeekNav');
+  nav.innerHTML = '';
+  for (let w = 1; w <= 12; w++) {
+    const btn = document.createElement('button');
+    btn.className = 'wk-btn' +
+      (w === STUDIO.currentWeek ? ' current' : '') +
+      (w < STUDIO.currentWeek  ? ' published' : '') +
+      (w > STUDIO.currentWeek  ? ' future' : '');
+    btn.textContent = 'Wk ' + w;
+    btn.title = (STUDIO.quests[w] || {}).title || '';
+    if (w <= STUDIO.currentWeek) btn.onclick = () => { _selectedWeek = w; renderQuestContent(); };
+    nav.appendChild(btn);
+  }
+}
+
+function renderQuestContent() {
+  const q = STUDIO.quests[_selectedWeek] || {};
+  const isCurrent = _selectedWeek === STUDIO.currentWeek;
+  const assignUrl = STUDIO.bbLinks.currentAssignment;
+
+  document.getElementById('questTitle').textContent =
+    `Week ${_selectedWeek}${q.title ? ': ' + q.title : ''}`;
+  document.getElementById('questBrief').textContent =
+    q.brief || 'No brief set for this week yet. Check back soon.';
+
+  const deliverables = q.deliverables || [];
+  document.getElementById('questDeliverables').innerHTML = deliverables.length
+    ? deliverables.map((d, i) =>
+        `<div class="deliverable-item">
+          <div class="del-num">${i + 1}</div>
+          <div style="font-size:12px;line-height:1.6;color:#334155">${d}</div>
+        </div>`).join('')
+    : '<p style="color:#94a3b8;font-size:12px">No deliverables listed.</p>';
+
+  // Submit button
+  const subBtn = document.getElementById('questSubmitBtn');
+  if (isCurrent && assignUrl) {
+    subBtn.href    = assignUrl;
+    subBtn.style.display = 'inline-flex';
+  } else if (isCurrent) {
+    subBtn.style.display = 'none';
+    document.getElementById('questSubmitNote').style.display = 'block';
+  } else {
+    subBtn.style.display = 'none';
+    document.getElementById('questSubmitNote').style.display = 'none';
+  }
+
+  // Update nav active state
+  document.querySelectorAll('.wk-btn').forEach((btn, i) => {
+    btn.classList.toggle('current', i + 1 === _selectedWeek);
+  });
+}
+
+// ── Render: Peer Review ──────────────────────────────────────────────────
+
+function renderPeerReview() {
+  const pairs = getPeerPairs(STUDIO.currentWeek);
+  const prUrl = STUDIO.bbLinks.peerReviewForm;
+
+  document.getElementById('prWeek').textContent = STUDIO.currentWeek;
+  document.getElementById('prList').innerHTML = pairs.map(p =>
+    `<div class="pr-match">
+      <div class="guild-tag">${p.reviewer}</div>
+      <div class="arrow">→</div>
+      <div class="guild-tag reviewing">reviews ${p.reviewing}</div>
+    </div>`
+  ).join('');
+
+  const btn = document.getElementById('prSubmitBtn');
+  if (prUrl) { btn.href = prUrl; btn.style.display = 'inline-flex'; }
+  else        { btn.style.display = 'none'; document.getElementById('prNote').style.display='block'; }
+}
+
+// ── Render: Leaderboard ──────────────────────────────────────────────────
+
+function renderLeaderboard() {
+  const sorted = [...STUDIO.guilds].sort((a, b) => b.xp - a.xp);
+  const maxXP  = sorted[0]?.xp || 1;
+  const rankCls = r => r===1?'gold':r===2?'silver':r===3?'bronze':'other';
+  const rankIcon= r => r===1?'🥇':r===2?'🥈':r===3?'🥉':r;
+
+  document.getElementById('lbList').innerHTML = sorted.map((g, i) => {
+    const rank = i + 1;
+    const pct  = maxXP > 0 ? Math.round(g.xp / maxXP * 100) : 0;
+    return `<div class="lb-row">
+      <div class="lb-rank ${rankCls(rank)}">${rankIcon(rank)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:800;color:#1B3A6B">${g.name}
+            ${g.badges.length ? '<span style="margin-left:6px">' + g.badges.join('') + '</span>' : ''}
+          </span>
+          <span style="font-size:11px;font-weight:800;color:#0D7377">${g.xp} XP</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="xp-bar-wrap"><div class="xp-bar-fill" style="width:${pct}%"></div></div>
+          <span style="font-size:10px;color:#94a3b8;white-space:nowrap">${g.campus}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // XP explainer
+  document.getElementById('lbXpNote').innerHTML =
+    `<strong>XP is awarded by the Module Leader</strong> each week based on guild submissions and engagement in Blackboard. ` +
+    `Badges are awarded for milestones: 🚀 First submission · ⭐ Halfway · 🔥 Streak · 🤝 Peer review champion · 🏅 Full semester.`;
+}
+
+// ── Render: Timeline ────────────────────────────────────────────────────
+
+function renderTimeline() {
+  const dl = STUDIO.deadlines;
+  const deadlines = [
+    { label: 'CW1 Submission', date: dl.cw1Sub  },
+    { label: 'CW1 Marking',    date: dl.cw1Mark },
+    { label: 'CW2 Submission', date: dl.cw2Sub  },
+    { label: 'CW2 Marking',    date: dl.cw2Mark },
+  ];
+
+  document.getElementById('deadlineGrid').innerHTML = deadlines.map(d => {
+    const days = daysUntil(d.date);
+    const cls  = days < 0 ? 'past' : days <= 7 ? 'urgent' : days <= 21 ? 'warn' : 'ok';
+    const lbl  = days < 0 ? 'days ago' : days === 0 ? 'Today!' : days === 1 ? 'day left' : 'days left';
+    const val  = days < 0 ? Math.abs(days) : days;
+    return `<div class="deadline-card ${cls}">
+      <div class="days">${val}</div>
+      <div class="label">${lbl}</div>
+      <div style="font-size:11px;font-weight:700;color:#334155;margin-top:6px">${d.label}</div>
+      <div class="date">${fmtDate(d.date)}</div>
+    </div>`;
+  }).join('');
+
+  // 12-week grid
+  const wkTitles = Object.fromEntries(
+    Object.entries(STUDIO.quests).map(([w, q]) => [w, q.title.split('—')[0].trim()])
+  );
+  document.getElementById('weekGrid').innerHTML = Array.from({length:12},(_,i) => {
+    const w = i + 1;
+    const isCurrent = w === STUDIO.currentWeek;
+    const isDone    = w < STUDIO.currentWeek;
+    return `<div class="wk-tile ${isCurrent?'current':isDone?'done':''}">
+      <div class="wn">${w}</div>
+      <div class="wt">${(wkTitles[w] || '').replace(/^CW\d\s*[—–]\s*/,'')}</div>
+      ${isCurrent ? '<div style="font-size:9px;color:#0D7377;font-weight:700;margin-top:3px">◉ NOW</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── Render: Announcement ────────────────────────────────────────────────
+
+function renderAnnouncement() {
+  const a = STUDIO.announcement;
+  const banner = document.getElementById('announceBanner');
+  if (!a.body) { banner.style.display = 'none'; return; }
+  const typeMap = { info:'', good:'good', warn:'warn', urgent:'urgent' };
+  banner.className = 'announce-banner ' + (typeMap[a.type] || '');
+  banner.innerHTML = `<span>${a.type==='urgent'?'🔴':a.type==='warn'?'⚠️':a.type==='good'?'✅':'ℹ️'}</span>
+    <span>${a.body}</span>`;
+  banner.style.display = 'flex';
+}
+
+// ── AI Feedback ──────────────────────────────────────────────────────────
+
+async function runAIFeedback() {
+  const key = STUDIO.aiKey;
+  if (!key) {
+    document.getElementById('aiOut').textContent =
+      'AI feedback is not enabled in this embedded view.\n\nTo get AI feedback on your work, open the Studio directly at:\nhttps://tertsegha1.github.io/cmp701-studio/?role=student\n\nPaste your work there under the AI Feedback tab.';
+    return;
+  }
+  const type = document.getElementById('aiType').value;
+  const text = document.getElementById('aiText').value.trim();
+  if (!text) { alert('Paste your work first.'); return; }
+
+  const out = document.getElementById('aiOut');
+  out.className = 'ai-output loading';
+  out.textContent = 'Generating feedback…';
+
+  // Anonymise: strip any text that looks like a full name before sending
+  const anon = text.replace(/\b[A-Z][a-z]+ [A-Z][a-z]+\b/g, '[Student]');
+
+  const typeLabels = {
+    artefact: 'weekly studio artefact',
+    cw1: 'CW1 individual video presentation script / plan',
+    cw2: 'CW2 written report draft',
+  };
+
+  const prompt = `You are a supportive university tutor giving formative feedback on a student's ${typeLabels[type]} for the CMP701 Digital Transformation module at Ulster University QAHE.
+
+Student work:
+${anon}
+
+Provide structured developmental feedback covering:
+1. STRENGTHS — what is working well (2–3 specific points)
+2. AREAS FOR IMPROVEMENT — what needs development (2–3 specific points)
+3. NEXT STEPS — one concrete action the student should take before submitting
+
+Then provide an AI WRITING ESTIMATE:
+Estimated AI-generated content: [X]%
+Signals observed: [2–3 brief observations about writing style]
+Advice: [one practical tip to make the writing more authentically the student's own]
+
+Keep the tone encouraging and specific. Do not award a formal grade.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    const data = await res.json();
+    out.className = 'ai-output';
+    out.textContent = data?.content?.[0]?.text || 'No response received.';
+  } catch(e) {
+    out.className = 'ai-output';
+    out.textContent = 'Error reaching AI service. Check your connection and try again.';
+  }
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────
+
+window.addEventListener('DOMContentLoaded', () => {
+  renderAnnouncement();
+  renderQuestNav();
+  renderQuestContent();
+  renderPeerReview();
+  renderLeaderboard();
+  renderTimeline();
+
+  // Show first tab
+  showTab('quest', document.querySelector('.tab'));
+
+  // Set header info
+  document.getElementById('weekLabel').textContent   = 'Week ' + STUDIO.currentWeek;
+  document.getElementById('cohortLabel').textContent = STUDIO.cohortName;
+});
+</script>
+
+<!-- ── Header ── -->
+<div class="hdr">
+  <div>
+    <div class="hdr-title">CMP701 — Digital Transformation Studio</div>
+    <div class="hdr-meta">Ulster University QAHE &nbsp;·&nbsp; Dr Tertsegha Anande</div>
+  </div>
+  <div class="hdr-right">
+    <span class="cohort-pill" id="cohortLabel">Loading…</span>
+    <span class="week-pill" id="weekLabel">Week —</span>
+  </div>
+</div>
+
+<!-- ── Announcement Banner ── -->
+<div id="announceBanner" class="announce-banner" style="display:none"></div>
+
+<!-- ── Tabs ── -->
+<div class="tabs">
+  <button class="tab on"  onclick="showTab('quest',       this)">📋 This Week's Quest</button>
+  <button class="tab"     onclick="showTab('peer',        this)">🤝 Peer Review</button>
+  <button class="tab"     onclick="showTab('leaderboard', this)">🏆 Leaderboard</button>
+  <button class="tab"     onclick="showTab('ai',          this)">⚡ AI Feedback</button>
+  <button class="tab"     onclick="showTab('timeline',    this)">📅 Timeline</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- QUEST TAB                                             -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="pg on" id="pg-quest">
+  <!-- Week navigation -->
+  <div class="card">
+    <div class="card-hdr teal">
+      <span>Browse Quests</span>
+      <span style="font-size:10px;opacity:.8;font-weight:400">Weeks up to the current week are unlocked</span>
+    </div>
+    <div class="card-body">
+      <div id="questWeekNav" class="quest-week-nav"></div>
+    </div>
+  </div>
+
+  <!-- Quest content -->
+  <div class="card">
+    <div class="card-hdr blue" id="questTitle">Week — </div>
+    <div class="card-body">
+      <p id="questBrief" style="font-size:12px;line-height:1.7;color:#334155;margin-bottom:16px"></p>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#0D7377;margin-bottom:10px">
+        Deliverables
+      </div>
+      <div id="questDeliverables"></div>
+
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <a id="questSubmitBtn" class="btn btn-primary" target="_blank" style="display:none">
+          📤 Submit This Week's Artefact →
+        </a>
+        <p id="questSubmitNote" style="display:none;font-size:11px;color:#64748b">
+          Submit your artefact via the <strong>Blackboard Assignment</strong> in your course content area.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workspace link -->
+  <div class="card">
+    <div class="card-hdr green">Your Guild Workspace</div>
+    <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <p style="font-size:12px;color:#334155;line-height:1.6">
+        All guild collaboration, drafts, and file sharing take place in your <strong>Blackboard Group Workspace</strong>.
+        Your submission goes to the weekly Blackboard Assignment.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn btn-teal" id="guildWorkspaceBtn"
+           href="#" target="_blank"
+           onclick="if(!STUDIO.bbLinks.guildWorkspace){alert('Guild workspace link not configured yet — check with your module leader.');return false}this.href=STUDIO.bbLinks.guildWorkspace">
+          🏠 Open Guild Workspace
+        </a>
+        <a class="btn btn-ghost" id="gradebookBtn"
+           href="#" target="_blank"
+           onclick="if(!STUDIO.bbLinks.gradebook){alert('Gradebook link not configured yet.');return false}this.href=STUDIO.bbLinks.gradebook">
+          📊 My Grades
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- PEER REVIEW TAB                                       -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="pg" id="pg-peer">
+  <div class="card">
+    <div class="card-hdr teal">Week <span id="prWeek">—</span> — Peer Review Assignments</div>
+    <div class="card-body">
+      <div class="alert alert-info" style="margin-bottom:14px">
+        <strong>How it works:</strong> Each guild reviews another guild's artefact this week.
+        Find your guild in the left column — the right column shows which guild you are reviewing.
+        Access the review form via the button below.
+      </div>
+      <div id="prList"></div>
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <a id="prSubmitBtn" class="btn btn-primary" target="_blank" style="display:none">
+          📝 Open Peer Review Form →
+        </a>
+        <p id="prNote" style="display:none;font-size:11px;color:#64748b">
+          Complete your peer review in the <strong>Blackboard discussion board or assignment</strong> set up for this week.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr blue">Peer Review Criteria</div>
+    <div class="card-body">
+      <p style="font-size:12px;color:#334155;margin-bottom:10px">When reviewing another guild's artefact, provide structured feedback on:</p>
+      <div class="deliverable-item">
+        <div class="del-num">1</div>
+        <div><strong style="font-size:12px">Strengths</strong>
+          <div style="font-size:11px;color:#64748b">What did the guild do well? Be specific — reference their content.</div>
+        </div>
+      </div>
+      <div class="deliverable-item">
+        <div class="del-num">2</div>
+        <div><strong style="font-size:12px">Areas for Improvement</strong>
+          <div style="font-size:11px;color:#64748b">What could be developed further? Suggest how, not just what.</div>
+        </div>
+      </div>
+      <div class="deliverable-item">
+        <div class="del-num">3</div>
+        <div><strong style="font-size:12px">Rating (1–5)</strong>
+          <div style="font-size:11px;color:#64748b">1 = Needs significant development &nbsp;·&nbsp; 3 = Meets expectations &nbsp;·&nbsp; 5 = Exceptional</div>
+        </div>
+      </div>
+      <div class="deliverable-item">
+        <div class="del-num">4</div>
+        <div><strong style="font-size:12px">One Key Takeaway</strong>
+          <div style="font-size:11px;color:#64748b">What is the single most useful thing this guild's work taught your team?</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- LEADERBOARD TAB                                       -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="pg" id="pg-leaderboard">
+  <div class="card">
+    <div class="card-hdr grad">🏆 Guild XP Leaderboard — <span id="lbCohort"></span></div>
+    <div class="card-body">
+      <div id="lbList"></div>
+      <div style="margin-top:12px;background:#f8fafc;border-radius:6px;padding:10px;font-size:11px;color:#64748b" id="lbXpNote"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr amber">Badge Guide</div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#f8fafc;border-radius:6px">
+          <span style="font-size:20px">🚀</span>
+          <div><div style="font-size:11px;font-weight:700">First Launch</div><div style="font-size:10px;color:#64748b">Guild's first artefact submitted</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#f8fafc;border-radius:6px">
+          <span style="font-size:20px">⭐</span>
+          <div><div style="font-size:11px;font-weight:700">Halfway There</div><div style="font-size:10px;color:#64748b">6 weeks of submissions complete</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#f8fafc;border-radius:6px">
+          <span style="font-size:20px">🔥</span>
+          <div><div style="font-size:11px;font-weight:700">On a Roll</div><div style="font-size:10px;color:#64748b">3 consecutive weekly submissions</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#f8fafc;border-radius:6px">
+          <span style="font-size:20px">🤝</span>
+          <div><div style="font-size:11px;font-weight:700">Peer Champion</div><div style="font-size:10px;color:#64748b">Completed 5+ peer reviews</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#f8fafc;border-radius:6px">
+          <span style="font-size:20px">🏅</span>
+          <div><div style="font-size:11px;font-weight:700">Quest Master</div><div style="font-size:10px;color:#64748b">All 12 weekly artefacts submitted</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- AI FEEDBACK TAB                                       -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="pg" id="pg-ai">
+  <div class="card">
+    <div class="card-hdr purple">⚡ Formative AI Feedback</div>
+    <div class="card-body">
+      <div class="alert alert-info">
+        <strong>Formative only — not a formal grade.</strong>
+        Paste a draft of your work to get developmental feedback before submitting to Blackboard.
+        Do not include your full name in the text you paste.
+        This tool does <em>not</em> connect to Turnitin.
+      </div>
+      <div class="form-group">
+        <label>What are you getting feedback on?</label>
+        <select id="aiType">
+          <option value="artefact">This week's studio artefact</option>
+          <option value="cw1">CW1 draft — video script or presentation plan</option>
+          <option value="cw2">CW2 draft — written report</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Paste your work here <span style="font-weight:400;color:#94a3b8">(do not include your name)</span></label>
+        <textarea id="aiText" rows="10" placeholder="Paste your draft, description, or script here…"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="runAIFeedback()">⚡ Get Feedback</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hdr purple">Feedback</div>
+    <div class="card-body">
+      <div class="ai-output loading" id="aiOut">Your feedback will appear here after you submit your work above.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TIMELINE TAB                                          -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="pg" id="pg-timeline">
+  <div class="card">
+    <div class="card-hdr blue">Key Deadlines</div>
+    <div class="card-body">
+      <div id="deadlineGrid" class="deadline-grid"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hdr teal">12-Week Semester Overview</div>
+    <div class="card-body">
+      <div id="weekGrid" class="wk-grid"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
