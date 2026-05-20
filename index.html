@@ -191,6 +191,12 @@ textarea{resize:vertical;min-height:80px}
 .embed-box{background:#f8fafc;border:2px dashed #94a3b8;border-radius:8px;padding:20px;margin-top:12px;text-align:center}
 .embed-code{background:#1e293b;color:#e2e8f0;padding:14px;border-radius:6px;font-family:monospace;font-size:11px;text-align:left;overflow-x:auto;margin-top:10px;white-space:pre}
 
+/* Embed mode — running inside a Blackboard Ultra iFrame */
+body.embed .hdr{display:none}
+body.embed{background:#fff}
+body.embed .pg{padding:8px 10px}
+body.embed .tabs{top:0;position:sticky;z-index:90}
+
 /* Role colors */
 .role-facilitator{background:#dbeafe;color:#1D4ED8}
 .role-analyst{background:#ede9fe;color:#7C3AED}
@@ -545,39 +551,63 @@ textarea{resize:vertical;min-height:80px}
 <!-- BLACKBOARD SETUP -->
 <div class="pg" id="pg-bb-setup">
   <div class="card">
-    <div class="card-hdr blue">Blackboard Integration Guide</div>
+    <div class="card-hdr blue">Blackboard Ultra — Integration Guide</div>
     <div class="card-body">
-      <div class="alert alert-info">This Studio system is designed to embed seamlessly into your Blackboard module page as a web tool. Follow the steps below for each method.</div>
+      <div class="alert alert-info"><strong>Embed mode is now available.</strong> The Studio runs fully inside Blackboard Ultra via an HTML block — students read quest briefs, upload artefacts, complete peer reviews, and check the leaderboard without leaving Blackboard.</div>
 
-      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px;margin-top:16px">Method 1 — Embed as Web Link (Recommended)</h3>
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin:16px 0 8px">Method 1 — Full Embed in Blackboard Ultra HTML Block <span style="font-size:10px;background:#dcfce7;color:#14532d;border-radius:4px;padding:2px 8px;margin-left:6px;font-weight:700">RECOMMENDED</span></h3>
+      <p style="font-size:12px;color:#475569;margin-bottom:8px">Students complete everything — quest brief, artefact upload, peer review, leaderboard — inside Blackboard. No new tab.</p>
       <ol style="font-size:12px;line-height:2;margin-left:16px;color:#334155">
-        <li>In your Blackboard module, go to <strong>Content</strong> → <strong>Build Content</strong> → <strong>Web Link</strong></li>
-        <li>Name it: <em>Digital Transformation Studio</em></li>
-        <li>Paste the Studio URL below into the URL field</li>
-        <li>Check <strong>"This link is to a Tool Provider"</strong> if available</li>
-        <li>Check <strong>"Open in New Window"</strong> for best experience</li>
-        <li>Set availability to students and click Submit</li>
+        <li>In Blackboard Ultra, open your course content area</li>
+        <li>Click the <strong>+</strong> button → <strong>Create</strong> → <strong>HTML (Embed)</strong></li>
+        <li>Paste the embed code below into the HTML editor and save</li>
       </ol>
-
-      <div class="embed-box">
-        <p style="font-size:12px;color:#475569;margin-bottom:8px">Your Studio URL (copy this into Blackboard)</p>
-        <div class="embed-code" id="bbStudentUrl">https://tertsegha1.github.io/cmp701-studio/</div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyBBUrl()">Copy URL</button>
+      <div class="embed-code" id="bbUltraEmbedCode">&lt;iframe
+  src="https://tertsegha1.github.io/cmp701-studio/?role=student&amp;cohort=default&amp;embed=1"
+  width="100%"
+  height="950"
+  frameborder="0"
+  allow="clipboard-write;camera;microphone"
+  style="border:none;border-radius:8px;display:block"
+  title="CMP701 Digital Transformation Studio"&gt;
+&lt;/iframe&gt;</div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary btn-sm" onclick="copyUltraEmbedCode()">Copy Embed Code</button>
+        <span style="font-size:11px;color:#64748b">Change <code>cohort=default</code> to your cohort ID (see Cohorts tab)</span>
+      </div>
+      <div class="alert alert-warn" style="margin-top:10px">
+        <strong>One-time Firebase Storage setup required for file uploads:</strong> In your <a href="https://console.firebase.google.com/project/cmp701markingtracker/storage" target="_blank" style="color:#1D4ED8">Firebase Console → Storage → Rules</a>, replace the default rules with:<br>
+        <code style="font-size:10px;background:#fff3cd;padding:4px 8px;border-radius:4px;display:block;margin-top:6px;white-space:pre-wrap">rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} { allow read, write: if true; }
+  }
+}</code>
       </div>
 
       <div class="divider"></div>
 
-      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Method 2 — Embed as iFrame in a Blackboard Item <span style="font-size:11px;font-weight:700;background:#fee2e2;color:#B91C1C;border-radius:4px;padding:2px 8px;margin-left:6px">NOT RECOMMENDED</span></h3>
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:8px">Per-Cohort Embed URLs</h3>
+      <p style="font-size:12px;color:#475569;margin-bottom:8px">Running multiple cohorts? Create a separate HTML block for each with the correct cohort ID:</p>
+      <div class="embed-code" style="font-size:10px">Student embed (replace COHORT_ID):
+https://tertsegha1.github.io/cmp701-studio/?role=student&amp;cohort=COHORT_ID&amp;embed=1
+
+Lecturer view (opens in new tab — no embed mode):
+https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</div>
+      <p style="font-size:11px;color:#64748b;margin-top:6px">Use <strong>Copy Lecturer Link</strong> on each cohort card (Cohorts tab) — it generates the URL automatically.</p>
+
+      <div class="divider"></div>
+
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:8px">Method 2 — iFrame in a Blackboard Classic Item <span style="font-size:11px;font-weight:700;background:#fee2e2;color:#B91C1C;border-radius:4px;padding:2px 8px;margin-left:6px">CLASSIC ONLY</span></h3>
       <ol style="font-size:12px;line-height:2;margin-left:16px;color:#334155">
-        <li>Go to <strong>Build Content</strong> → <strong>Item</strong></li>
+        <li>Go to <strong>Build Content → Item</strong></li>
         <li>In the text editor, click the <strong>HTML source</strong> button (<code>&lt;/&gt;</code>)</li>
-        <li>Paste the iframe code below</li>
-        <li>Click Submit</li>
+        <li>Paste the code below and click Submit</li>
       </ol>
       <div class="embed-code" id="bbIframeCode">&lt;iframe
-  src="https://tertsegha1.github.io/cmp701-studio/?role=student"
+  src="https://tertsegha1.github.io/cmp701-studio/?role=student&amp;cohort=default&amp;embed=1"
   width="100%"
-  height="800"
+  height="950"
   frameborder="0"
   allow="clipboard-write"
   style="border-radius:8px;border:none"&gt;
@@ -586,33 +616,25 @@ textarea{resize:vertical;min-height:80px}
 
       <div class="divider"></div>
 
-      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Method 3 — Separate Student Access Link</h3>
-      <p style="font-size:12px;color:#475569;margin-bottom:10px">Share this direct link with students via Blackboard Announcement or email. It opens in Student View automatically:</p>
-      <div class="embed-code" id="bbStudentDirectUrl">https://tertsegha1.github.io/cmp701-studio/?role=student</div>
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:8px">Method 3 — Web Link (Opens in New Tab)</h3>
+      <p style="font-size:12px;color:#475569;margin-bottom:8px">If HTML blocks are unavailable, share this URL in a Blackboard announcement or Web Link item:</p>
+      <div class="embed-code" id="bbStudentDirectUrl">https://tertsegha1.github.io/cmp701-studio/?role=student&amp;cohort=default</div>
       <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyStudentUrl()">Copy Student URL</button>
 
       <div class="divider"></div>
 
-      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Lecturer / Tutor Access Link</h3>
-      <p style="font-size:12px;color:#475569;margin-bottom:10px">Share this link with seminar leaders, visiting lecturers, and tutors. It opens in <strong>Lecturer View</strong> — they can see submissions, run AI assessment, and post announcements, but cannot change configuration or manage cohorts.</p>
-      <div class="embed-code">https://tertsegha1.github.io/cmp701-studio/?role=lecturer</div>
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="navigator.clipboard.writeText('https://tertsegha1.github.io/cmp701-studio/?role=lecturer');toast('Copied!','ok')">Copy Lecturer URL</button>
-      <p style="font-size:11px;color:#64748b;margin-top:8px">For a specific cohort: use the <strong>Copy Lecturer Link</strong> button on the cohort card in the Cohorts tab — it appends the cohort ID automatically.</p>
-
-      <div class="divider"></div>
-
-      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">AI Configuration (Module Leader)</h3>
-      <p style="font-size:12px;color:#475569;margin-bottom:8px">Enter your Anthropic API key once here. It is stored in your browser only and used silently by all AI features — lecturers and students never see or need to enter it.</p>
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:8px">AI Configuration (Module Leader)</h3>
+      <p style="font-size:12px;color:#475569;margin-bottom:8px">Enter your Anthropic API key once. It is saved to your browser <strong>and</strong> synced to Firebase so that all embedded sessions (including student AI feedback inside Blackboard) work without re-entry.</p>
       <div style="display:flex;gap:8px;align-items:center;max-width:500px">
         <input type="password" id="masterApiKey" placeholder="sk-ant-api03-…" style="flex:1;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px">
         <button class="btn btn-primary" onclick="saveMasterApiKey()">Save Key</button>
       </div>
-      <small style="color:#64748b;font-size:10px;margin-top:4px;display:block">Never stored in Firebase. Stays in this browser's localStorage only.</small>
+      <small style="color:#64748b;font-size:10px;margin-top:4px;display:block">Saved to browser storage and synced to Firebase — works across all sessions including Blackboard iframes.</small>
 
       <div class="divider"></div>
 
-      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Teaching Team</h3>
-      <p style="font-size:12px;color:#475569;margin-bottom:10px">Members listed here can access Lecturer View. When a team member opens the lecturer URL, they must select their name from this list before proceeding. <strong>Update this list at the start of each semester.</strong></p>
+      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:8px">Teaching Team</h3>
+      <p style="font-size:12px;color:#475569;margin-bottom:10px">Members listed here can access Lecturer View. When a team member opens the lecturer URL, they must select their name from this list. <strong>Update at the start of each semester.</strong></p>
       <div class="form-row" style="align-items:flex-end;margin-bottom:10px">
         <div class="form-group" style="flex:2 1 180px">
           <label>Full Name</label>
@@ -633,12 +655,6 @@ textarea{resize:vertical;min-height:80px}
         <button class="btn btn-danger btn-sm" onclick="clearTeachingTeam()">🗑 Clear All (New Semester)</button>
         <span style="font-size:10px;color:#64748b">Removes all members — use at the start of each semester before adding the new team.</span>
       </div>
-
-      <div class="divider"></div>
-
-      <h3 style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:10px">Student Identification</h3>
-      <p style="font-size:12px;color:#475569;margin-bottom:10px">Students select their name from a dropdown when they first open the Studio. Their progress is then tracked under their name in the Submissions tab above.</p>
-      <div class="alert alert-warn">Blackboard does not automatically pass student identity to external tools unless you use LTI. For LTI integration, contact your Blackboard administrator to register this tool as an LTI provider.</div>
     </div>
   </div>
 
@@ -806,23 +822,48 @@ textarea{resize:vertical;min-height:80px}
           <select id="submitWeekSel" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px"></select>
         </div>
         <div class="form-group" style="flex:3">
-          <label>Artefact Title / Description</label>
+          <label>Artefact Title</label>
           <input type="text" id="submitTitle" placeholder="e.g. Business Snapshot — Netflix Digital Maturity Analysis">
         </div>
       </div>
+
+      <!-- File upload (primary) -->
       <div class="form-group" style="margin-bottom:12px">
-        <label>Artefact Link (URL, OneDrive, Google Drive, etc.)</label>
+        <label>Upload Your Artefact <span style="font-weight:400;color:#64748b">(PDF, PPTX, DOCX, images — max 50 MB)</span></label>
+        <div class="drop-zone" id="artefactDropZone"
+             onclick="document.getElementById('artefactFileInput').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleArtefactDrop(event)">
+          <div id="artefactDropLabel" style="pointer-events:none">📁 Drop your file here or click to browse</div>
+        </div>
+        <input type="file" id="artefactFileInput" style="display:none"
+               accept=".pdf,.pptx,.ppt,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg,.gif,.mp4,.zip"
+               onchange="handleArtefactFileSelect(this.files[0])">
+        <!-- Upload progress -->
+        <div id="uploadProgress" style="display:none;margin-top:8px">
+          <div class="pbar-wrap" style="height:10px">
+            <div class="pbar-fill" id="uploadProgressBar" style="width:0%;background:#15803D;transition:width .2s ease"></div>
+          </div>
+          <div id="uploadProgressText" style="font-size:10px;color:#64748b;margin-top:4px">Uploading…</div>
+        </div>
+      </div>
+
+      <!-- Optional link fallback -->
+      <div class="form-group" style="margin-bottom:12px">
+        <label style="color:#64748b">Or paste a link instead <span style="font-weight:400">(OneDrive / Google Drive / SharePoint — if not uploading a file)</span></label>
         <input type="url" id="submitLink" placeholder="https://…">
       </div>
+
       <div class="form-group" style="margin-bottom:12px">
-        <label>Description / Summary (What did you produce this week?)</label>
+        <label>Description / Summary <span style="font-weight:400;color:#64748b">(What did you produce this week?)</span></label>
         <textarea id="submitDescription" rows="5" placeholder="Briefly describe your artefact, key findings, and how it connects to your chosen business…"></textarea>
       </div>
       <div class="form-group" style="margin-bottom:16px">
-        <label>Reflection (What did you learn? What would you do differently?)</label>
+        <label>Reflection <span style="font-weight:400;color:#64748b">(What did you learn? What would you do differently?)</span></label>
         <textarea id="submitReflection" rows="4" placeholder="Your honest reflection on this week's studio work…"></textarea>
       </div>
-      <button class="btn btn-primary" style="min-width:180px" onclick="submitArtefact()">Submit Artefact</button>
+      <button class="btn btn-primary" style="min-width:180px" id="submitBtn" onclick="submitArtefact()">Submit Artefact</button>
     </div>
   </div>
 </div>
@@ -1198,6 +1239,7 @@ textarea{resize:vertical;min-height:80px}
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
 <script>
 // ─── Firebase ───────────────────────────────────────────────
@@ -1211,7 +1253,31 @@ const _fbCfg = {
   appId: "1:151181822417:web:08f7f794b1ac40746638f0"
 };
 firebase.initializeApp(_fbCfg);
-const db = firebase.database();
+const db      = firebase.database();
+const storage = firebase.storage();
+
+// safeStore: localStorage with automatic sessionStorage fallback for cross-origin iframes
+// (Safari's ITP and Chrome with strict third-party cookie settings block localStorage in iframes)
+const safeStore = (() => {
+  try { localStorage.setItem('_cmp_ok','1'); localStorage.removeItem('_cmp_ok'); return localStorage; }
+  catch(e) { console.info('[CMP701] Using sessionStorage (iframe/Safari ITP mode)'); return sessionStorage; }
+})();
+
+// API key: preloaded from safeStore then Firebase so all sessions (including iframes) have it
+let _apiKey = '';
+async function preloadApiKey() {
+  _apiKey = safeStore.getItem('cmp701_ai_key') || '';
+  if (!_apiKey) {
+    try {
+      const snap = await db.ref('studio/__config/aiKey').once('value');
+      _apiKey = snap.val() || '';
+      if (_apiKey) safeStore.setItem('cmp701_ai_key', _apiKey);
+    } catch(e) {}
+  }
+  // Populate the key field for the leader if present
+  const f = document.getElementById('masterApiKey');
+  if (f && _apiKey) f.value = _apiKey;
+}
 
 // ─── State ──────────────────────────────────────────────────
 let userRole = 'leader'; // 'leader' | 'lecturer' | 'student'
@@ -1243,12 +1309,15 @@ window.addEventListener('DOMContentLoaded', () => {
   if (urlRole === 'student')  { userRole = 'student';   isLeader = false; isLecturer = false; }
   if (urlRole === 'lecturer') { userRole = 'lecturer';  isLeader = false; isLecturer = true;  }
 
-  // Restore API key into config field (leader only)
-  const savedKey = localStorage.getItem('cmp701_ai_key');
-  if (savedKey) { const f = document.getElementById('masterApiKey'); if (f) f.value = savedKey; }
+  // Preload API key from safeStore / Firebase (async — AI features fire on user action so timing is fine)
+  preloadApiKey();
+
+  // Embed mode: hide header when running inside a Blackboard iframe
+  const isEmbed = params.get('embed') === '1';
+  if (isEmbed) document.body.classList.add('embed');
 
   // Restore last cohort
-  const savedCohort = localStorage.getItem('cmp701_cohort') || 'default';
+  const savedCohort = safeStore.getItem('cmp701_cohort') || 'default';
 
   // Load cohort list first, then subscribe to data
   sRef('__cohorts').on('value', snap => {
@@ -1261,7 +1330,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Restore lecturer identity from previous session
   if (isLecturer) {
-    const saved = localStorage.getItem('cmp701_lecturer');
+    const saved = safeStore.getItem('cmp701_lecturer');
     if (saved) {
       try { currentLecturer = JSON.parse(saved); } catch(e) { currentLecturer = null; }
     }
@@ -1290,7 +1359,7 @@ function subscribeToCohort(cohortId) {
 
   COHORT_ID   = cohortId;
   COHORT_PATH = cohortId === 'default' ? 'studio' : 'studio/c_' + cohortId;
-  localStorage.setItem('cmp701_cohort', cohortId);
+  safeStore.setItem('cmp701_cohort', cohortId);
 
   _mainUnsub = snap => {
     const raw = snap.val() || {};
@@ -1937,15 +2006,88 @@ function updateAIForm() {
   else { lbl.textContent = 'Artefact Description / Summary'; wkGrp.style.display = 'block'; }
 }
 
-function getStoredApiKey() { return localStorage.getItem('cmp701_ai_key') || ''; }
+function getStoredApiKey() { return _apiKey; }
 function saveMasterApiKey() {
   const key = document.getElementById('masterApiKey').value.trim();
   if (!key) { toast('Enter a key first', 'err'); return; }
-  localStorage.setItem('cmp701_ai_key', key);
-  toast('API key saved!', 'ok');
+  _apiKey = key;
+  safeStore.setItem('cmp701_ai_key', key);
+  db.ref('studio/__config/aiKey').set(key); // also save to Firebase so all sessions/iframes can read it
+  toast('API key saved — synced to Firebase for all sessions', 'ok');
 }
 
-// ─── File upload state ────────────────────────────────────────
+// ─── Artefact file upload (student submission) ────────────────
+let _artefactFile = null;
+
+function handleArtefactDrop(e) {
+  e.preventDefault();
+  document.getElementById('artefactDropZone').classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleArtefactFileSelect(e.dataTransfer.files[0]);
+}
+
+function handleArtefactFileSelect(file) {
+  if (!file) return;
+  const maxMB = 50;
+  if (file.size > maxMB * 1024 * 1024) {
+    toast('File too large — max ' + maxMB + ' MB', 'err');
+    return;
+  }
+  _artefactFile = file;
+  document.getElementById('artefactDropLabel').innerHTML =
+    `✅ <strong>${file.name}</strong> <span style="color:#64748b">(${formatFileSize(file.size)})</span> — <span style="color:#B91C1C;cursor:pointer;text-decoration:underline" onclick="clearArtefactFile()">Remove</span>`;
+  document.getElementById('artefactDropZone').style.borderColor = '#0D7377';
+  document.getElementById('artefactDropZone').style.background  = '#f0fdfa';
+  // Auto-fill title if empty
+  const titleEl = document.getElementById('submitTitle');
+  if (titleEl && !titleEl.value) titleEl.value = file.name.replace(/\.[^/.]+$/, '');
+}
+
+function clearArtefactFile() {
+  _artefactFile = null;
+  document.getElementById('artefactFileInput').value = '';
+  document.getElementById('artefactDropLabel').textContent = '📁 Drop your file here or click to browse';
+  document.getElementById('artefactDropZone').style.borderColor = '';
+  document.getElementById('artefactDropZone').style.background  = '';
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024)         return bytes + ' B';
+  if (bytes < 1024 * 1024)  return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function uploadArtefactToStorage(studentId, weekNum) {
+  if (!_artefactFile) return null;
+  const file    = _artefactFile;
+  const safeName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path    = `submissions/${COHORT_ID}/${studentId}/week-${weekNum}/${safeName}`;
+  const ref     = storage.ref(path);
+
+  const progressWrap = document.getElementById('uploadProgress');
+  const progressBar  = document.getElementById('uploadProgressBar');
+  const progressText = document.getElementById('uploadProgressText');
+  progressWrap.style.display = 'block';
+  progressBar.style.width    = '0%';
+
+  return new Promise((resolve, reject) => {
+    const task = ref.put(file);
+    task.on('state_changed',
+      snap => {
+        const pct = Math.round(snap.bytesTransferred / snap.totalBytes * 100);
+        progressBar.style.width    = pct + '%';
+        progressText.textContent   = `Uploading… ${pct}%`;
+      },
+      err => { progressWrap.style.display = 'none'; reject(err); },
+      async () => {
+        progressWrap.style.display = 'none';
+        const url = await task.snapshot.ref.getDownloadURL();
+        resolve({ url, name: file.name, size: file.size, type: file.type });
+      }
+    );
+  });
+}
+
+// ─── AI Feedback file upload state ───────────────────────────
 let _aiFeedbackFile = null; // { type:'pdf'|'image'|'video', data:base64, mediaType:string }
 
 function handleAIFileDrop(e) {
@@ -2359,7 +2501,7 @@ async function saveConfig() {
 // ─── Student Identity ─────────────────────────────────────────
 function updateStudentIdentityDropdown() {
   const sel = document.getElementById('studentIdentitySelect');
-  const saved = localStorage.getItem('cmp701_student_id');
+  const saved = safeStore.getItem('cmp701_student_id');
   sel.innerHTML = '<option value="">— Select your name —</option>' +
     Object.entries(appData.students).sort(([,a],[,b]) => a.name.localeCompare(b.name))
       .map(([sid, s]) => `<option value="${sid}" ${sid===saved?'selected':''}>${s.name} (${s.campus || ''})</option>`).join('');
@@ -2368,7 +2510,7 @@ function updateStudentIdentityDropdown() {
 
 function setStudentIdentity() {
   currentStudent = document.getElementById('studentIdentitySelect').value;
-  if (currentStudent) localStorage.setItem('cmp701_student_id', currentStudent);
+  if (currentStudent) safeStore.setItem('cmp701_student_id', currentStudent);
   refreshStudentViews();
 }
 
@@ -2472,24 +2614,52 @@ function populateSubmitWeeks() {
 
 async function submitArtefact() {
   if (!currentStudent) { toast('Select your name first', 'err'); return; }
-  const weekNum = document.getElementById('submitWeekSel').value;
-  const title = document.getElementById('submitTitle').value.trim();
-  const link = document.getElementById('submitLink').value.trim();
+  const weekNum     = document.getElementById('submitWeekSel').value;
+  const title       = document.getElementById('submitTitle').value.trim();
+  const manualLink  = document.getElementById('submitLink').value.trim();
   const description = document.getElementById('submitDescription').value.trim();
-  const reflection = document.getElementById('submitReflection').value.trim();
+  const reflection  = document.getElementById('submitReflection').value.trim();
 
   if (!title) { toast('Add an artefact title', 'err'); return; }
+  if (!_artefactFile && !manualLink) { toast('Upload a file or paste a link', 'err'); return; }
+
+  // Disable submit button during upload
+  const btn = document.getElementById('submitBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+
+  let fileURL = '', fileName = '', fileSize = 0;
+  try {
+    if (_artefactFile) {
+      const uploaded = await uploadArtefactToStorage(currentStudent, weekNum);
+      fileURL  = uploaded.url;
+      fileName = uploaded.name;
+      fileSize = uploaded.size;
+    }
+  } catch(err) {
+    toast('Upload failed — check your connection and try again', 'err');
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit Artefact'; }
+    return;
+  }
+
+  const submission = {
+    title, description, reflection,
+    submittedAt: Date.now(),
+    status: 'Submitted',
+    link: fileURL || manualLink,
+  };
+  if (fileName) { submission.fileName = fileName; submission.fileSize = fileSize; }
 
   const wk = 'week-' + weekNum;
-  await sRef(`submissions/${currentStudent}/${wk}`).set({
-    title, link, description, reflection, submittedAt: Date.now(), status: 'Submitted'
-  });
+  await sRef(`submissions/${currentStudent}/${wk}`).set(submission);
 
-  document.getElementById('submitAlert').innerHTML = '<div class="alert alert-success">✓ Artefact submitted for Week ' + weekNum + '! Your module leader can now see your submission.</div>';
+  document.getElementById('submitAlert').innerHTML =
+    `<div class="alert alert-success">✓ Artefact submitted for Week ${weekNum}!${fileName ? ' File uploaded: ' + fileName + '.' : ''} Your module leader can now see your submission.</div>`;
   document.getElementById('submitTitle').value = '';
-  document.getElementById('submitLink').value = '';
+  document.getElementById('submitLink').value  = '';
   document.getElementById('submitDescription').value = '';
-  document.getElementById('submitReflection').value = '';
+  document.getElementById('submitReflection').value  = '';
+  clearArtefactFile();
+  if (btn) { btn.disabled = false; btn.textContent = 'Submit Artefact'; }
   toast('Artefact submitted!', 'ok');
   renderStudentProgress();
   renderStudentXP();
@@ -2517,11 +2687,14 @@ function renderStudentProgress() {
           <p style="font-size:10px;font-weight:700;color:#15803D;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Lecturer Feedback</p>
           <pre style="font-size:11px;color:#1e293b;white-space:pre-wrap;font-family:Arial,sans-serif;margin:0">${sub.aiFeedback}</pre>
         </div>` : '';
+    const fileLink = sub && sub.link
+      ? `<a href="${sub.link}" target="_blank" style="font-size:10px;color:#1D4ED8;text-decoration:none;margin-left:6px" title="${sub.fileName || 'View artefact'}">
+           ${sub.fileName ? '📎 ' + sub.fileName : '🔗 View artefact'}</a>` : '';
     timeline.push(`<li>
       <div class="tl-dot ${sub && sub.aiFeedback ? 'teal' : sub ? 'green' : 'amber'}"></div>
       <div class="tl-content">
         <div class="tl-title">Week ${w}${quest ? ': ' + quest.title : ''}</div>
-        ${sub ? `<div class="tl-sub">Submitted ${new Date(sub.submittedAt).toLocaleDateString()} — ${sub.title}</div>${feedbackHtml}` : '<div class="tl-sub" style="color:#B45309">Not yet submitted</div>'}
+        ${sub ? `<div class="tl-sub">Submitted ${new Date(sub.submittedAt).toLocaleDateString()} — ${sub.title}${fileLink}</div>${feedbackHtml}` : '<div class="tl-sub" style="color:#B45309">Not yet submitted</div>'}
       </div>
     </li>`);
   }
@@ -2668,7 +2841,7 @@ function showLecturerIdentityScreen() {
 
 function selectLecturerIdentity(id, name, campus, title) {
   currentLecturer = { id, name, campus, title };
-  localStorage.setItem('cmp701_lecturer', JSON.stringify(currentLecturer));
+  safeStore.setItem('cmp701_lecturer', JSON.stringify(currentLecturer));
   document.getElementById('lecturerIdentityScreen').style.display = 'none';
   document.getElementById('lecturerNameChip').textContent = name;
   document.getElementById('lecturerNameBadge').style.display = 'flex';
@@ -2677,7 +2850,7 @@ function selectLecturerIdentity(id, name, campus, title) {
 
 function clearLecturerIdentity() {
   currentLecturer = null;
-  localStorage.removeItem('cmp701_lecturer');
+  safeStore.removeItem('cmp701_lecturer');
   document.getElementById('lecturerNameBadge').style.display = 'none';
   renderTeachingTeamSelector();
   showLecturerIdentityScreen();
@@ -3355,6 +3528,24 @@ window.addEventListener('DOMContentLoaded', () => {
     questHero.insertBefore(banner, questHero.firstChild);
   }
 }, { once: true });
+
+// ─── Blackboard embed copy helpers ───────────────────────────
+function copyUltraEmbedCode() {
+  const el = document.getElementById('bbUltraEmbedCode');
+  if (el) { navigator.clipboard.writeText(el.textContent.replace(/&amp;/g,'&')); toast('Embed code copied!', 'ok'); }
+}
+function copyIframe() {
+  const el = document.getElementById('bbIframeCode');
+  if (el) { navigator.clipboard.writeText(el.textContent.replace(/&amp;/g,'&')); toast('iFrame code copied!', 'ok'); }
+}
+function copyStudentUrl() {
+  const el = document.getElementById('bbStudentDirectUrl');
+  if (el) { navigator.clipboard.writeText(el.textContent.replace(/&amp;/g,'&')); toast('URL copied!', 'ok'); }
+}
+function copyBBUrl() {
+  const el = document.getElementById('bbStudentUrl');
+  if (el) { navigator.clipboard.writeText(el.textContent); toast('URL copied!', 'ok'); }
+}
 
 // ─── Gamification ─────────────────────────────────────────────
 
