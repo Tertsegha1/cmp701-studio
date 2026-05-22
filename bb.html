@@ -143,15 +143,19 @@ const STUDIO = {
   },
 
   // ── Guilds  ────────────────────────────────────────────────────────────
-  //  Update xp after each week once submissions are reviewed in Blackboard.
-  //  badges: earned badge emojis shown next to guild name.
+  //  After checking the Blackboard gradebook each week, update:
+  //    xp         → total XP earned so far (50 per artefact, 30 per peer review)
+  //    badges     → emoji badges earned (see badge guide in Leaderboard tab)
+  //    submissions → list of week numbers where the guild has submitted
+  //  Then: git add bb.html → git commit -m "Week N update" → git push
+  //  Changes appear in Blackboard within ~60 seconds.
   guilds: [
-    { name: "Alpha",   campus: "London",     xp: 0, badges: [] },
-    { name: "Beta",    campus: "London",     xp: 0, badges: [] },
-    { name: "Gamma",   campus: "Birmingham", xp: 0, badges: [] },
-    { name: "Delta",   campus: "Birmingham", xp: 0, badges: [] },
-    { name: "Epsilon", campus: "Manchester", xp: 0, badges: [] },
-    { name: "Zeta",    campus: "Manchester", xp: 0, badges: [] },
+    { name: "Alpha",   campus: "London",     xp: 0, badges: [], submissions: [] },
+    { name: "Beta",    campus: "London",     xp: 0, badges: [], submissions: [] },
+    { name: "Gamma",   campus: "Birmingham", xp: 0, badges: [], submissions: [] },
+    { name: "Delta",   campus: "Birmingham", xp: 0, badges: [], submissions: [] },
+    { name: "Epsilon", campus: "Manchester", xp: 0, badges: [], submissions: [] },
+    { name: "Zeta",    campus: "Manchester", xp: 0, badges: [], submissions: [] },
   ],
 
   // ── Peer Review Rotation ───────────────────────────────────────────────
@@ -160,12 +164,26 @@ const STUDIO = {
   //  Week 1→offset 1, Week 2→offset 2, Week 3→offset 3, etc.
   peerReviewOffset: 1,   // ← update each week (use the week number itself)
 
-  // ── Blackboard Links (paste your actual BB Ultra URLs) ─────────────────
+  // ── Blackboard Links ──────────────────────────────────────────────────
+  //  currentAssignment : Blackboard Assignment URL for this week's artefact
+  //  peerReviewForm    : Peer review discussion/assignment URL for this week
+  //  gradebook         : "My Grades" page URL (same for everyone)
+  //  guildWorkspaces   : Each guild's Blackboard Group Workspace URL.
+  //                      Embed bb.html?guild=Alpha in Guild Alpha's workspace,
+  //                      bb.html?guild=Beta in Guild Beta's workspace, etc.
+  //                      The widget will show that guild's link automatically.
   bbLinks: {
-    currentAssignment: "",   // Link to this week's artefact submission
-    peerReviewForm:    "",   // Link to the peer review discussion/form
-    guildWorkspace:    "",   // Link to the Blackboard Groups area
-    gradebook:         "",   // Link to the gradebook
+    currentAssignment: "",
+    peerReviewForm:    "",
+    gradebook:         "",
+    guildWorkspaces: {
+      Alpha:   "",   // Paste Guild Alpha's BB Group Workspace URL
+      Beta:    "",   // Paste Guild Beta's BB Group Workspace URL
+      Gamma:   "",   // Paste Guild Gamma's BB Group Workspace URL
+      Delta:   "",   // Paste Guild Delta's BB Group Workspace URL
+      Epsilon: "",   // Paste Guild Epsilon's BB Group Workspace URL
+      Zeta:    "",   // Paste Guild Zeta's BB Group Workspace URL
+    },
   },
 
   // ── AI Feedback ────────────────────────────────────────────────────────
@@ -173,6 +191,23 @@ const STUDIO = {
   //  Do NOT commit a live key to a public GitHub repo.
   //  Best practice: leave empty, instruct students to use the main Studio.
   aiKey: "",
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // WEEKLY UPDATE CHECKLIST (takes ~3 minutes)
+  // ═══════════════════════════════════════════════════════════════════════
+  // 1. currentWeek       → increment by 1
+  // 2. peerReviewOffset  → set to the new week number
+  // 3. guilds[].xp       → open BB gradebook, count submissions per guild,
+  //                         add 50 per artefact + 30 per peer review completed
+  // 4. guilds[].badges   → add emoji if a guild hit a milestone this week
+  // 5. guilds[].submissions → add the new week number for each guild that submitted
+  // 6. announcement.body → update with a message, or set "" to hide
+  // 7. bbLinks.currentAssignment → paste the new week's BB Assignment URL
+  // 8. bbLinks.peerReviewForm    → paste the new peer review URL
+  // Then: git add bb.html → git commit -m "Week N update" → git push
+  // Students see the updated widget in Blackboard within ~60 seconds.
+  // ═══════════════════════════════════════════════════════════════════════
+  _weeklySync: null,  // placeholder — do not delete this line
 
   // ── Quest Briefs ───────────────────────────────────────────────────────
   //  Pre-filled with the 12 CMP701 module quests.
@@ -309,6 +344,21 @@ const STUDIO = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 
+// ── Guild URL parameter ──────────────────────────────────────────────────
+//  When bb.html is embedded with ?guild=Alpha, the widget personalises the
+//  view for that guild: peer review assignment highlighted, leaderboard row
+//  marked, guild workspace link auto-selected, "My Guild" panel shown.
+
+let _activeGuild = null;   // set during boot from URL param
+
+function detectActiveGuild() {
+  const param = new URLSearchParams(window.location.search).get('guild');
+  if (!param) return;
+  _activeGuild = STUDIO.guilds.find(
+    g => g.name.toLowerCase() === param.trim().toLowerCase()
+  ) || null;
+}
+
 // ── Utilities ────────────────────────────────────────────────────────────
 
 function daysUntil(dateStr) {
@@ -402,17 +452,33 @@ function renderQuestContent() {
 // ── Render: Peer Review ──────────────────────────────────────────────────
 
 function renderPeerReview() {
-  const pairs = getPeerPairs(STUDIO.currentWeek);
-  const prUrl = STUDIO.bbLinks.peerReviewForm;
+  const pairs  = getPeerPairs(STUDIO.currentWeek);
+  const prUrl  = STUDIO.bbLinks.peerReviewForm;
+  const myName = _activeGuild ? _activeGuild.name : null;
 
-  document.getElementById('prWeek').textContent = STUDIO.currentWeek;
-  document.getElementById('prList').innerHTML = pairs.map(p =>
-    `<div class="pr-match">
-      <div class="guild-tag">${p.reviewer}</div>
+  document.getElementById('prWeek').textContent  = STUDIO.currentWeek;
+  document.getElementById('prWeek2').textContent = STUDIO.currentWeek;
+
+  // If a guild is detected, surface their assignment at the top
+  let myPair = null;
+  if (myName) {
+    myPair = pairs.find(p => p.reviewer === myName);
+    if (myPair) {
+      document.getElementById('prMyAssignment').style.display = 'block';
+      document.getElementById('prMyReviewer').textContent  = myPair.reviewer;
+      document.getElementById('prMyReviewing').textContent = myPair.reviewing;
+    }
+  }
+
+  document.getElementById('prList').innerHTML = pairs.map(p => {
+    const isMe = myName && p.reviewer === myName;
+    return `<div class="pr-match" style="${isMe ? 'background:#f0fdf4;border-radius:8px;padding:8px 4px;margin:0 -4px;' : ''}">
+      ${isMe ? '<span style="font-size:10px;font-weight:800;color:#15803D;margin-right:4px">YOU →</span>' : ''}
+      <div class="guild-tag" style="${isMe ? 'background:#15803D;' : ''}">${p.reviewer}</div>
       <div class="arrow">→</div>
       <div class="guild-tag reviewing">reviews ${p.reviewing}</div>
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
 
   const btn = document.getElementById('prSubmitBtn');
   if (prUrl) { btn.href = prUrl; btn.style.display = 'inline-flex'; }
@@ -422,35 +488,46 @@ function renderPeerReview() {
 // ── Render: Leaderboard ──────────────────────────────────────────────────
 
 function renderLeaderboard() {
-  const sorted = [...STUDIO.guilds].sort((a, b) => b.xp - a.xp);
-  const maxXP  = sorted[0]?.xp || 1;
+  const sorted  = [...STUDIO.guilds].sort((a, b) => b.xp - a.xp);
+  const maxXP   = sorted[0]?.xp || 1;
+  const myName  = _activeGuild ? _activeGuild.name : null;
   const rankCls = r => r===1?'gold':r===2?'silver':r===3?'bronze':'other';
   const rankIcon= r => r===1?'🥇':r===2?'🥈':r===3?'🥉':r;
 
+  // Set cohort label
+  document.getElementById('lbCohort').textContent = STUDIO.cohortName;
+
   document.getElementById('lbList').innerHTML = sorted.map((g, i) => {
-    const rank = i + 1;
-    const pct  = maxXP > 0 ? Math.round(g.xp / maxXP * 100) : 0;
-    return `<div class="lb-row">
+    const rank   = i + 1;
+    const pct    = maxXP > 0 ? Math.round(g.xp / maxXP * 100) : 0;
+    const isMe   = myName && g.name === myName;
+    const subs   = (g.submissions || []).length;
+    const wkDone = Math.max(0, STUDIO.currentWeek - 1);  // weeks that have passed
+    return `<div class="lb-row" style="${isMe ? 'background:#eff6ff;border-radius:8px;padding:8px 4px;margin:0 -4px;outline:2px solid #1B3A6B;' : ''}">
       <div class="lb-rank ${rankCls(rank)}">${rankIcon(rank)}</div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-size:12px;font-weight:800;color:#1B3A6B">${g.name}
+          <span style="font-size:12px;font-weight:800;color:#1B3A6B">
+            ${isMe ? '<span style="font-size:10px;background:#1B3A6B;color:#fff;border-radius:4px;padding:1px 5px;margin-right:5px">YOU</span>' : ''}
+            ${g.name}
             ${g.badges.length ? '<span style="margin-left:6px">' + g.badges.join('') + '</span>' : ''}
           </span>
           <span style="font-size:11px;font-weight:800;color:#0D7377">${g.xp} XP</span>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
           <div class="xp-bar-wrap"><div class="xp-bar-fill" style="width:${pct}%"></div></div>
           <span style="font-size:10px;color:#94a3b8;white-space:nowrap">${g.campus}</span>
         </div>
+        ${wkDone > 0 ? `<div style="font-size:10px;color:#64748b">${subs} / ${wkDone} artefacts submitted</div>` : ''}
       </div>
     </div>`;
   }).join('');
 
   // XP explainer
   document.getElementById('lbXpNote').innerHTML =
-    `<strong>XP is awarded by the Module Leader</strong> each week based on guild submissions and engagement in Blackboard. ` +
-    `Badges are awarded for milestones: 🚀 First submission · ⭐ Halfway · 🔥 Streak · 🤝 Peer review champion · 🏅 Full semester.`;
+    `<strong>XP is awarded by the Module Leader</strong> each week from the Blackboard gradebook. ` +
+    `50 XP per artefact submitted · 30 XP per peer review completed. ` +
+    `Badges: 🚀 First submission · ⭐ Halfway · 🔥 3-week streak · 🤝 Peer champion · 🏅 Full semester.`;
 }
 
 // ── Render: Timeline ────────────────────────────────────────────────────
@@ -573,22 +650,110 @@ Keep the tone encouraging and specific. Do not award a formal grade.`;
   }
 }
 
+// ── Render: Workspace Buttons ───────────────────────────────────────────
+//  When ?guild= is set: show that guild's workspace link + submit button.
+//  When no guild: show a dropdown / list of all guild workspaces.
+
+function renderWorkspaceButtons() {
+  const row  = document.getElementById('workspaceBtnRow');
+  if (!row) return;
+  const wsLinks  = STUDIO.bbLinks.guildWorkspaces || {};
+  const assignUrl = STUDIO.bbLinks.currentAssignment || '';
+  const gradeUrl  = STUDIO.bbLinks.gradebook || '';
+
+  if (_activeGuild) {
+    // Single guild view
+    const wsUrl = wsLinks[_activeGuild.name] || '';
+    row.innerHTML =
+      (wsUrl ? `<a class="btn btn-teal" href="${wsUrl}" target="_blank">🏠 My Guild Workspace (${_activeGuild.name})</a>` : '') +
+      (assignUrl ? `<a class="btn btn-primary" href="${assignUrl}" target="_blank">📤 Submit Week ${STUDIO.currentWeek} Artefact</a>` : '') +
+      (gradeUrl  ? `<a class="btn btn-ghost" href="${gradeUrl}"  target="_blank">📊 My Grades</a>` : '') +
+      (!wsUrl && !assignUrl ? '<span style="font-size:11px;color:#94a3b8">Workspace links not configured yet — check with your module leader.</span>' : '');
+  } else {
+    // Generic view — show all guild workspace links that are configured
+    const configured = STUDIO.guilds.filter(g => wsLinks[g.name]);
+    if (configured.length === 0) {
+      row.innerHTML = `<span style="font-size:11px;color:#94a3b8">
+        Open this widget with <code>?guild=YourGuildName</code> in the URL to see your workspace link.<br>
+        e.g. <code>…bb.html?guild=Alpha</code></span>`;
+    } else {
+      row.innerHTML = configured.map(g =>
+        `<a class="btn btn-teal" href="${wsLinks[g.name]}" target="_blank" style="font-size:11px">🏠 ${g.name}</a>`
+      ).join('') +
+      (assignUrl ? `<a class="btn btn-primary" href="${assignUrl}" target="_blank">📤 Submit Artefact</a>` : '') +
+      (gradeUrl  ? `<a class="btn btn-ghost"   href="${gradeUrl}"  target="_blank">📊 My Grades</a>` : '');
+    }
+  }
+}
+
+// ── Render: Guild Banner ─────────────────────────────────────────────────
+//  Shown on the quest tab when ?guild= is set in the URL.
+
+function renderGuildBanner() {
+  const banner = document.getElementById('myGuildBanner');
+  if (!banner) return;
+  if (!_activeGuild) { banner.style.display = 'none'; return; }
+
+  const g      = _activeGuild;
+  const pairs  = getPeerPairs(STUDIO.currentWeek);
+  const myPair = pairs.find(p => p.reviewer === g.name);
+  const sorted = [...STUDIO.guilds].sort((a,b) => b.xp - a.xp);
+  const rank   = sorted.findIndex(x => x.name === g.name) + 1;
+  const rankLbl= rank===1?'🥇 1st':rank===2?'🥈 2nd':rank===3?'🥉 3rd':`#${rank}`;
+  const wkDone = Math.max(0, STUDIO.currentWeek - 1);
+  const subs   = (g.submissions || []).length;
+
+  banner.style.display = 'block';
+  banner.querySelector('.card-body').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#1B3A6B">🏠 Guild ${g.name}
+          <span style="font-size:11px;font-weight:500;color:#64748b;margin-left:6px">${g.campus}</span>
+        </div>
+        <div style="font-size:11px;color:#334155;margin-top:4px">
+          ${g.xp} XP &nbsp;·&nbsp; ${rankLbl} &nbsp;·&nbsp; ${subs}/${wkDone} artefacts submitted
+          ${g.badges.length ? '&nbsp;·&nbsp;' + g.badges.join('') : ''}
+        </div>
+        ${myPair ? `<div style="font-size:11px;color:#0D7377;margin-top:4px;font-weight:700">
+          🤝 Week ${STUDIO.currentWeek} peer review: you are reviewing <strong>Guild ${myPair.reviewing}</strong>
+        </div>` : ''}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${(STUDIO.bbLinks.guildWorkspaces||{})[g.name]
+          ? `<a class="btn btn-teal" href="${(STUDIO.bbLinks.guildWorkspaces||{})[g.name]}" target="_blank">🏠 Open My Workspace</a>`
+          : `<span style="font-size:11px;color:#94a3b8">Workspace link not set yet</span>`}
+        ${STUDIO.bbLinks.currentAssignment
+          ? `<a class="btn btn-primary" href="${STUDIO.bbLinks.currentAssignment}" target="_blank">📤 Submit Week ${STUDIO.currentWeek} Artefact</a>`
+          : ''}
+      </div>
+    </div>`;
+}
+
 // ── Boot ─────────────────────────────────────────────────────────────────
 
 window.addEventListener('DOMContentLoaded', () => {
+  detectActiveGuild();   // ← must be first — all renders depend on _activeGuild
+
   renderAnnouncement();
   renderQuestNav();
   renderQuestContent();
+  renderWorkspaceButtons();
   renderPeerReview();
   renderLeaderboard();
   renderTimeline();
+  renderGuildBanner();
 
   // Show first tab
   showTab('quest', document.querySelector('.tab'));
 
-  // Set header info
+  // Set header info — append guild name if detected
   document.getElementById('weekLabel').textContent   = 'Week ' + STUDIO.currentWeek;
   document.getElementById('cohortLabel').textContent = STUDIO.cohortName;
+
+  if (_activeGuild) {
+    const pill = document.getElementById('guildPill');
+    if (pill) { pill.textContent = 'Guild ' + _activeGuild.name; pill.style.display = 'inline-block'; }
+  }
 });
 </script>
 
@@ -600,6 +765,7 @@ window.addEventListener('DOMContentLoaded', () => {
   </div>
   <div class="hdr-right">
     <span class="cohort-pill" id="cohortLabel">Loading…</span>
+    <span class="cohort-pill" id="guildPill" style="display:none;background:rgba(13,115,119,.4);border-color:rgba(13,115,119,.6)"></span>
     <span class="week-pill" id="weekLabel">Week —</span>
   </div>
 </div>
@@ -620,6 +786,12 @@ window.addEventListener('DOMContentLoaded', () => {
 <!-- QUEST TAB                                             -->
 <!-- ══════════════════════════════════════════════════════ -->
 <div class="pg on" id="pg-quest">
+
+  <!-- My Guild banner (shown only when ?guild= is set) -->
+  <div id="myGuildBanner" class="card" style="display:none;border-left:4px solid #1B3A6B">
+    <div class="card-body"></div>
+  </div>
+
   <!-- Week navigation -->
   <div class="card">
     <div class="card-hdr teal">
@@ -655,23 +827,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
   <!-- Workspace link -->
   <div class="card">
-    <div class="card-hdr green">Your Guild Workspace</div>
-    <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <p style="font-size:12px;color:#334155;line-height:1.6">
-        All guild collaboration, drafts, and file sharing take place in your <strong>Blackboard Group Workspace</strong>.
-        Your submission goes to the weekly Blackboard Assignment.
+    <div class="card-hdr green">Guild Workspaces &amp; Submissions</div>
+    <div class="card-body">
+      <p style="font-size:12px;color:#334155;line-height:1.6;margin-bottom:12px">
+        All guild collaboration, file sharing, and artefact drafts take place in your
+        <strong>Blackboard Group Workspace</strong>. When your artefact is ready,
+        submit it via the <strong>Blackboard Assignment</strong> link below.
       </p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <a class="btn btn-teal" id="guildWorkspaceBtn"
-           href="#" target="_blank"
-           onclick="if(!STUDIO.bbLinks.guildWorkspace){alert('Guild workspace link not configured yet — check with your module leader.');return false}this.href=STUDIO.bbLinks.guildWorkspace">
-          🏠 Open Guild Workspace
-        </a>
-        <a class="btn btn-ghost" id="gradebookBtn"
-           href="#" target="_blank"
-           onclick="if(!STUDIO.bbLinks.gradebook){alert('Gradebook link not configured yet.');return false}this.href=STUDIO.bbLinks.gradebook">
-          📊 My Grades
-        </a>
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="workspaceBtnRow">
+        <!-- populated by renderWorkspaceButtons() -->
       </div>
     </div>
   </div>
@@ -681,8 +845,30 @@ window.addEventListener('DOMContentLoaded', () => {
 <!-- PEER REVIEW TAB                                       -->
 <!-- ══════════════════════════════════════════════════════ -->
 <div class="pg" id="pg-peer">
+
+  <!-- My peer review assignment (shown only when ?guild= is set) -->
+  <div id="prMyAssignment" class="card" style="display:none;border-left:4px solid #0D7377">
+    <div class="card-hdr teal">🤝 Your Peer Review Assignment — Week <span id="prWeek2"></span></div>
+    <div class="card-body">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Your Guild</div>
+          <div class="guild-tag" id="prMyReviewer" style="display:inline-block">—</div>
+        </div>
+        <div class="arrow" style="font-size:22px">→</div>
+        <div>
+          <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">You Are Reviewing</div>
+          <div class="guild-tag reviewing" id="prMyReviewing" style="display:inline-block">—</div>
+        </div>
+      </div>
+      <p style="margin-top:10px;font-size:12px;color:#334155">
+        Access their artefact in your <strong>Blackboard Group Workspace</strong>, then submit your structured feedback using the button below.
+      </p>
+    </div>
+  </div>
+
   <div class="card">
-    <div class="card-hdr teal">Week <span id="prWeek">—</span> — Peer Review Assignments</div>
+    <div class="card-hdr teal">Week <span id="prWeek">—</span> — All Peer Review Assignments</div>
     <div class="card-body">
       <div class="alert alert-info" style="margin-bottom:14px">
         <strong>How it works:</strong> Each guild reviews another guild's artefact this week.
