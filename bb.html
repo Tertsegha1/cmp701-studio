@@ -124,16 +124,16 @@ label{font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:4
 const STUDIO = {
 
   // ── Cohort & Week ──────────────────────────────────────────────────────
-  cohortName:    "2025–26 Semester 2",
+  cohortName:    "2025-26 Jun Intake",
   currentWeek:   1,         // ← update each week
-  semesterStart: "2026-01-20",  // Monday of Week 1 (YYYY-MM-DD)
+  semesterStart: "2026-06-16",  // Monday of Week 1 (YYYY-MM-DD)
 
   // ── Key Dates ──────────────────────────────────────────────────────────
   deadlines: {
-    cw1Sub:  "2026-03-13",   // CW1 submission
-    cw1Mark: "2026-03-27",   // CW1 marking
-    cw2Sub:  "2026-05-06",   // CW2 submission
-    cw2Mark: "2026-05-20",   // CW2 marking
+    cw1Sub:  "2026-08-14",   // CW1 submission — update once confirmed
+    cw1Mark: "2026-08-28",   // CW1 marking
+    cw2Sub:  "2026-10-16",   // CW2 submission
+    cw2Mark: "2026-10-30",   // CW2 marking
   },
 
   // ── Announcement (leave body:"" to hide) ──────────────────────────────
@@ -142,70 +142,137 @@ const STUDIO = {
     type:  "info",         // "info" | "good" | "warn" | "urgent"
   },
 
-  // ── Guilds  ────────────────────────────────────────────────────────────
-  //  After checking the Blackboard gradebook each week, update:
-  //    xp         → total XP earned so far (50 per artefact, 30 per peer review)
-  //    badges     → emoji badges earned (see badge guide in Leaderboard tab)
-  //    submissions → list of week numbers where the guild has submitted
-  //  Then: git add bb.html → git commit -m "Week N update" → git push
-  //  Changes appear in Blackboard within ~60 seconds.
+  // ── Guilds (Jun 2026 intake — 122 students, 33 guilds) ────────────────
+  //  After checking the Blackboard gradebook each week, update per guild:
+  //    xp          → 50 per artefact submitted + 30 per peer review done
+  //    badges      → emoji badges earned (see Badge Guide in Leaderboard tab)
+  //    submissions → add the week number for each week the guild submitted
+  //  Embed URL: bb.html?guild=BHM-A-G1  (replaces ?guild= with each guild name)
+  //  Or per group: bb.html?group=BHM-A  (shows all guilds in that group)
   guilds: [
-    { name: "Alpha",   campus: "London",     xp: 0, badges: [], submissions: [] },
-    { name: "Beta",    campus: "London",     xp: 0, badges: [], submissions: [] },
-    { name: "Gamma",   campus: "Birmingham", xp: 0, badges: [], submissions: [] },
-    { name: "Delta",   campus: "Birmingham", xp: 0, badges: [], submissions: [] },
-    { name: "Epsilon", campus: "Manchester", xp: 0, badges: [], submissions: [] },
-    { name: "Zeta",    campus: "Manchester", xp: 0, badges: [], submissions: [] },
+    // ── London Group A (Tutor: John Omokore) ──
+    { name: "LDN-A-G1", campus: "London", group: "LDN-A", xp: 0, badges: [], submissions: [] },
+    { name: "LDN-A-G2", campus: "London", group: "LDN-A", xp: 0, badges: [], submissions: [] },
+    { name: "LDN-A-G3", campus: "London", group: "LDN-A", xp: 0, badges: [], submissions: [] },
+    { name: "LDN-A-G4", campus: "London", group: "LDN-A", xp: 0, badges: [], submissions: [] },
+    { name: "LDN-A-G5", campus: "London", group: "LDN-A", xp: 0, badges: [], submissions: [] },
+
+    // ── London Group C&D (Tutor: John Omokore / Parvez Jugon) ──
+    { name: "LDN-CD-G1", campus: "London", group: "LDN-CD", xp: 0, badges: [], submissions: [] },
+    { name: "LDN-CD-G2", campus: "London", group: "LDN-CD", xp: 0, badges: [], submissions: [] },
+    { name: "LDN-CD-G3", campus: "London", group: "LDN-CD", xp: 0, badges: [], submissions: [] },
+    { name: "LDN-CD-G4", campus: "London", group: "LDN-CD", xp: 0, badges: [], submissions: [] },
+
+    // ── Birmingham Group A (Tutor: Tertsegha Anande) ──
+    { name: "BHM-A-G1", campus: "Birmingham", group: "BHM-A", xp: 0, badges: [], submissions: [] },
+    { name: "BHM-A-G2", campus: "Birmingham", group: "BHM-A", xp: 0, badges: [], submissions: [] },
+    { name: "BHM-A-G3", campus: "Birmingham", group: "BHM-A", xp: 0, badges: [], submissions: [] },
+    { name: "BHM-A-G4", campus: "Birmingham", group: "BHM-A", xp: 0, badges: [], submissions: [] },
+    { name: "BHM-A-G5", campus: "Birmingham", group: "BHM-A", xp: 0, badges: [], submissions: [] },
+    { name: "BHM-A-G6", campus: "Birmingham", group: "BHM-A", xp: 0, badges: [], submissions: [] },
+
+    // ── Birmingham Group B (Tutor: Goodluck Oguzie / Tertsegha Anande) ──
+    { name: "BHM-B-G1", campus: "Birmingham", group: "BHM-B", xp: 0, badges: [], submissions: [] },
+    { name: "BHM-B-G2", campus: "Birmingham", group: "BHM-B", xp: 0, badges: [], submissions: [] },
+    { name: "BHM-B-G3", campus: "Birmingham", group: "BHM-B", xp: 0, badges: [], submissions: [] },
+
+    // ── Birmingham Group E (Tutor: Tertsegha Anande / Khadijah Hange) ──
+    { name: "BHM-E-G1", campus: "Birmingham", group: "BHM-E", xp: 0, badges: [], submissions: [] },
+    { name: "BHM-E-G2", campus: "Birmingham", group: "BHM-E", xp: 0, badges: [], submissions: [] },
+    { name: "BHM-E-G3", campus: "Birmingham", group: "BHM-E", xp: 0, badges: [], submissions: [] },
+    { name: "BHM-E-G4", campus: "Birmingham", group: "BHM-E", xp: 0, badges: [], submissions: [] },
+
+    // ── Manchester Group A (Tutor: Amira Ahmed) ──
+    { name: "MAN-A-G1", campus: "Manchester", group: "MAN-A", xp: 0, badges: [], submissions: [] },
+    { name: "MAN-A-G2", campus: "Manchester", group: "MAN-A", xp: 0, badges: [], submissions: [] },
+    { name: "MAN-A-G3", campus: "Manchester", group: "MAN-A", xp: 0, badges: [], submissions: [] },
+    { name: "MAN-A-G4", campus: "Manchester", group: "MAN-A", xp: 0, badges: [], submissions: [] },
+    { name: "MAN-A-G5", campus: "Manchester", group: "MAN-A", xp: 0, badges: [], submissions: [] },
+    { name: "MAN-A-G6", campus: "Manchester", group: "MAN-A", xp: 0, badges: [], submissions: [] },
+    { name: "MAN-A-G7", campus: "Manchester", group: "MAN-A", xp: 0, badges: [], submissions: [] },
+    { name: "MAN-A-G8", campus: "Manchester", group: "MAN-A", xp: 0, badges: [], submissions: [] },
+
+    // ── Manchester Group B&C (Tutor: Amjed Ibraheem) ──
+    { name: "MAN-BC-G1", campus: "Manchester", group: "MAN-BC", xp: 0, badges: [], submissions: [] },
+    { name: "MAN-BC-G2", campus: "Manchester", group: "MAN-BC", xp: 0, badges: [], submissions: [] },
+    { name: "MAN-BC-G3", campus: "Manchester", group: "MAN-BC", xp: 0, badges: [], submissions: [] },
   ],
 
-  // ── Peer Review Rotation ───────────────────────────────────────────────
-  //  offset: guild[i] reviews guild[(i + offset) % guilds.length]
-  //  Change offset each week so no guild reviews the same guild twice.
-  //  Week 1→offset 1, Week 2→offset 2, Week 3→offset 3, etc.
-  peerReviewOffset: 1,   // ← update each week (use the week number itself)
+  // ── Peer Review Offset per group ──────────────────────────────────────
+  //  Each group's peer review runs independently.
+  //  offset: guild[i] reviews guild[(i + offset) % groupGuilds.length]
+  //  Set each offset = the current week number for that group.
+  peerReviewOffset: {
+    "LDN-A":  1,   // London Group A
+    "LDN-CD": 1,   // London Group C&D
+    "BHM-A":  1,   // Birmingham Group A
+    "BHM-B":  1,   // Birmingham Group B
+    "BHM-E":  1,   // Birmingham Group E
+    "MAN-A":  1,   // Manchester Group A
+    "MAN-BC": 1,   // Manchester Group B&C
+  },
 
-  // ── Blackboard Links ──────────────────────────────────────────────────
-  //  currentAssignment : Blackboard Assignment URL for this week's artefact
-  //  peerReviewForm    : Peer review discussion/assignment URL for this week
-  //  gradebook         : "My Grades" page URL (same for everyone)
-  //  guildWorkspaces   : Each guild's Blackboard Group Workspace URL.
-  //                      Embed bb.html?guild=Alpha in Guild Alpha's workspace,
-  //                      bb.html?guild=Beta in Guild Beta's workspace, etc.
-  //                      The widget will show that guild's link automatically.
+  // ── Blackboard Links per group ────────────────────────────────────────
+  //  Paste each group's BB Assignment and Peer Review URLs each week.
+  //  guildWorkspaces: each guild's BB Group Workspace URL (set once at start).
+  //  gradebook: shared "My Grades" URL (same for all students).
   bbLinks: {
-    currentAssignment: "",
-    peerReviewForm:    "",
-    gradebook:         "",
-    guildWorkspaces: {
-      Alpha:   "",   // Paste Guild Alpha's BB Group Workspace URL
-      Beta:    "",   // Paste Guild Beta's BB Group Workspace URL
-      Gamma:   "",   // Paste Guild Gamma's BB Group Workspace URL
-      Delta:   "",   // Paste Guild Delta's BB Group Workspace URL
-      Epsilon: "",   // Paste Guild Epsilon's BB Group Workspace URL
-      Zeta:    "",   // Paste Guild Zeta's BB Group Workspace URL
+    gradebook: "",   // My Grades URL — same for all students
+    "LDN-A": {
+      currentAssignment: "",   // London Group A — this week's BB Assignment
+      peerReviewForm:    "",   // Peer review URL
+      guildWorkspaces: { "LDN-A-G1":"", "LDN-A-G2":"", "LDN-A-G3":"", "LDN-A-G4":"", "LDN-A-G5":"" },
+    },
+    "LDN-CD": {
+      currentAssignment: "",
+      peerReviewForm:    "",
+      guildWorkspaces: { "LDN-CD-G1":"", "LDN-CD-G2":"", "LDN-CD-G3":"", "LDN-CD-G4":"" },
+    },
+    "BHM-A": {
+      currentAssignment: "",
+      peerReviewForm:    "",
+      guildWorkspaces: { "BHM-A-G1":"", "BHM-A-G2":"", "BHM-A-G3":"", "BHM-A-G4":"", "BHM-A-G5":"", "BHM-A-G6":"" },
+    },
+    "BHM-B": {
+      currentAssignment: "",
+      peerReviewForm:    "",
+      guildWorkspaces: { "BHM-B-G1":"", "BHM-B-G2":"", "BHM-B-G3":"" },
+    },
+    "BHM-E": {
+      currentAssignment: "",
+      peerReviewForm:    "",
+      guildWorkspaces: { "BHM-E-G1":"", "BHM-E-G2":"", "BHM-E-G3":"", "BHM-E-G4":"" },
+    },
+    "MAN-A": {
+      currentAssignment: "",
+      peerReviewForm:    "",
+      guildWorkspaces: { "MAN-A-G1":"", "MAN-A-G2":"", "MAN-A-G3":"", "MAN-A-G4":"", "MAN-A-G5":"", "MAN-A-G6":"", "MAN-A-G7":"", "MAN-A-G8":"" },
+    },
+    "MAN-BC": {
+      currentAssignment: "",
+      peerReviewForm:    "",
+      guildWorkspaces: { "MAN-BC-G1":"", "MAN-BC-G2":"", "MAN-BC-G3":"" },
     },
   },
 
   // ── AI Feedback ────────────────────────────────────────────────────────
-  //  Leave aiKey:"" to disable AI feedback (students see a message).
-  //  Do NOT commit a live key to a public GitHub repo.
-  //  Best practice: leave empty, instruct students to use the main Studio.
+  //  Leave aiKey:"" to disable. Do NOT commit a live key to a public repo.
   aiKey: "",
 
   // ═══════════════════════════════════════════════════════════════════════
-  // WEEKLY UPDATE CHECKLIST (takes ~3 minutes)
+  // WEEKLY UPDATE CHECKLIST (takes ~5 minutes for all 7 groups)
   // ═══════════════════════════════════════════════════════════════════════
-  // 1. currentWeek       → increment by 1
-  // 2. peerReviewOffset  → set to the new week number
-  // 3. guilds[].xp       → open BB gradebook, count submissions per guild,
-  //                         add 50 per artefact + 30 per peer review completed
-  // 4. guilds[].badges   → add emoji if a guild hit a milestone this week
+  // 1. currentWeek          → increment by 1
+  // 2. peerReviewOffset.*   → set each group's offset to the new week number
+  // 3. guilds[].xp          → open BB gradebook per group, count submissions:
+  //                           add 50 per artefact + 30 per peer review done
+  // 4. guilds[].badges      → add emoji if a guild hit a milestone this week
   // 5. guilds[].submissions → add the new week number for each guild that submitted
-  // 6. announcement.body → update with a message, or set "" to hide
-  // 7. bbLinks.currentAssignment → paste the new week's BB Assignment URL
-  // 8. bbLinks.peerReviewForm    → paste the new peer review URL
-  // Then: git add bb.html → git commit -m "Week N update" → git push
-  // Students see the updated widget in Blackboard within ~60 seconds.
+  // 6. announcement.body    → update with a message, or set "" to hide
+  // 7. bbLinks["GRP"].currentAssignment → paste each group's new BB Assignment URL
+  // 8. bbLinks["GRP"].peerReviewForm    → paste each group's peer review URL
+  // Then: git add bb.html -> git commit -m "Week N update" -> git push
+  // Students see updated widget in Blackboard within ~60 seconds.
   // ═══════════════════════════════════════════════════════════════════════
   _weeklySync: null,  // placeholder — do not delete this line
 
@@ -344,19 +411,50 @@ const STUDIO = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 
-// ── Guild URL parameter ──────────────────────────────────────────────────
-//  When bb.html is embedded with ?guild=Alpha, the widget personalises the
-//  view for that guild: peer review assignment highlighted, leaderboard row
-//  marked, guild workspace link auto-selected, "My Guild" panel shown.
+// ── Guild / Group URL parameter ──────────────────────────────────────────
+//  ?guild=BHM-A-G1  → personalises for that specific guild (implies group BHM-A)
+//  ?group=BHM-A     → shows all guilds in Birmingham Group A (lecturer/group view)
+//  Neither set      → shows all groups (module-leader overview)
 
-let _activeGuild = null;   // set during boot from URL param
+let _activeGuild = null;   // set during boot
+let _activeGroup = null;   // group prefix string e.g. "BHM-A"
 
 function detectActiveGuild() {
-  const param = new URLSearchParams(window.location.search).get('guild');
-  if (!param) return;
-  _activeGuild = STUDIO.guilds.find(
-    g => g.name.toLowerCase() === param.trim().toLowerCase()
-  ) || null;
+  const p = new URLSearchParams(window.location.search);
+  const guildParam = p.get('guild');
+  const groupParam = p.get('group');
+
+  if (guildParam) {
+    _activeGuild = STUDIO.guilds.find(
+      g => g.name.toLowerCase() === guildParam.trim().toLowerCase()
+    ) || null;
+    if (_activeGuild) _activeGroup = _activeGuild.group;
+  }
+  if (!_activeGroup && groupParam) {
+    _activeGroup = groupParam.trim();
+  }
+}
+
+// Return guilds filtered to the active group (or all if no group set)
+function visibleGuilds() {
+  if (!_activeGroup) return STUDIO.guilds;
+  return STUDIO.guilds.filter(g => g.group === _activeGroup);
+}
+
+// Return the peerReviewOffset for the active group
+function groupOffset() {
+  const off = STUDIO.peerReviewOffset;
+  if (typeof off === 'object' && _activeGroup) return off[_activeGroup] || 1;
+  if (typeof off === 'number') return off;
+  return 1;
+}
+
+// Return the bbLinks object for the active group
+function groupLinks() {
+  const bl = STUDIO.bbLinks;
+  if (_activeGroup && bl[_activeGroup]) return bl[_activeGroup];
+  // Fallback: old flat structure
+  return { currentAssignment: bl.currentAssignment||'', peerReviewForm: bl.peerReviewForm||'', guildWorkspaces: bl.guildWorkspaces||{} };
 }
 
 // ── Utilities ────────────────────────────────────────────────────────────
@@ -381,8 +479,8 @@ function showTab(id, el) {
 // ── Peer review rotation ─────────────────────────────────────────────────
 
 function getPeerPairs(week) {
-  const g = STUDIO.guilds;
-  const offset = STUDIO.peerReviewOffset;
+  const g      = visibleGuilds();
+  const offset = groupOffset();
   return g.map((guild, i) => ({
     reviewer:  guild.name,
     reviewing: g[(i + offset) % g.length].name,
@@ -412,7 +510,7 @@ function renderQuestNav() {
 function renderQuestContent() {
   const q = STUDIO.quests[_selectedWeek] || {};
   const isCurrent = _selectedWeek === STUDIO.currentWeek;
-  const assignUrl = STUDIO.bbLinks.currentAssignment;
+  const assignUrl = groupLinks().currentAssignment || '';
 
   document.getElementById('questTitle').textContent =
     `Week ${_selectedWeek}${q.title ? ': ' + q.title : ''}`;
@@ -453,7 +551,7 @@ function renderQuestContent() {
 
 function renderPeerReview() {
   const pairs  = getPeerPairs(STUDIO.currentWeek);
-  const prUrl  = STUDIO.bbLinks.peerReviewForm;
+  const prUrl  = groupLinks().peerReviewForm || '';
   const myName = _activeGuild ? _activeGuild.name : null;
 
   document.getElementById('prWeek').textContent  = STUDIO.currentWeek;
@@ -488,7 +586,7 @@ function renderPeerReview() {
 // ── Render: Leaderboard ──────────────────────────────────────────────────
 
 function renderLeaderboard() {
-  const sorted  = [...STUDIO.guilds].sort((a, b) => b.xp - a.xp);
+  const sorted  = [...visibleGuilds()].sort((a, b) => b.xp - a.xp);
   const maxXP   = sorted[0]?.xp || 1;
   const myName  = _activeGuild ? _activeGuild.name : null;
   const rankCls = r => r===1?'gold':r===2?'silver':r===3?'bronze':'other';
@@ -657,8 +755,9 @@ Keep the tone encouraging and specific. Do not award a formal grade.`;
 function renderWorkspaceButtons() {
   const row  = document.getElementById('workspaceBtnRow');
   if (!row) return;
-  const wsLinks  = STUDIO.bbLinks.guildWorkspaces || {};
-  const assignUrl = STUDIO.bbLinks.currentAssignment || '';
+  const gl        = groupLinks();
+  const wsLinks   = gl.guildWorkspaces || {};
+  const assignUrl = gl.currentAssignment || '';
   const gradeUrl  = STUDIO.bbLinks.gradebook || '';
 
   if (_activeGuild) {
@@ -670,8 +769,8 @@ function renderWorkspaceButtons() {
       (gradeUrl  ? `<a class="btn btn-ghost" href="${gradeUrl}"  target="_blank">📊 My Grades</a>` : '') +
       (!wsUrl && !assignUrl ? '<span style="font-size:11px;color:#94a3b8">Workspace links not configured yet — check with your module leader.</span>' : '');
   } else {
-    // Generic view — show all guild workspace links that are configured
-    const configured = STUDIO.guilds.filter(g => wsLinks[g.name]);
+    // Generic view — show all visible guild workspace links that are configured
+    const configured = visibleGuilds().filter(g => wsLinks[g.name]);
     if (configured.length === 0) {
       row.innerHTML = `<span style="font-size:11px;color:#94a3b8">
         Open this widget with <code>?guild=YourGuildName</code> in the URL to see your workspace link.<br>
@@ -697,7 +796,7 @@ function renderGuildBanner() {
   const g      = _activeGuild;
   const pairs  = getPeerPairs(STUDIO.currentWeek);
   const myPair = pairs.find(p => p.reviewer === g.name);
-  const sorted = [...STUDIO.guilds].sort((a,b) => b.xp - a.xp);
+  const sorted = [...visibleGuilds()].sort((a,b) => b.xp - a.xp);
   const rank   = sorted.findIndex(x => x.name === g.name) + 1;
   const rankLbl= rank===1?'🥇 1st':rank===2?'🥈 2nd':rank===3?'🥉 3rd':`#${rank}`;
   const wkDone = Math.max(0, STUDIO.currentWeek - 1);
@@ -719,11 +818,11 @@ function renderGuildBanner() {
         </div>` : ''}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${(STUDIO.bbLinks.guildWorkspaces||{})[g.name]
-          ? `<a class="btn btn-teal" href="${(STUDIO.bbLinks.guildWorkspaces||{})[g.name]}" target="_blank">🏠 Open My Workspace</a>`
+        ${(groupLinks().guildWorkspaces||{})[g.name]
+          ? `<a class="btn btn-teal" href="${(groupLinks().guildWorkspaces||{})[g.name]}" target="_blank">🏠 Open My Workspace</a>`
           : `<span style="font-size:11px;color:#94a3b8">Workspace link not set yet</span>`}
-        ${STUDIO.bbLinks.currentAssignment
-          ? `<a class="btn btn-primary" href="${STUDIO.bbLinks.currentAssignment}" target="_blank">📤 Submit Week ${STUDIO.currentWeek} Artefact</a>`
+        ${groupLinks().currentAssignment
+          ? `<a class="btn btn-primary" href="${groupLinks().currentAssignment}" target="_blank">📤 Submit Week ${STUDIO.currentWeek} Artefact</a>`
           : ''}
       </div>
     </div>`;
@@ -750,9 +849,15 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('weekLabel').textContent   = 'Week ' + STUDIO.currentWeek;
   document.getElementById('cohortLabel').textContent = STUDIO.cohortName;
 
-  if (_activeGuild) {
-    const pill = document.getElementById('guildPill');
-    if (pill) { pill.textContent = 'Guild ' + _activeGuild.name; pill.style.display = 'inline-block'; }
+  const pill = document.getElementById('guildPill');
+  if (pill) {
+    if (_activeGuild) {
+      pill.textContent = 'Guild ' + _activeGuild.name;
+      pill.style.display = 'inline-block';
+    } else if (_activeGroup) {
+      pill.textContent = _activeGroup;
+      pill.style.display = 'inline-block';
+    }
   }
 });
 </script>
