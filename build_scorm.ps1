@@ -43,7 +43,6 @@ function Make-SCORM($ZipPath, $Title, $HtmlFile, $HtmlHref, $Id) {
 
 # 1. Student dashboard — guild picker on first open
 Make-SCORM "$DL\cmp701_student_scorm.zip" "CMP701 Studio Dashboard" "bb.html" "bb.html" "cmp701-student"
-Copy-Item  "$DL\cmp701_student_scorm.zip" "$DL\cmp701_studio_scorm.zip" -Force   # legacy alias
 
 # 2. Tutor view — group picker on first open
 Make-SCORM "$DL\cmp701_tutor_scorm.zip"  "CMP701 Studio Tutor View" "bb.html" "bb.html?role=tutor" "cmp701-tutor"
