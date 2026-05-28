@@ -81,7 +81,14 @@ input:focus,select:focus,textarea:focus{border-color:#0D7377}
     <div class="hdr-title">⚙️ CMP701 Studio — Weekly Manager</div>
     <div class="hdr-sub">Module Leader admin panel — updates bb.html via GitHub</div>
   </div>
-  <span id="statusBadge">Not connected</span>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span id="statusBadge">Not connected</span>
+    <button onclick="window.location.href='bb.html'"
+            style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);color:#fff;
+                   border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer">
+      &#8592; Back to Dashboard
+    </button>
+  </div>
 </div>
 
 <div class="container">

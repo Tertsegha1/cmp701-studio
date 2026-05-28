@@ -30,7 +30,7 @@ $manifest = @'
   </organizations>
   <resources>
     <resource identifier="res-dashboard" type="webcontent"
-              adlcp:scormtype="sco" href="bb.html">
+              adlcp:scormtype="asset" href="bb.html">
       <file href="bb.html"/>
       <file href="admin.html"/>
     </resource>

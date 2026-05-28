@@ -138,8 +138,8 @@ label{font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:4
 .c-ldn{background:#1B3A6B}.c-bhm{background:#0D7377}.c-man{background:#7C3AED}
 
 /* ── First-time guild/group picker overlay ──────────────────────────── */
-.picker-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#1B3A6B 0%,#0D7377 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
-.picker-box{background:#fff;border-radius:12px;padding:28px;max-width:460px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.picker-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#1B3A6B 0%,#0D7377 100%);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:20px;overflow-y:auto}
+.picker-box{background:#fff;border-radius:12px;padding:28px;max-width:460px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.25);margin:auto 0}
 .picker-box h2{font-size:16px;font-weight:800;color:#1B3A6B;margin-bottom:4px}
 .picker-box p{font-size:12px;color:#64748b;margin-bottom:18px;line-height:1.55}
 .picker-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
@@ -1727,7 +1727,7 @@ window.addEventListener('DOMContentLoaded', () => {
         and publish changes directly to GitHub — all without touching any files manually.
       </p>
       <button class="btn btn-blue" style="font-size:13px;padding:12px 28px"
-              onclick="window.open('admin.html','_blank')">
+              onclick="window.location.href='admin.html'">
         🚀 Open XP Manager
       </button>
       <p style="font-size:10px;color:#94a3b8;margin-top:10px">Opens in a new tab within Blackboard</p>
