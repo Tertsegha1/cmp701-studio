@@ -555,6 +555,16 @@ let _activeGroup    = null;   // group prefix string e.g. "BHM-A"
 let _activeRole     = null;   // 'student' | 'tutor' | 'admin' — null until picker sets it
 let _staffVerified  = false;  // true after correct staff PIN entered this session
 
+// ── Safe storage — Blackboard may block localStorage/sessionStorage in iframes ─
+//    Falls back to in-memory objects so the app still works even if storage throws.
+const _lf = {}, _sf = {};
+function lsGet(k){ try{return localStorage.getItem(k);}catch(e){return _lf[k]!==undefined?_lf[k]:null;} }
+function lsSet(k,v){ try{localStorage.setItem(k,v);}catch(e){_lf[k]=v;} }
+function lsDel(k){ try{localStorage.removeItem(k);}catch(e){delete _lf[k];} }
+function ssGet(k){ try{return sessionStorage.getItem(k);}catch(e){return _sf[k]!==undefined?_sf[k]:null;} }
+function ssSet(k,v){ try{sessionStorage.setItem(k,v);}catch(e){_sf[k]=v;} }
+function ssDel(k){ try{sessionStorage.removeItem(k);}catch(e){delete _sf[k];} }
+
 // ── Auto week calculation ─────────────────────────────────────────────────
 //  Returns 1–12 based on semesterStart. Advances each Monday at 08:00.
 function calcCurrentWeek() {
@@ -585,7 +595,7 @@ function detectActiveGuild() {
   if (roleParam) {
     _activeRole = roleParam;  // explicit URL override
   } else {
-    _activeRole = sessionStorage.getItem('cmp701_role') || null;
+    _activeRole = ssGet('cmp701_role') || null;
   }
 
   // Infer role from URL params if not yet set
@@ -597,14 +607,14 @@ function detectActiveGuild() {
 
   // 3. Load guild/group from localStorage once role is known
   if (_activeRole === 'student' && !_activeGuild) {
-    const saved = localStorage.getItem('cmp701_guild');
+    const saved = lsGet('cmp701_guild');
     if (saved) {
       _activeGuild = STUDIO.guilds.find(g => g.name === saved) || null;
       if (_activeGuild) _activeGroup = _activeGuild.group;
     }
   }
   if (_activeRole === 'tutor' && !_activeGroup) {
-    const saved = localStorage.getItem('cmp701_group');
+    const saved = lsGet('cmp701_group');
     if (saved) _activeGroup = saved;
   }
 }
@@ -664,12 +674,13 @@ function showPicker() {
 
   // ── Step 2a: Student — pick guild ─────────────────────────────────────
   if (_activeRole === 'student') {
-    // If guild already saved from a previous visit, skip the picker
-    const savedGuild = localStorage.getItem('cmp701_guild');
-    if (savedGuild && STUDIO.guilds.find(g => g.name === savedGuild)) {
-      overlay.style.display = 'none';
-      location.reload();
-      return;
+    // If guild is already known (set during detectActiveGuild), skip the picker
+    if (_activeGuild) { renderDashboard(); return; }
+    // Safety net: guild saved but not yet loaded into state
+    const savedGuild = lsGet('cmp701_guild');
+    if (savedGuild) {
+      const g = STUDIO.guilds.find(x => x.name === savedGuild);
+      if (g) { _activeGuild = g; _activeGroup = g.group; renderDashboard(); return; }
     }
     let prevGroup = null;
     const btns = STUDIO.guilds.map(g => {
@@ -694,12 +705,12 @@ function showPicker() {
 
   // ── Step 2b: Tutor — pick group ───────────────────────────────────────
   if (_activeRole === 'tutor') {
-    // If group already saved from a previous visit, skip the picker
-    const savedGroup = localStorage.getItem('cmp701_group');
+    // If group is already known, skip the picker
+    if (_activeGroup) { renderDashboard(); return; }
+    // Safety net: group saved but not yet loaded into state
+    const savedGroup = lsGet('cmp701_group');
     if (savedGroup && GROUP_LABELS[savedGroup]) {
-      overlay.style.display = 'none';
-      location.reload();
-      return;
+      _activeGroup = savedGroup; renderDashboard(); return;
     }
     const btns = Object.entries(GROUP_LABELS).map(([key, label]) =>
       `<button class="guild-pick-btn" style="grid-column:1/-1;padding:12px" onclick="pickGroup('${key}')">${label}</button>`
@@ -714,10 +725,9 @@ function showPicker() {
     return;
   }
 
-  // ── Step 2c: Admin — hide overlay and boot dashboard ─────────────────
+  // ── Step 2c: Admin — render dashboard directly (no reload) ───────────
   if (_activeRole === 'admin') {
-    overlay.style.display = 'none';
-    location.reload();  // sessionStorage has role='admin', so boot completes on reload
+    renderDashboard();
     return;
   }
 }
@@ -725,13 +735,13 @@ function showPicker() {
 function pickRole(role) {
   if (role === null || role === undefined) {
     // Back button — clear role and staff verification, return to Step 1
-    sessionStorage.removeItem('cmp701_role');
+    ssDel('cmp701_role');
     _activeRole     = null;
     _staffVerified  = false;
     showPicker();
     return;
   }
-  sessionStorage.setItem('cmp701_role', role);
+  ssSet('cmp701_role', role);
   _activeRole    = role;
   _staffVerified = false;  // reset — PIN must be re-entered for the new role
   showPicker();
@@ -752,20 +762,28 @@ function verifyStaffPin() {
 }
 
 function pickGuild(name) {
-  localStorage.setItem('cmp701_guild', name);
-  location.reload();
+  lsSet('cmp701_guild', name);
+  _activeGuild = STUDIO.guilds.find(g => g.name === name) || null;
+  if (_activeGuild) _activeGroup = _activeGuild.group;
+  renderDashboard();
 }
 
 function pickGroup(key) {
-  if (key === '__all__') { localStorage.removeItem('cmp701_group'); location.href = location.pathname; return; }
-  localStorage.setItem('cmp701_group', key);
-  location.reload();
+  if (key === '__all__') { lsDel('cmp701_group'); _activeGroup = null; renderDashboard(); return; }
+  lsSet('cmp701_group', key);
+  _activeGroup = key;
+  renderDashboard();
 }
 
 function clearGuildChoice() {
-  localStorage.removeItem('cmp701_guild');
-  localStorage.removeItem('cmp701_group');
-  location.reload();
+  lsDel('cmp701_guild');
+  lsDel('cmp701_group');
+  ssDel('cmp701_role');
+  _activeGuild   = null;
+  _activeGroup   = null;
+  _activeRole    = null;
+  _staffVerified = false;
+  showPicker();
 }
 
 function closeStudio() {
@@ -1407,31 +1425,22 @@ function renderOverview() {
     (maxSubs > 0 ? `<strong>${Math.round(totalSubs/maxSubs*100)}%</strong> overall submission rate` : 'Week 1 — awaiting first submissions');
 }
 
-// ── Boot ─────────────────────────────────────────────────────────────────
+// ── renderDashboard ────────────────────────────────────────────────────────
+//  Central render function — called after role+guild/group are known.
+//  NEVER calls location.reload() — all state transitions call this directly.
 
-window.addEventListener('DOMContentLoaded', () => {
-  detectActiveGuild();   // ← must be first — sets _activeGuild, _activeGroup, _activeRole
+function renderDashboard() {
+  // Hide picker overlay
+  const overlay = document.getElementById('pickerOverlay');
+  if (overlay) overlay.style.display = 'none';
 
-  // ── Auto-resolve currentWeek ─────────────────────────────────────────
-  if (STUDIO.currentWeek === 'auto' || typeof STUDIO.currentWeek !== 'number') {
-    STUDIO.currentWeek = calcCurrentWeek();
-  }
-  _selectedWeek = STUDIO.currentWeek;  // safe to set now — "auto" is resolved
-
-  // ── Show picker if no role yet, or role set but guild/group missing ───
-  const needsPicker =
-    !_activeRole ||
-    (_activeRole === 'student' && !_activeGuild) ||
-    (_activeRole === 'tutor'   && !_activeGroup);
-  if (needsPicker) { showPicker(); return; }   // stop here — picker handles the rest
-
-  // ── Hide tabs not relevant to this role ──────────────────────────────
+  // Show/hide tabs by role
   document.querySelectorAll('.tab[data-role]').forEach(t => {
     const roles = t.dataset.role.split(' ');
     t.style.display = roles.includes(_activeRole) ? '' : 'none';
   });
 
-  // ── Core renders (all roles) ─────────────────────────────────────────
+  // Core renders (all roles)
   renderAnnouncement();
   renderQuestNav();
   renderQuestContent();
@@ -1441,12 +1450,12 @@ window.addEventListener('DOMContentLoaded', () => {
   renderTimeline();
   renderGuildBanner();
 
-  // ── Role-specific renders ─────────────────────────────────────────────
+  // Role-specific renders
   if (_activeRole === 'student') renderGuildSpace();
   if (_activeRole === 'tutor')   renderGroupHub();
   if (_activeRole === 'admin')   renderOverview();
 
-  // ── Activate correct first tab for this role ──────────────────────────
+  // Activate correct first tab for this role
   const firstTab = Array.from(document.querySelectorAll('.tab[data-role]'))
     .find(t => t.dataset.role.split(' ').includes(_activeRole));
   if (firstTab) {
@@ -1455,7 +1464,7 @@ window.addEventListener('DOMContentLoaded', () => {
     showTab('quest', document.querySelector('.tab'));
   }
 
-  // ── Header labels ─────────────────────────────────────────────────────
+  // Header labels
   document.getElementById('weekLabel').textContent   = 'Week ' + STUDIO.currentWeek;
   document.getElementById('cohortLabel').textContent = STUDIO.cohortName;
 
@@ -1463,21 +1472,44 @@ window.addEventListener('DOMContentLoaded', () => {
   const roleBadge = document.getElementById('roleBadge');
   if (roleBadge) {
     const roleLabels = { student: '👤 Student', tutor: '🎓 Tutor View', admin: '⚙️ Module Leader' };
-    roleBadge.textContent    = roleLabels[_activeRole] || '';
-    roleBadge.style.display  = 'inline-block';
+    roleBadge.textContent   = roleLabels[_activeRole] || '';
+    roleBadge.style.display = 'inline-block';
   }
 
   // Guild / group pill
   const pill = document.getElementById('guildPill');
   if (pill) {
     if (_activeGuild) {
-      pill.textContent = 'Guild ' + _activeGuild.name;
+      pill.textContent   = 'Guild ' + _activeGuild.name;
       pill.style.display = 'inline-block';
     } else if (_activeGroup) {
       pill.textContent   = GROUP_LABELS[_activeGroup] || _activeGroup;
       pill.style.display = 'inline-block';
+    } else {
+      pill.style.display = 'none';
     }
   }
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────
+
+window.addEventListener('DOMContentLoaded', () => {
+  detectActiveGuild();   // ← must be first — sets _activeGuild, _activeGroup, _activeRole
+
+  // Auto-resolve currentWeek
+  if (STUDIO.currentWeek === 'auto' || typeof STUDIO.currentWeek !== 'number') {
+    STUDIO.currentWeek = calcCurrentWeek();
+  }
+  _selectedWeek = STUDIO.currentWeek;
+
+  // Show picker if no role yet, or role set but guild/group missing
+  const needsPicker =
+    !_activeRole ||
+    (_activeRole === 'student' && !_activeGuild) ||
+    (_activeRole === 'tutor'   && !_activeGroup);
+  if (needsPicker) { showPicker(); return; }
+
+  renderDashboard();
 });
 </script>
 
@@ -1492,7 +1524,7 @@ window.addEventListener('DOMContentLoaded', () => {
     <span class="cohort-pill" id="guildPill" style="display:none;background:rgba(13,115,119,.4);border-color:rgba(13,115,119,.6)"></span>
     <span class="role-badge"  id="roleBadge" style="display:none"></span>
     <span class="week-pill"   id="weekLabel">Week —</span>
-    <button onclick="sessionStorage.removeItem('cmp701_role');_activeRole=null;_staffVerified=false;showPicker()"
+    <button onclick="ssDel('cmp701_role');_activeRole=null;_staffVerified=false;showPicker()"
             title="Switch role"
             style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;
                    border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;line-height:1.4">
