@@ -111,6 +111,31 @@ select,input,textarea{width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;bor
 select:focus,input:focus,textarea:focus{border-color:#0D7377}
 label{font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:4px}
 .form-group{margin-bottom:12px}
+
+/* ── Role badge ─────────────────────────────────────────────────────── */
+.role-badge{border-radius:12px;padding:2px 11px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3)}
+
+/* ── Guild Space (student collab view) ──────────────────────────────── */
+.guild-hero{background:linear-gradient(135deg,#1B3A6B 0%,#0D7377 100%);border-radius:8px;padding:18px 20px;color:#fff;margin-bottom:14px}
+.collab-step{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.collab-step:last-child{border:none}
+.collab-num{min-width:26px;height:26px;border-radius:50%;background:#0D7377;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+
+/* ── Group Hub (tutor XP entry) ─────────────────────────────────────── */
+.xp-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.xp-tbl th{background:#f1f5f9;padding:7px 10px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0;font-size:10px}
+.xp-tbl td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.xp-tbl tr:hover td{background:#f8fafc}
+.xp-input{width:68px;padding:5px 7px;font-size:11px;border:1.5px solid #cbd5e1;border-radius:4px;text-align:center}
+.snippet-box{background:#0f172a;color:#e2e8f0;border-radius:6px;padding:14px;font-size:11px;font-family:monospace;line-height:1.65;white-space:pre;overflow-x:auto;margin-top:10px;display:none}
+
+/* ── Overview (admin view) ──────────────────────────────────────────── */
+.ov-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.ov-tbl th{background:#1B3A6B;color:#fff;padding:8px 12px;text-align:left;font-size:10px;font-weight:700}
+.ov-tbl td{padding:9px 12px;border-bottom:1px solid #e2e8f0;vertical-align:middle}
+.ov-tbl tr:hover td{background:#f8fafc}
+.campus-tag{border-radius:4px;padding:2px 7px;font-size:9px;font-weight:700;color:#fff;margin-right:5px}
+.c-ldn{background:#1B3A6B}.c-bhm{background:#0D7377}.c-man{background:#7C3AED}
 </style>
 </head>
 <body>
@@ -435,6 +460,7 @@ const STUDIO = {
 
 let _activeGuild = null;   // set during boot
 let _activeGroup = null;   // group prefix string e.g. "BHM-A"
+let _activeRole  = 'admin';// 'student' | 'tutor' | 'admin'
 
 function detectActiveGuild() {
   const p = new URLSearchParams(window.location.search);
@@ -449,6 +475,17 @@ function detectActiveGuild() {
   }
   if (!_activeGroup && groupParam) {
     _activeGroup = groupParam.trim();
+  }
+  // Determine view role
+  const roleParam = p.get('role');
+  if (roleParam === 'admin') {
+    _activeRole = 'admin';
+  } else if (_activeGuild) {
+    _activeRole = 'student';
+  } else if (_activeGroup) {
+    _activeRole = 'tutor';
+  } else {
+    _activeRole = 'admin';
   }
 }
 
@@ -856,11 +893,207 @@ function renderGuildBanner() {
     </div>`;
 }
 
+// ── Group label lookup (shared) ─────────────────────────────────────────
+const GROUP_LABELS = {
+  'LDN-A':  'London Group A',      'LDN-CD': 'London Group C&D',
+  'BHM-A':  'Birmingham Group A',  'BHM-B':  'Birmingham Group B',
+  'BHM-E':  'Birmingham Group E',  'MAN-A':  'Manchester Group A',
+  'MAN-BC': 'Manchester Group B&C',
+};
+
+// ── Render: Guild Space (student collaboration tab) ──────────────────────
+
+function renderGuildSpace() {
+  if (!_activeGuild) return;
+  const g   = _activeGuild;
+  const q   = STUDIO.quests[STUDIO.currentWeek] || {};
+  const gl  = groupLinks();
+  const wsUrl = (gl.guildWorkspaces || {})[g.name] || gl.groupSetUrl || '';
+  const sorted = [...visibleGuilds()].sort((a, b) => b.xp - a.xp);
+  const rank   = sorted.findIndex(x => x.name === g.name) + 1;
+  const total  = sorted.length;
+  const rankLbl= rank===1?'🥇 1st':rank===2?'🥈 2nd':rank===3?'🥉 3rd':`#${rank} of ${total}`;
+  const wkDone = Math.max(0, STUDIO.currentWeek - 1);
+  const subs   = (g.submissions || []).length;
+
+  // Hero card
+  document.getElementById('gsHero').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:17px;font-weight:800;letter-spacing:-.2px">🏠 Guild ${g.name}</div>
+        <div style="font-size:12px;opacity:.82;margin-top:3px">${g.campus} Campus &nbsp;·&nbsp; ${STUDIO.cohortName}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:26px;font-weight:800;line-height:1">${g.xp}<span style="font-size:13px;opacity:.7;margin-left:3px">XP</span></div>
+        <div style="font-size:11px;opacity:.8;margin-top:2px">${rankLbl}</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      ${g.badges.length
+        ? g.badges.map(b => `<span style="font-size:20px">${b}</span>`).join('')
+        : '<span style="font-size:11px;opacity:.7">No badges yet — submit your first artefact this week to earn 🚀</span>'}
+    </div>
+    <div style="margin-top:8px;font-size:11px;opacity:.7">
+      ${wkDone > 0 ? `${subs} of ${wkDone} artefacts submitted` : 'Semester starting soon — get ready!'}
+    </div>`;
+
+  // Workspace CTA
+  document.getElementById('gsWorkspaceBtn').innerHTML = wsUrl
+    ? `<a class="btn btn-teal"    href="${wsUrl}"                         target="_blank" style="font-size:13px;padding:11px 22px">🏠 Open Guild ${g.name} Workspace</a>
+       ${gl.currentAssignment ? `<a class="btn btn-primary" href="${gl.currentAssignment}" target="_blank" style="font-size:13px;padding:11px 22px">📤 Submit Week ${STUDIO.currentWeek} Artefact</a>` : ''}
+       ${STUDIO.bbLinks.gradebook  ? `<a class="btn btn-ghost"   href="${STUDIO.bbLinks.gradebook}"  target="_blank">📊 My Grades</a>` : ''}`
+    : `<span style="font-size:11px;color:#94a3b8">Workspace link not configured yet — your module leader will add this before Week 1.</span>`;
+
+  // Deliverables as collaboration checklist
+  const deliverables = q.deliverables || [];
+  document.getElementById('gsWeekLabel').textContent = STUDIO.currentWeek;
+  document.getElementById('gsSteps').innerHTML = deliverables.length
+    ? deliverables.map((d, i) =>
+        `<div class="collab-step">
+          <div class="collab-num">${i + 1}</div>
+          <div style="font-size:12px;line-height:1.6;color:#334155">${d}</div>
+        </div>`).join('')
+    : '<p style="font-size:12px;color:#94a3b8;padding:8px 0">Quest deliverables not set yet.</p>';
+}
+
+// ── Render: Group Hub (tutor view) ────────────────────────────────────────
+
+function renderGroupHub() {
+  const guilds = visibleGuilds();
+  const gl     = groupLinks();
+  const label  = GROUP_LABELS[_activeGroup] || _activeGroup || 'Your Group';
+  const wkDone = Math.max(0, STUDIO.currentWeek - 1);
+
+  document.getElementById('ghGroupLabel').textContent = label;
+  document.getElementById('ghWeekNum').textContent    = STUDIO.currentWeek;
+
+  // Status + XP entry table
+  document.getElementById('ghTable').innerHTML = guilds.map(g => {
+    const subs   = (g.submissions || []).length;
+    const subPct = wkDone > 0 ? Math.round(subs / wkDone * 100) : 0;
+    return `<tr>
+      <td><strong style="color:#1B3A6B;font-size:12px">${g.name}</strong></td>
+      <td style="text-align:center"><strong style="color:#0D7377">${g.xp}</strong></td>
+      <td style="text-align:center">${subs}/${wkDone}
+        <span style="font-size:10px;color:${subPct>=80?'#15803D':subPct>=50?'#B45309':'#B91C1C'}">(${subPct}%)</span>
+      </td>
+      <td style="text-align:center">${g.badges.length ? g.badges.join('') : '<span style="color:#cbd5e1">—</span>'}</td>
+      <td style="white-space:nowrap">
+        <input class="xp-input" type="number" id="xp_${g.name}" placeholder="+XP" min="0">
+        &nbsp;<label style="font-size:10px;font-weight:600;cursor:pointer">
+          <input type="checkbox" id="sub_${g.name}" style="width:auto"> Sub
+        </label>
+        <label style="margin-left:6px;font-size:10px;font-weight:600;cursor:pointer">
+          <input type="checkbox" id="pr_${g.name}" style="width:auto"> PR
+        </label>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Quick links
+  const links = [
+    gl.currentAssignment ? `<a class="btn btn-primary" href="${gl.currentAssignment}" target="_blank">📤 This Week's Assignment</a>` : '',
+    gl.peerReviewForm    ? `<a class="btn btn-teal"    href="${gl.peerReviewForm}"    target="_blank">🤝 Peer Review Form</a>`        : '',
+    gl.groupSetUrl       ? `<a class="btn btn-ghost"   href="${gl.groupSetUrl}"       target="_blank">🏠 Group Workspaces</a>`         : '',
+    STUDIO.bbLinks.gradebook ? `<a class="btn btn-ghost" href="${STUDIO.bbLinks.gradebook}" target="_blank">📊 Gradebook</a>` : '',
+  ].filter(Boolean);
+  document.getElementById('ghLinks').innerHTML = links.join('') ||
+    '<span style="font-size:11px;color:#94a3b8">No BB links configured for this group yet. Ask the module leader.</span>';
+}
+
+function generateXPSnippet() {
+  const guilds = visibleGuilds();
+  const lines  = guilds.map(g => {
+    const addXP  = parseInt(document.getElementById('xp_'  + g.name)?.value || '0') || 0;
+    const subChk = document.getElementById('sub_' + g.name)?.checked || false;
+    const prChk  = document.getElementById('pr_'  + g.name)?.checked || false;
+    const newXP  = g.xp + addXP + (subChk ? 50 : 0) + (prChk ? 30 : 0);
+    const newSubs = subChk
+      ? [...new Set([...(g.submissions || []), STUDIO.currentWeek])].sort((a, b) => a - b)
+      : (g.submissions || []);
+    return `  { name: "${g.name}", xp: ${newXP}, badges: ${JSON.stringify(g.badges||[])}, submissions: ${JSON.stringify(newSubs)} },`;
+  });
+  const out =
+    `// Week ${STUDIO.currentWeek} XP update — ${GROUP_LABELS[_activeGroup] || _activeGroup}\n` +
+    `// Generated ${new Date().toLocaleDateString('en-GB')}\n` +
+    `// Paste into STUDIO.guilds[] in bb.html replacing the matching rows, then git push.\n\n` +
+    lines.join('\n');
+  const box = document.getElementById('xpSnippet');
+  box.textContent = out;
+  box.style.display = 'block';
+  const btn = document.getElementById('copySnippetBtn');
+  navigator.clipboard?.writeText(out).then(() => {
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => { btn.textContent = '📋 Copy Snippet'; }, 2400);
+  }).catch(() => {});
+}
+
+// ── Render: Overview (module leader / admin view) ─────────────────────────
+
+function renderOverview() {
+  const groups = [
+    { key:'LDN-A',  label:'London Group A',      campus:'London' },
+    { key:'LDN-CD', label:'London Group C&D',     campus:'London' },
+    { key:'BHM-A',  label:'Birmingham Group A',   campus:'Birmingham' },
+    { key:'BHM-B',  label:'Birmingham Group B',   campus:'Birmingham' },
+    { key:'BHM-E',  label:'Birmingham Group E',   campus:'Birmingham' },
+    { key:'MAN-A',  label:'Manchester Group A',   campus:'Manchester' },
+    { key:'MAN-BC', label:'Manchester Group B&C', campus:'Manchester' },
+  ];
+  const campusCls = { London:'c-ldn', Birmingham:'c-bhm', Manchester:'c-man' };
+  const wkDone    = Math.max(0, STUDIO.currentWeek - 1);
+  const base      = window.location.pathname.split('/').pop() || 'bb.html';
+
+  document.getElementById('ovWeek').textContent   = STUDIO.currentWeek;
+  document.getElementById('ovCohort').textContent = STUDIO.cohortName;
+
+  document.getElementById('ovTableBody').innerHTML = groups.map(grp => {
+    const gs       = STUDIO.guilds.filter(g => g.group === grp.key);
+    const avgXP    = gs.length ? Math.round(gs.reduce((s,g) => s+g.xp, 0) / gs.length) : 0;
+    const totalSubs= gs.reduce((s,g) => s+(g.submissions||[]).length, 0);
+    const maxSubs  = gs.length * wkDone;
+    const subPct   = maxSubs > 0 ? Math.round(totalSubs / maxSubs * 100) : null;
+    const bl = STUDIO.bbLinks[grp.key] || {};
+    return `<tr>
+      <td>
+        <span class="campus-tag ${campusCls[grp.campus]}">${grp.campus.slice(0,3).toUpperCase()}</span>
+        <strong>${grp.label}</strong>
+      </td>
+      <td style="text-align:center">${gs.length}</td>
+      <td style="text-align:center"><strong style="color:#0D7377">${avgXP}</strong></td>
+      <td style="text-align:center">
+        ${subPct !== null
+          ? `<span style="font-weight:700;color:${subPct>=80?'#15803D':subPct>=50?'#B45309':'#B91C1C'}">${subPct}%</span>`
+          : '<span style="color:#94a3b8">—</span>'}
+      </td>
+      <td>
+        <a href="${base}?group=${grp.key}" target="_blank" class="btn btn-ghost" style="font-size:10px;padding:4px 10px">Tutor View ↗</a>
+        ${bl.currentAssignment ? `<a href="${bl.currentAssignment}" target="_blank" class="btn btn-ghost" style="font-size:10px;padding:4px 10px">BB Assign ↗</a>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+
+  const totalXP   = STUDIO.guilds.reduce((s,g) => s+g.xp, 0);
+  const totalSubs = STUDIO.guilds.reduce((s,g) => s+(g.submissions||[]).length, 0);
+  const maxSubs   = STUDIO.guilds.length * wkDone;
+  document.getElementById('ovStats').innerHTML =
+    `<strong>${STUDIO.guilds.length}</strong> guilds across 7 seminar groups &nbsp;·&nbsp; ` +
+    `<strong>${totalXP}</strong> total XP &nbsp;·&nbsp; ` +
+    (maxSubs > 0 ? `<strong>${Math.round(totalSubs/maxSubs*100)}%</strong> overall submission rate` : 'Week 1 — awaiting first submissions');
+}
+
 // ── Boot ─────────────────────────────────────────────────────────────────
 
 window.addEventListener('DOMContentLoaded', () => {
-  detectActiveGuild();   // ← must be first — all renders depend on _activeGuild
+  detectActiveGuild();   // ← must be first — sets _activeGuild, _activeGroup, _activeRole
 
+  // ── Hide tabs not relevant to this role ──────────────────────────────
+  document.querySelectorAll('.tab[data-role]').forEach(t => {
+    const roles = t.dataset.role.split(' ');
+    t.style.display = roles.includes(_activeRole) ? '' : 'none';
+  });
+
+  // ── Core renders (all roles) ─────────────────────────────────────────
   renderAnnouncement();
   renderQuestNav();
   renderQuestContent();
@@ -870,20 +1103,40 @@ window.addEventListener('DOMContentLoaded', () => {
   renderTimeline();
   renderGuildBanner();
 
-  // Show first tab
-  showTab('quest', document.querySelector('.tab'));
+  // ── Role-specific renders ─────────────────────────────────────────────
+  if (_activeRole === 'student') renderGuildSpace();
+  if (_activeRole === 'tutor')   renderGroupHub();
+  if (_activeRole === 'admin')   renderOverview();
 
-  // Set header info — append guild name if detected
+  // ── Activate correct first tab for this role ──────────────────────────
+  const firstTab = Array.from(document.querySelectorAll('.tab[data-role]'))
+    .find(t => t.dataset.role.split(' ').includes(_activeRole));
+  if (firstTab) {
+    showTab(firstTab.dataset.tab, firstTab);
+  } else {
+    showTab('quest', document.querySelector('.tab'));
+  }
+
+  // ── Header labels ─────────────────────────────────────────────────────
   document.getElementById('weekLabel').textContent   = 'Week ' + STUDIO.currentWeek;
   document.getElementById('cohortLabel').textContent = STUDIO.cohortName;
 
+  // Role badge
+  const roleBadge = document.getElementById('roleBadge');
+  if (roleBadge) {
+    const roleLabels = { student: '👤 Student', tutor: '🎓 Tutor View', admin: '⚙️ Module Leader' };
+    roleBadge.textContent    = roleLabels[_activeRole] || '';
+    roleBadge.style.display  = 'inline-block';
+  }
+
+  // Guild / group pill
   const pill = document.getElementById('guildPill');
   if (pill) {
     if (_activeGuild) {
       pill.textContent = 'Guild ' + _activeGuild.name;
       pill.style.display = 'inline-block';
     } else if (_activeGroup) {
-      pill.textContent = _activeGroup;
+      pill.textContent   = GROUP_LABELS[_activeGroup] || _activeGroup;
       pill.style.display = 'inline-block';
     }
   }
@@ -899,7 +1152,8 @@ window.addEventListener('DOMContentLoaded', () => {
   <div class="hdr-right">
     <span class="cohort-pill" id="cohortLabel">Loading…</span>
     <span class="cohort-pill" id="guildPill" style="display:none;background:rgba(13,115,119,.4);border-color:rgba(13,115,119,.6)"></span>
-    <span class="week-pill" id="weekLabel">Week —</span>
+    <span class="role-badge"  id="roleBadge" style="display:none"></span>
+    <span class="week-pill"   id="weekLabel">Week —</span>
   </div>
 </div>
 
@@ -908,11 +1162,18 @@ window.addEventListener('DOMContentLoaded', () => {
 
 <!-- ── Tabs ── -->
 <div class="tabs">
-  <button class="tab on"  onclick="showTab('quest',       this)">📋 This Week's Quest</button>
-  <button class="tab"     onclick="showTab('peer',        this)">🤝 Peer Review</button>
-  <button class="tab"     onclick="showTab('leaderboard', this)">🏆 Leaderboard</button>
-  <button class="tab"     onclick="showTab('ai',          this)">⚡ AI Feedback</button>
-  <button class="tab"     onclick="showTab('timeline',    this)">📅 Timeline</button>
+  <!-- Student-first tab -->
+  <button class="tab" data-role="student"           data-tab="guild-space"  onclick="showTab('guild-space', this)">🏠 My Guild</button>
+  <!-- Tutor-first tab -->
+  <button class="tab" data-role="tutor"             data-tab="group-hub"    onclick="showTab('group-hub',   this)">📊 Group Hub</button>
+  <!-- Admin-first tab -->
+  <button class="tab" data-role="admin"             data-tab="overview"     onclick="showTab('overview',    this)">🗂 All Groups</button>
+  <!-- Shared tabs -->
+  <button class="tab" data-role="student tutor admin" data-tab="quest"      onclick="showTab('quest',       this)">📋 Quest</button>
+  <button class="tab" data-role="student tutor admin" data-tab="peer"       onclick="showTab('peer',        this)">🤝 Peer Review</button>
+  <button class="tab" data-role="student tutor admin" data-tab="leaderboard"onclick="showTab('leaderboard', this)">🏆 Leaderboard</button>
+  <button class="tab" data-role="student admin"       data-tab="ai"         onclick="showTab('ai',          this)">⚡ AI Feedback</button>
+  <button class="tab" data-role="student tutor admin" data-tab="timeline"   onclick="showTab('timeline',    this)">📅 Timeline</button>
 </div>
 
 <!-- ══════════════════════════════════════════════════════ -->
@@ -1143,6 +1404,147 @@ window.addEventListener('DOMContentLoaded', () => {
     <div class="card-hdr teal">12-Week Semester Overview</div>
     <div class="card-body">
       <div id="weekGrid" class="wk-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- GUILD SPACE TAB  (student view — ?guild=BHM-A-G1)   -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="pg" id="pg-guild-space">
+
+  <!-- Hero: guild stats + workspace CTA -->
+  <div class="guild-hero" id="gsHero">Loading guild…</div>
+
+  <div class="card">
+    <div class="card-hdr green">Your Collaboration Space</div>
+    <div class="card-body">
+      <p style="font-size:12px;color:#334155;line-height:1.6;margin-bottom:14px">
+        All guild collaboration, drafts, and shared files live in your
+        <strong>Blackboard Guild Workspace</strong>. Work through this week's
+        deliverables together, then each member submits their own artefact
+        via the assignment link below.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="gsWorkspaceBtn">
+        <!-- populated by renderGuildSpace() -->
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr teal">Week <span id="gsWeekLabel">—</span> — Guild Collaboration Checklist</div>
+    <div class="card-body">
+      <p style="font-size:11px;color:#64748b;margin-bottom:12px">
+        Work through these deliverables as a guild before submitting individually.
+        Your collective research supports everyone's individual assessment.
+      </p>
+      <div id="gsSteps"><!-- populated by renderGuildSpace() --></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- GROUP HUB TAB  (tutor view — ?group=BHM-A)           -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="pg" id="pg-group-hub">
+
+  <div class="card">
+    <div class="card-hdr teal">
+      <span>📊 <span id="ghGroupLabel">Group</span> — Week <span id="ghWeekNum">—</span> Status</span>
+    </div>
+    <div class="card-body">
+      <div style="overflow-x:auto">
+        <table class="xp-tbl">
+          <thead>
+            <tr>
+              <th>Guild</th>
+              <th style="text-align:center">Current XP</th>
+              <th style="text-align:center">Submissions</th>
+              <th style="text-align:center">Badges</th>
+              <th>Update This Week</th>
+            </tr>
+          </thead>
+          <tbody id="ghTable"><!-- populated by renderGroupHub() --></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" onclick="generateXPSnippet()">⚙️ Generate XP Snippet</button>
+        <button class="btn btn-ghost"   onclick="generateXPSnippet()" id="copySnippetBtn">📋 Copy Snippet</button>
+      </div>
+
+      <div id="xpSnippet" class="snippet-box"></div>
+
+      <div class="alert alert-info" style="margin-top:14px;font-size:11px">
+        <strong>How to use:</strong> After marking in BB — tick <em>Sub</em> for each guild that submitted (+50 XP),
+        tick <em>PR</em> if they completed peer review (+30 XP), enter any bonus XP in the box.
+        Click <strong>Generate XP Snippet</strong> → copy → send to the module leader to paste into bb.html and push.
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr green">Quick Links — Your Group's Blackboard Pages</div>
+    <div class="card-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="ghLinks">
+        <!-- populated by renderGroupHub() -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- OVERVIEW TAB  (module leader view — no params)        -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="pg" id="pg-overview">
+
+  <div class="card">
+    <div class="card-hdr blue">
+      <span>🗂 All Groups — Week <span id="ovWeek">—</span></span>
+      <span style="font-size:10px;font-weight:400;opacity:.8" id="ovCohort"></span>
+    </div>
+    <div class="card-body">
+      <div style="font-size:11px;color:#64748b;margin-bottom:12px" id="ovStats"></div>
+      <div style="overflow-x:auto">
+        <table class="ov-tbl">
+          <thead>
+            <tr>
+              <th>Seminar Group</th>
+              <th style="text-align:center">Guilds</th>
+              <th style="text-align:center">Avg XP</th>
+              <th style="text-align:center">Sub Rate</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ovTableBody"><!-- populated by renderOverview() --></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr amber">⚙️ Weekly Update Checklist</div>
+    <div class="card-body">
+      <div class="deliverable-item">
+        <div class="del-num">1</div>
+        <div style="font-size:12px;line-height:1.6;color:#334155">Click <strong>Tutor View ↗</strong> for each group above. Use the Group Hub to generate XP snippets per group (tutors can also do this themselves).</div>
+      </div>
+      <div class="deliverable-item">
+        <div class="del-num">2</div>
+        <div style="font-size:12px;line-height:1.6;color:#334155">Paste all guild snippets into <code>STUDIO.guilds[]</code> in <strong>bb.html</strong>. Increment <code>currentWeek</code>. Update each group's <code>peerReviewOffset</code>.</div>
+      </div>
+      <div class="deliverable-item">
+        <div class="del-num">3</div>
+        <div style="font-size:12px;line-height:1.6;color:#334155">Paste this week's BB Assignment URLs and peer review URLs into <code>bbLinks["GROUP"].currentAssignment</code> and <code>.peerReviewForm</code> for each group.</div>
+      </div>
+      <div class="deliverable-item">
+        <div class="del-num">4</div>
+        <div style="font-size:12px;line-height:1.6;color:#334155">
+          Run in PowerShell from the cmp701-studio folder:<br>
+          <code>git add bb.html; git commit -m "Week N update"; git push origin master</code><br>
+          Students see the updated dashboard in Blackboard within ~60 seconds.
+        </div>
+      </div>
     </div>
   </div>
 </div>
