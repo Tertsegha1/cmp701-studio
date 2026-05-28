@@ -1,9 +1,8 @@
 # build_scorm.ps1
-# Builds four SCORM packages for Blackboard Ultra:
-#   1. cmp701_student_scorm.zip  — student dashboard with guild picker
-#   2. cmp701_tutor_scorm.zip    — tutor Group Hub with group picker
-#   3. cmp701_admin_scorm.zip    — module leader all-groups + XP manager
-#   4. cmp701_studio_scorm.zip   — alias for student (legacy name)
+# Builds TWO SCORM packages for Blackboard Ultra:
+#   1. cmp701_studio_scorm.zip   — unified dashboard (role picker on first open)
+#                                  Students pick guild, Tutors pick group, ML sees all
+#   2. cmp701_admin_scorm.zip    — module leader XP manager / weekly publisher
 # Run: .\build_scorm.ps1
 
 $Dir  = $PSScriptRoot
@@ -41,20 +40,18 @@ function Make-SCORM($ZipPath, $Title, $HtmlFile, $HtmlHref, $Id) {
   Write-Host "Built: $ZipPath"
 }
 
-# 1. Student dashboard — guild picker on first open
-Make-SCORM "$DL\cmp701_student_scorm.zip" "CMP701 Studio Dashboard" "bb.html" "bb.html" "cmp701-student"
+# 1. Unified dashboard -- role picker on first open (Students, Tutors, Module Leader)
+Make-SCORM "$DL\cmp701_studio_scorm.zip" "CMP701 Studio Dashboard" "bb.html" "bb.html" "cmp701-studio"
 
-# 2. Tutor view — group picker on first open
-Make-SCORM "$DL\cmp701_tutor_scorm.zip"  "CMP701 Studio Tutor View" "bb.html" "bb.html?role=tutor" "cmp701-tutor"
-
-# 3. Module leader admin — full overview + XP manager
-Make-SCORM "$DL\cmp701_admin_scorm.zip"  "CMP701 Studio Admin"       "admin.html" "admin.html" "cmp701-admin"
+# 2. Admin weekly manager -- module leader only (XP entry + publish)
+Make-SCORM "$DL\cmp701_admin_scorm.zip"  "CMP701 Studio Admin"     "admin.html" "admin.html" "cmp701-admin"
 
 Write-Host ""
 Write-Host "Upload to Blackboard Ultra as SCORM Package content items:"
-Write-Host "  cmp701_student_scorm.zip  Add to EACH guild workspace (33 workspaces)"
-Write-Host "                            OR add once to the course content area (students pick guild on first open)"
-Write-Host "  cmp701_tutor_scorm.zip    Add to a staff-only content area (tutors pick their group)"
-Write-Host "  cmp701_admin_scorm.zip    Add to module leader content area only"
+Write-Host "  cmp701_studio_scorm.zip  Add to the main course content area (visible to all roles)"
+Write-Host "                           On first open each user picks their role, then their guild or group."
+Write-Host "  cmp701_admin_scorm.zip   Add to module leader content area only (XP manager)"
 Write-Host ""
-Write-Host "All SCORM items open in a new window. Set visibility appropriately per role."
+Write-Host "Visibility settings:"
+Write-Host "  cmp701_studio_scorm.zip  Visible to Students AND Staff"
+Write-Host "  cmp701_admin_scorm.zip   Visible to Staff only (or restrict by username)"

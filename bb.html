@@ -464,7 +464,7 @@ const STUDIO = {
 
 let _activeGuild = null;   // set during boot
 let _activeGroup = null;   // group prefix string e.g. "BHM-A"
-let _activeRole  = 'admin';// 'student' | 'tutor' | 'admin'
+let _activeRole  = null;   // 'student' | 'tutor' | 'admin' — null until picker sets it
 
 // ── Auto week calculation ─────────────────────────────────────────────────
 //  Returns 1–12 based on semesterStart. Advances each Monday at 08:00.
@@ -481,78 +481,121 @@ function detectActiveGuild() {
   const groupParam = p.get('group');
   const roleParam  = p.get('role');   // explicit role: 'student'|'tutor'|'admin'
 
-  // 1. URL params take priority
+  // 1. URL params (highest priority — for direct links and testing)
   if (guildParam) {
     _activeGuild = STUDIO.guilds.find(
       g => g.name.toLowerCase() === guildParam.trim().toLowerCase()
     ) || null;
     if (_activeGuild) _activeGroup = _activeGuild.group;
   }
-  if (!_activeGroup && groupParam) {
-    _activeGroup = groupParam.trim();
+  if (!_activeGroup && groupParam) _activeGroup = groupParam.trim();
+
+  // 2. Role: URL param → localStorage → null (null = show picker)
+  if (roleParam) {
+    _activeRole = roleParam;  // explicit URL override
+  } else {
+    _activeRole = localStorage.getItem('cmp701_role') || null;
   }
 
-  // 2. Determine explicit role from URL
-  if (roleParam === 'admin')   _activeRole = 'admin';
-  else if (roleParam === 'tutor')  _activeRole = 'tutor';
-  else if (roleParam === 'student') _activeRole = 'student';
-  else if (_activeGuild) _activeRole = 'student';
-  else if (_activeGroup) _activeRole = 'tutor';
-  else _activeRole = 'admin';
+  // Infer role from URL params if not yet set
+  if (!_activeRole) {
+    if (_activeGuild)      _activeRole = 'student';
+    else if (_activeGroup) _activeRole = 'tutor';
+    // else: stays null → role picker shown
+  }
 
-  // 3. If no guild/group yet, try localStorage (for SCORM — no URL params available)
-  if (!_activeGuild && _activeRole === 'student') {
+  // 3. Load guild/group from localStorage once role is known
+  if (_activeRole === 'student' && !_activeGuild) {
     const saved = localStorage.getItem('cmp701_guild');
     if (saved) {
       _activeGuild = STUDIO.guilds.find(g => g.name === saved) || null;
       if (_activeGuild) _activeGroup = _activeGuild.group;
     }
   }
-  if (!_activeGroup && _activeRole === 'tutor') {
+  if (_activeRole === 'tutor' && !_activeGroup) {
     const saved = localStorage.getItem('cmp701_group');
     if (saved) _activeGroup = saved;
   }
 }
 
-// ── Guild/group picker (SCORM first-use) ─────────────────────────────────
-//  Called when role is set but no guild/group detected yet.
+// ── Picker (SCORM first-use) ──────────────────────────────────────────────
+//  Step 1: Who are you?  Step 2: Pick your guild or group.
 function showPicker() {
   const overlay = document.getElementById('pickerOverlay');
   if (!overlay) return;
+  overlay.style.display = 'flex';
 
+  // ── Step 1: Role not yet known ────────────────────────────────────────
+  if (!_activeRole) {
+    overlay.innerHTML = `
+      <div class="picker-box">
+        <h2>👋 Welcome to CMP701 Studio</h2>
+        <p>Select your role to get started. This is saved on your device — you only choose once.</p>
+        <div class="picker-grid" style="grid-template-columns:1fr;gap:10px">
+          <button class="guild-pick-btn" style="padding:14px;font-size:13px" onclick="pickRole('student')">
+            👤 &nbsp;I'm a <strong>Student</strong>
+          </button>
+          <button class="guild-pick-btn" style="padding:14px;font-size:13px" onclick="pickRole('tutor')">
+            🎓 &nbsp;I'm a <strong>Tutor / Lecturer</strong>
+          </button>
+          <button class="guild-pick-btn" style="padding:14px;font-size:13px" onclick="pickRole('admin')">
+            ⚙️ &nbsp;I'm the <strong>Module Leader</strong>
+          </button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // ── Step 2a: Student — pick guild ─────────────────────────────────────
   if (_activeRole === 'student') {
     let prevGroup = null;
     const btns = STUDIO.guilds.map(g => {
-      let label = '';
+      let html = '';
       if (g.group !== prevGroup) {
-        label += `<div class="picker-group-label">${GROUP_LABELS[g.group] || g.group}</div>`;
+        html += `<div class="picker-group-label">${GROUP_LABELS[g.group] || g.group}</div>`;
         prevGroup = g.group;
       }
-      label += `<button class="guild-pick-btn" onclick="pickGuild('${g.name}')">${g.name}</button>`;
-      return label;
+      html += `<button class="guild-pick-btn" onclick="pickGuild('${g.name}')">${g.name}</button>`;
+      return html;
     }).join('');
     overlay.innerHTML = `
       <div class="picker-box">
-        <h2>🏠 Welcome to CMP701 Studio</h2>
-        <p>Select your Guild to personalise your dashboard. This is saved on your device — you only do this once.</p>
+        <h2>🏠 Select Your Guild</h2>
+        <p>Find your guild below. This is saved on your device — you only do this once.</p>
         <div class="picker-grid">${btns}</div>
-        <p style="font-size:10px;color:#94a3b8">Not sure which guild you're in? Check your Blackboard course welcome email or ask your tutor.</p>
+        <p style="font-size:10px;color:#94a3b8;margin-top:8px">Not sure? Check your Blackboard course or ask your tutor.</p>
+        <button class="btn btn-ghost" style="margin-top:10px;width:100%;font-size:10px" onclick="pickRole(null)">← Back</button>
       </div>`;
-    overlay.style.display = 'flex';
+    return;
+  }
 
-  } else if (_activeRole === 'tutor') {
+  // ── Step 2b: Tutor — pick group ───────────────────────────────────────
+  if (_activeRole === 'tutor') {
     const btns = Object.entries(GROUP_LABELS).map(([key, label]) =>
-      `<button class="guild-pick-btn" style="grid-column:1/-1" onclick="pickGroup('${key}')">${label}</button>`
+      `<button class="guild-pick-btn" style="grid-column:1/-1;padding:12px" onclick="pickGroup('${key}')">${label}</button>`
     ).join('');
     overlay.innerHTML = `
       <div class="picker-box">
-        <h2>🎓 Tutor Dashboard</h2>
-        <p>Select your seminar group to see the Group Hub for your guilds.</p>
+        <h2>🎓 Select Your Seminar Group</h2>
+        <p>Choose the group you are responsible for. You can change this later.</p>
         <div class="picker-grid" style="grid-template-columns:1fr">${btns}</div>
-        <button class="btn btn-ghost" style="margin-top:8px;width:100%;font-size:11px" onclick="pickGroup('__all__')">View all groups (Module Leader)</button>
+        <button class="btn btn-ghost" style="margin-top:10px;width:100%;font-size:10px" onclick="pickRole(null)">← Back</button>
       </div>`;
-    overlay.style.display = 'flex';
+    return;
   }
+}
+
+function pickRole(role) {
+  if (role === null || role === undefined) {
+    // Back button — clear role so Step 1 shows again
+    localStorage.removeItem('cmp701_role');
+    _activeRole = null;
+    showPicker();
+    return;
+  }
+  localStorage.setItem('cmp701_role', role);
+  _activeRole = role;
+  showPicker();  // advance to Step 2 (guild or group picker)
 }
 
 function pickGuild(name) {
