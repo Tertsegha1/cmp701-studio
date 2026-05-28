@@ -136,6 +136,17 @@ label{font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:4
 .ov-tbl tr:hover td{background:#f8fafc}
 .campus-tag{border-radius:4px;padding:2px 7px;font-size:9px;font-weight:700;color:#fff;margin-right:5px}
 .c-ldn{background:#1B3A6B}.c-bhm{background:#0D7377}.c-man{background:#7C3AED}
+
+/* ── First-time guild/group picker overlay ──────────────────────────── */
+.picker-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#1B3A6B 0%,#0D7377 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.picker-box{background:#fff;border-radius:12px;padding:28px;max-width:460px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.picker-box h2{font-size:16px;font-weight:800;color:#1B3A6B;margin-bottom:4px}
+.picker-box p{font-size:12px;color:#64748b;margin-bottom:18px;line-height:1.55}
+.picker-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+.guild-pick-btn{padding:10px 8px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;color:#1B3A6B;text-align:center}
+.guild-pick-btn:hover{border-color:#0D7377;background:#f0fdfa;color:#0D7377}
+.guild-pick-btn.selected{border-color:#1B3A6B;background:#eff6ff}
+.picker-group-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;grid-column:1/-1;margin-top:6px}
 </style>
 </head>
 <body>
@@ -143,15 +154,18 @@ label{font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:4
 <script>
 // ═══════════════════════════════════════════════════════════════════════════
 //  MODULE LEADER CONFIG
-//  Update this section each week. Push to GitHub — Blackboard updates live.
+//  Set semesterStart once. Quests auto-publish every Monday at 8am.
+//  Only update guilds[].xp each week after marking. Push to GitHub
+//  OR use the admin panel in Blackboard — changes go live in ~60 seconds.
 // ═══════════════════════════════════════════════════════════════════════════
 
 const STUDIO = {
 
   // ── Cohort & Week ──────────────────────────────────────────────────────
   cohortName:    "2025-26 Jun Intake",
-  currentWeek:   1,         // ← update each week
-  semesterStart: "2026-06-16",  // Monday of Week 1 (YYYY-MM-DD)
+  currentWeek:   "auto",    // ← "auto" = calculated from semesterStart each Monday 8am
+                            //   set a number (e.g. 3) to override for testing
+  semesterStart: "2026-06-16",  // Monday of Week 1 (YYYY-MM-DD) — set once, never change
 
   // ── Key Dates ──────────────────────────────────────────────────────────
   deadlines: {
@@ -223,34 +237,24 @@ const STUDIO = {
     { name: "MAN-BC-G3", campus: "Manchester", group: "MAN-BC", xp: 0, badges: [], submissions: [] },
   ],
 
-  // ── Peer Review Offset per group ──────────────────────────────────────
-  //  Each group's peer review runs independently.
-  //  offset: guild[i] reviews guild[(i + offset) % groupGuilds.length]
-  //  Set each offset = the current week number for that group.
-  peerReviewOffset: {
-    "LDN-A":  1,   // London Group A
-    "LDN-CD": 1,   // London Group C&D
-    "BHM-A":  1,   // Birmingham Group A
-    "BHM-B":  1,   // Birmingham Group B
-    "BHM-E":  1,   // Birmingham Group E
-    "MAN-A":  1,   // Manchester Group A
-    "MAN-BC": 1,   // Manchester Group B&C
-  },
+  // ── Peer Review Offset ───────────────────────────────────────────────
+  //  "auto" = rotates automatically with the current week (recommended).
+  //  Set a specific number per group only if you need to override.
+  peerReviewOffset: "auto",
 
-  // ── Blackboard Links per group ────────────────────────────────────────
-  //  groupSetUrl : The BB Ultra Group Set page URL for this seminar group.
-  //                Students click "Open My Workspace" and land on their group set
-  //                page where they can see and enter their guild workspace.
-  //                Get it from: Course → Groups → click the group set → copy URL
-  //                (remove &mode=edit from the end if present).
+  // ── Blackboard Links ─────────────────────────────────────────────────
+  //  Set ONCE at the start of semester — no weekly updates needed.
   //
-  //  guildWorkspaces : Optional per-guild URLs for direct deep-links.
-  //                    Leave "" to fall back to groupSetUrl automatically.
+  //  currentAssignment / peerReviewForm:
+  //    Option A (recommended): an array of 12 URLs — index 0 = Week 1.
+  //      ["https://bb.../wk1", "https://bb.../wk2", ... x12]
+  //      The dashboard auto-picks the correct week's link every Monday.
+  //    Option B: a single string URL — update it weekly.
   //
-  //  currentAssignment / peerReviewForm : Update each week.
-  //  gradebook : shared "My Grades" URL — same for all students.
-  //
-  //  Course ID for this cohort: _376756_1  (learning.ulster.ac.uk)
+  //  groupSetUrl : Course → Groups → open the group set → copy URL (strip &mode=edit).
+  //  guildWorkspaces : optional per-guild deep-links; falls back to groupSetUrl.
+  //  gradebook : My Grades URL — same for all students.
+  //  Course ID: _376756_1  (learning.ulster.ac.uk)
   bbLinks: {
     gradebook: "https://learning.ulster.ac.uk/ultra/courses/_376756_1/gradebook",
     "LDN-A": {
@@ -302,19 +306,19 @@ const STUDIO = {
   aiKey: "",
 
   // ═══════════════════════════════════════════════════════════════════════
-  // WEEKLY UPDATE CHECKLIST (takes ~5 minutes for all 7 groups)
+  // WEEKLY TASK (after marking — ~2 minutes in the Blackboard admin panel)
   // ═══════════════════════════════════════════════════════════════════════
-  // 1. currentWeek          → increment by 1
-  // 2. peerReviewOffset.*   → set each group's offset to the new week number
-  // 3. guilds[].xp          → open BB gradebook per group, count submissions:
-  //                           add 50 per artefact + 30 per peer review done
-  // 4. guilds[].badges      → add emoji if a guild hit a milestone this week
-  // 5. guilds[].submissions → add the new week number for each guild that submitted
-  // 6. announcement.body    → update with a message, or set "" to hide
-  // 7. bbLinks["GRP"].currentAssignment → paste each group's new BB Assignment URL
-  // 8. bbLinks["GRP"].peerReviewForm    → paste each group's peer review URL
-  // Then: git add bb.html -> git commit -m "Week N update" -> git push
-  // Students see updated widget in Blackboard within ~60 seconds.
+  // Quests auto-publish Monday 8am. Week number is automatic. No link updates
+  // needed if you pre-filled the 12-entry arrays above at start of semester.
+  //
+  // Only update each week:
+  //   guilds[].xp          → +50 per artefact submitted, +30 per peer review
+  //   guilds[].submissions → add week number for each guild that submitted
+  //   guilds[].badges      → add emoji milestone badges as earned
+  //   announcement.body    → optional message, or "" to hide
+  //
+  // Use the Admin Panel in Blackboard to do this — no Git needed.
+  // Or: edit here → git push → live in ~60s.
   // ═══════════════════════════════════════════════════════════════════════
   _weeklySync: null,  // placeholder — do not delete this line
 
@@ -462,11 +466,22 @@ let _activeGuild = null;   // set during boot
 let _activeGroup = null;   // group prefix string e.g. "BHM-A"
 let _activeRole  = 'admin';// 'student' | 'tutor' | 'admin'
 
+// ── Auto week calculation ─────────────────────────────────────────────────
+//  Returns 1–12 based on semesterStart. Advances each Monday at 08:00.
+function calcCurrentWeek() {
+  const start = new Date((STUDIO.semesterStart || '2099-01-01') + 'T08:00:00');
+  const now   = new Date();
+  if (now < start) return 1;
+  return Math.max(1, Math.min(12, Math.floor((now - start) / 6048e5) + 1));
+}
+
 function detectActiveGuild() {
-  const p = new URLSearchParams(window.location.search);
+  const p          = new URLSearchParams(window.location.search);
   const guildParam = p.get('guild');
   const groupParam = p.get('group');
+  const roleParam  = p.get('role');   // explicit role: 'student'|'tutor'|'admin'
 
+  // 1. URL params take priority
   if (guildParam) {
     _activeGuild = STUDIO.guilds.find(
       g => g.name.toLowerCase() === guildParam.trim().toLowerCase()
@@ -476,17 +491,85 @@ function detectActiveGuild() {
   if (!_activeGroup && groupParam) {
     _activeGroup = groupParam.trim();
   }
-  // Determine view role
-  const roleParam = p.get('role');
-  if (roleParam === 'admin') {
-    _activeRole = 'admin';
-  } else if (_activeGuild) {
-    _activeRole = 'student';
-  } else if (_activeGroup) {
-    _activeRole = 'tutor';
-  } else {
-    _activeRole = 'admin';
+
+  // 2. Determine explicit role from URL
+  if (roleParam === 'admin')   _activeRole = 'admin';
+  else if (roleParam === 'tutor')  _activeRole = 'tutor';
+  else if (roleParam === 'student') _activeRole = 'student';
+  else if (_activeGuild) _activeRole = 'student';
+  else if (_activeGroup) _activeRole = 'tutor';
+  else _activeRole = 'admin';
+
+  // 3. If no guild/group yet, try localStorage (for SCORM — no URL params available)
+  if (!_activeGuild && _activeRole === 'student') {
+    const saved = localStorage.getItem('cmp701_guild');
+    if (saved) {
+      _activeGuild = STUDIO.guilds.find(g => g.name === saved) || null;
+      if (_activeGuild) _activeGroup = _activeGuild.group;
+    }
   }
+  if (!_activeGroup && _activeRole === 'tutor') {
+    const saved = localStorage.getItem('cmp701_group');
+    if (saved) _activeGroup = saved;
+  }
+}
+
+// ── Guild/group picker (SCORM first-use) ─────────────────────────────────
+//  Called when role is set but no guild/group detected yet.
+function showPicker() {
+  const overlay = document.getElementById('pickerOverlay');
+  if (!overlay) return;
+
+  if (_activeRole === 'student') {
+    let prevGroup = null;
+    const btns = STUDIO.guilds.map(g => {
+      let label = '';
+      if (g.group !== prevGroup) {
+        label += `<div class="picker-group-label">${GROUP_LABELS[g.group] || g.group}</div>`;
+        prevGroup = g.group;
+      }
+      label += `<button class="guild-pick-btn" onclick="pickGuild('${g.name}')">${g.name}</button>`;
+      return label;
+    }).join('');
+    overlay.innerHTML = `
+      <div class="picker-box">
+        <h2>🏠 Welcome to CMP701 Studio</h2>
+        <p>Select your Guild to personalise your dashboard. This is saved on your device — you only do this once.</p>
+        <div class="picker-grid">${btns}</div>
+        <p style="font-size:10px;color:#94a3b8">Not sure which guild you're in? Check your Blackboard course welcome email or ask your tutor.</p>
+      </div>`;
+    overlay.style.display = 'flex';
+
+  } else if (_activeRole === 'tutor') {
+    const btns = Object.entries(GROUP_LABELS).map(([key, label]) =>
+      `<button class="guild-pick-btn" style="grid-column:1/-1" onclick="pickGroup('${key}')">${label}</button>`
+    ).join('');
+    overlay.innerHTML = `
+      <div class="picker-box">
+        <h2>🎓 Tutor Dashboard</h2>
+        <p>Select your seminar group to see the Group Hub for your guilds.</p>
+        <div class="picker-grid" style="grid-template-columns:1fr">${btns}</div>
+        <button class="btn btn-ghost" style="margin-top:8px;width:100%;font-size:11px" onclick="pickGroup('__all__')">View all groups (Module Leader)</button>
+      </div>`;
+    overlay.style.display = 'flex';
+  }
+}
+
+function pickGuild(name) {
+  localStorage.setItem('cmp701_guild', name);
+  location.reload();
+}
+
+function pickGroup(key) {
+  if (key === '__all__') { localStorage.removeItem('cmp701_group'); location.href = location.pathname; return; }
+  localStorage.setItem('cmp701_group', key);
+  location.reload();
+}
+
+function clearGuildChoice() {
+  localStorage.removeItem('cmp701_guild');
+  localStorage.removeItem('cmp701_group');
+  location.reload();
 }
 
 // Return guilds filtered to the active group (or all if no group set)
@@ -496,19 +579,37 @@ function visibleGuilds() {
 }
 
 // Return the peerReviewOffset for the active group
+// "auto" (default) = current week number, ensuring rotation changes each week
 function groupOffset() {
   const off = STUDIO.peerReviewOffset;
-  if (typeof off === 'object' && _activeGroup) return off[_activeGroup] || 1;
+  if (off === 'auto' || off === undefined || off === null) return STUDIO.currentWeek;
+  if (typeof off === 'object' && _activeGroup) {
+    const v = off[_activeGroup];
+    return (v === 'auto' || !v) ? STUDIO.currentWeek : v;
+  }
   if (typeof off === 'number') return off;
-  return 1;
+  return STUDIO.currentWeek;
 }
 
-// Return the bbLinks object for the active group
+// Return the bbLinks object for the active group.
+// currentAssignment / peerReviewForm may be a string OR a 12-entry array.
+// If an array, index [currentWeek-1] is returned automatically.
 function groupLinks() {
-  const bl = STUDIO.bbLinks;
-  if (_activeGroup && bl[_activeGroup]) return bl[_activeGroup];
-  // Fallback: old flat structure
-  return { currentAssignment: bl.currentAssignment||'', peerReviewForm: bl.peerReviewForm||'', guildWorkspaces: bl.guildWorkspaces||{} };
+  const bl  = STUDIO.bbLinks;
+  const grp = (_activeGroup && bl[_activeGroup]) ? bl[_activeGroup] : {};
+  const wk  = STUDIO.currentWeek;
+
+  function resolve(val) {
+    if (Array.isArray(val)) return val[wk - 1] || '';
+    return val || '';
+  }
+
+  return {
+    groupSetUrl:       grp.groupSetUrl        || '',
+    currentAssignment: resolve(grp.currentAssignment),
+    peerReviewForm:    resolve(grp.peerReviewForm),
+    guildWorkspaces:   grp.guildWorkspaces    || {},
+  };
 }
 
 // ── Utilities ────────────────────────────────────────────────────────────
@@ -1087,6 +1188,17 @@ function renderOverview() {
 window.addEventListener('DOMContentLoaded', () => {
   detectActiveGuild();   // ← must be first — sets _activeGuild, _activeGroup, _activeRole
 
+  // ── Auto-resolve currentWeek ─────────────────────────────────────────
+  if (STUDIO.currentWeek === 'auto' || typeof STUDIO.currentWeek !== 'number') {
+    STUDIO.currentWeek = calcCurrentWeek();
+  }
+
+  // ── Show picker if role is set but guild/group is missing ────────────
+  const needsPicker =
+    (_activeRole === 'student' && !_activeGuild) ||
+    (_activeRole === 'tutor'   && !_activeGroup);
+  if (needsPicker) { showPicker(); return; }   // stop here — picker handles the rest
+
   // ── Hide tabs not relevant to this role ──────────────────────────────
   document.querySelectorAll('.tab[data-role]').forEach(t => {
     const roles = t.dataset.role.split(' ');
@@ -1408,6 +1520,9 @@ window.addEventListener('DOMContentLoaded', () => {
   </div>
 </div>
 
+<!-- First-use picker overlay (hidden until needed) -->
+<div id="pickerOverlay" class="picker-overlay" style="display:none"></div>
+
 <!-- ══════════════════════════════════════════════════════ -->
 <!-- GUILD SPACE TAB  (student view — ?guild=BHM-A-G1)   -->
 <!-- ══════════════════════════════════════════════════════ -->
@@ -1440,6 +1555,12 @@ window.addEventListener('DOMContentLoaded', () => {
       </p>
       <div id="gsSteps"><!-- populated by renderGuildSpace() --></div>
     </div>
+  </div>
+
+  <div style="text-align:center;padding:6px 0 10px">
+    <button class="btn btn-ghost" style="font-size:10px" onclick="clearGuildChoice()">
+      🔄 Not your guild? Change it
+    </button>
   </div>
 </div>
 
