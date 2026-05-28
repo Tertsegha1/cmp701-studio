@@ -1,21 +1,19 @@
 # build_scorm.ps1
-# Builds ONE SCORM package for Blackboard Ultra:
-#   cmp701_studio_scorm.zip  — contains bb.html (dashboard) + admin.html (XP manager)
+# Builds ONE SCORM 1.2 package for Blackboard Ultra:
+#   cmp701_studio_scorm.zip  -- bb.html (dashboard) + admin.html (XP manager)
 #
-# On first open users pick their role:
-#   Student      -> guild picker -> personalised dashboard
-#   Tutor        -> group picker -> Group Hub
-#   Module Leader-> All Groups overview + "Open XP Manager" button -> admin.html
+# Entry point: bb.html -- role picker on first open
+#   Student       -> guild picker -> personalised dashboard
+#   Tutor         -> group picker -> Group Hub
+#   Module Leader -> All Groups overview + Open XP Manager -> admin.html
 #
-# Upload ONCE to Blackboard Ultra. Set visibility: visible to all enrolled users.
 # Run: .\build_scorm.ps1
 
 $Dir = $PSScriptRoot
 $DL  = "C:\Users\terts\Downloads"
 $Out = "$DL\cmp701_studio_scorm.zip"
 
-# ── Build manifest ────────────────────────────────────────────────────────────
-$manifest = @"
+$manifest = @'
 <?xml version="1.0" encoding="UTF-8"?>
 <manifest identifier="cmp701-studio" version="1.0"
   xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
@@ -38,29 +36,46 @@ $manifest = @"
     </resource>
   </resources>
 </manifest>
-"@
+'@
 
-# ── Write manifest, zip, clean up ────────────────────────────────────────────
-$mPath = "$Dir\imsmanifest_tmp.xml"
-$manifest | Out-File -FilePath $mPath -Encoding utf8
+# Stage files in a clean temp folder.
+# imsmanifest.xml must be named exactly that at the zip root -- any other name
+# causes Blackboard Ultra to reject the package with an upload error.
+$tmp = Join-Path $env:TEMP "cmp701_scorm_stage"
+if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
+New-Item -ItemType Directory -Path $tmp | Out-Null
 
+Copy-Item "$Dir\bb.html"    $tmp
+Copy-Item "$Dir\admin.html" $tmp
+
+# Write manifest WITHOUT BOM -- UTF-8 with BOM can cause SCORM parse errors
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+[System.IO.File]::WriteAllText("$tmp\imsmanifest.xml", $manifest, $utf8NoBom)
+
+# Build zip
 if (Test-Path $Out) { Remove-Item $Out -Force }
+Compress-Archive -Path "$tmp\*" -DestinationPath $Out
 
-Compress-Archive -Path "$Dir\bb.html","$Dir\admin.html","$mPath" `
-                 -DestinationPath $Out
-
-Remove-Item $mPath -Force
+# Clean up temp folder
+Remove-Item $tmp -Recurse -Force
 
 Write-Host ""
 Write-Host "Built: $Out"
 Write-Host ""
-Write-Host "Contents of the zip:"
-Write-Host "  bb.html      Student / Tutor / Module Leader dashboard (entry point)"
-Write-Host "  admin.html   XP Manager (opened via button in Module Leader view)"
-Write-Host "  imsmanifest.xml"
+
+# List zip contents to confirm correct structure
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$z = [System.IO.Compression.ZipFile]::OpenRead($Out)
+Write-Host "Zip contents (all files must be at root level):"
+foreach ($entry in $z.Entries) {
+    $kb = [math]::Round($entry.Length / 1024, 1)
+    Write-Host "  $($entry.FullName)  ($kb KB)"
+}
+$z.Dispose()
+
 Write-Host ""
-Write-Host "Upload to Blackboard Ultra:"
-Write-Host "  Add Content > SCORM Package > select cmp701_studio_scorm.zip"
+Write-Host "Upload instructions:"
+Write-Host "  Blackboard Ultra: Add Content, SCORM Package, select cmp701_studio_scorm.zip"
 Write-Host "  Title: CMP701 Studio Dashboard"
-Write-Host "  Visibility: visible to all enrolled users"
-Write-Host "  Open in new window: Yes (recommended)"
+Write-Host "  Open in new window: Yes"
+Write-Host "  Visible to: All enrolled users"
