@@ -174,10 +174,12 @@ const STUDIO = {
 
   // ── Key Dates ──────────────────────────────────────────────────────────
   deadlines: {
-    cw1Sub:  "2026-08-14",   // CW1 submission — update once confirmed
-    cw1Mark: "2026-08-28",   // CW1 marking
-    cw2Sub:  "2026-10-16",   // CW2 submission
-    cw2Mark: "2026-10-30",   // CW2 marking
+    // Dates provisional — update to exact confirmed dates when released.
+    // CW1 falls in Week 6 (w/c 6 Jul 2026). CW2 falls in Week 12 (w/c 17 Aug 2026).
+    cw1Sub:  { date: "2026-07-10", tbc: true },   // CW1 submission (TBC — end of Week 6)
+    cw1Ret:  { date: "2026-07-24", tbc: true },   // CW1 feedback returned (TBC)
+    cw2Sub:  { date: "2026-08-21", tbc: true },   // CW2 submission (TBC — end of Week 12)
+    cw2Ret:  { date: "2026-09-04", tbc: true },   // CW2 feedback returned (TBC)
   },
 
   // ── Announcement (leave body:"" to hide) ──────────────────────────────
@@ -387,103 +389,102 @@ const STUDIO = {
     },
 
     5: {
-      title: "CW1 — Individual Video Presentation",
-      brief: "This is CW1 submission week. Your four weeks of Guild research, analysis and peer discussion come together in your INDIVIDUAL video presentation.\n\nYour presentation should demonstrate your own understanding of your assigned organisation, the digital challenges it faces, and the transformation direction you are recommending. You may draw on ideas and findings developed within your Guild, but your analysis, arguments, structure and delivery must be entirely your own.\n\nUse your Guild session this week to rehearse, give each other feedback, and refine your presentations before submitting. This is what Guilds are for.\n\n⚠️ INDIVIDUAL SUBMISSION — submit via the Blackboard assignment link before the deadline.",
+      title: "Synthesis & CW1 Preparation — Pulling It All Together",
+      brief: "You have four weeks of solid Guild research behind you — a Business Snapshot, a Digital Audit, a Stakeholder Map, and a Competitor Scan. Now you synthesise those findings into a coherent, evidence-based narrative ready for your CW1 individual video presentation next week.\n\nThis is not a week for new research. It is a week for reflection, sense-making, and rehearsal. The Guild's job is to help each member stress-test their individual argument and sharpen their presentation.\n\n⚠️ CW1 is submitted INDIVIDUALLY in Week 6. Use this week's Guild session to rehearse and give each other structured feedback.",
       deliverables: [
-        "CW1 Individual Video Presentation submitted via Blackboard (7–8 minutes — penalty for under/over)",
-        "Content must cover: (1) Organisation overview and digital context · (2) Digital Audit findings and maturity assessment · (3) Stakeholder landscape · (4) Competitor positioning · (5) Your recommended transformation direction with justification",
-        "Marking criteria: Understanding of Digital Transformation (25 pts) · Analysis & Evidence (25 pts) · Strategic Thinking (20 pts) · Clarity & Engagement (15 pts) · Structure & Time Management (15 pts)",
-        "Guild activity this week: run a mini rehearsal session — each member presents for 2 minutes, guild gives structured feedback on one strength and one improvement",
-        "Peer Review: complete your assigned guild's peer review form via the Peer Review tab before the end of the week",
+        "Individual Synthesis Note (not submitted — personal prep): a one-page summary of your key findings from weeks 1–4, the transformation problem you have identified, and the direction you are recommending",
+        "Presentation Structure: draft outline of your CW1 video (opening hook · organisation context · audit findings · stakeholder/competitor insight · your transformation recommendation · closing argument)",
+        "Guild Rehearsal: each member delivers a 2-minute pitch of their transformation recommendation — guild gives feedback using 'One Strength / One Challenge' format",
+        "Visual Aid Draft: prepare your supporting slide(s) or visual(s) for the presentation",
+        "Final check: ensure your Business Snapshot, Digital Audit, Stakeholder Map and Competitor Scan artefacts are all uploaded to the Guild Workspace before CW1 submission week",
       ],
     },
 
     // ══ TRANSFORMATION PHASE — Weeks 6–12 → CW2 ════════════════════════
 
     6: {
-      title: "Technology Horizon — Emerging Technologies for Your Organisation",
-      brief: "CW1 is done. Now the real work begins.\n\nIn the Transformation Phase, your Guild moves from diagnosis to design. You are no longer just describing where the organisation is — you are building the case for where it must go and how to get there.\n\nThis week you focus on the technology landscape. Which emerging and established digital technologies are most relevant to your organisation's transformation? What are their real capabilities, limitations, and implementation considerations? Strong technology selection — grounded in business need rather than hype — is one of the hallmarks of a credible CW2 report.",
+      title: "CW1 — Individual Video Presentation",
+      brief: "CW1 submission week. Five weeks of Guild research, analysis and peer discussion come together in your INDIVIDUAL video presentation.\n\nYour presentation must demonstrate your own understanding of your assigned organisation, the digital challenges it faces, and the transformation direction you are recommending. You may draw on ideas and findings developed within your Guild, but your analysis, arguments, structure and delivery must be entirely your own.\n\nUse your Guild session this week for final rehearsal and last-minute feedback before submitting.\n\n⚠️ INDIVIDUAL SUBMISSION — submit via the Blackboard assignment link before the deadline (date TBC — check the Timeline tab).",
       deliverables: [
-        "Technology Longlist: identify 5–6 digital technologies potentially relevant to your organisation (e.g. AI/ML, cloud computing, IoT, RPA, blockchain, data analytics platforms, digital twins, APIs)",
-        "Technology Shortlist with Justification: narrow to 2–3 technologies best suited to your organisation's specific needs — justify each selection with evidence",
-        "Capability & Maturity Assessment: for each shortlisted technology, assess the organisation's current readiness to adopt it (skills, infrastructure, culture)",
-        "Implementation Considerations: what are the key technical, financial and organisational factors in deploying each technology?",
-        "CW2 Connection: a paragraph linking your technology choices to your organisation's strategic objectives from the Digital Audit",
-        "Upload Technology Horizon document to Blackboard Group Workspace",
+        "CW1 Individual Video Presentation submitted via Blackboard (7–8 minutes — penalty for under/over)",
+        "Content must cover: (1) Organisation overview and digital context · (2) Digital Audit findings and maturity assessment · (3) Stakeholder landscape · (4) Competitor positioning · (5) Your recommended transformation direction with justification",
+        "Marking criteria: Understanding of Digital Transformation (25 pts) · Analysis & Evidence (25 pts) · Strategic Thinking (20 pts) · Clarity & Engagement (15 pts) · Structure & Time Management (15 pts)",
+        "Guild activity: final rehearsal session — full run-through, time each other, give one final piece of feedback before submitting",
+        "Peer Review: complete your assigned guild's peer review form via the Peer Review tab before end of week",
       ],
     },
 
     7: {
+      title: "Technology Horizon — Emerging Technologies for Your Organisation",
+      brief: "CW1 is submitted. Now the Transformation Phase begins.\n\nYour Guild moves from diagnosis to design. You are no longer just describing where the organisation is — you are building the case for where it must go and how to get there.\n\nThis week you focus on the technology landscape. Which emerging and established digital technologies are most relevant to your organisation's transformation? Strong technology selection — grounded in business need rather than hype — is one of the hallmarks of a credible CW2 report.",
+      deliverables: [
+        "Technology Longlist: identify 5–6 digital technologies potentially relevant to your organisation (e.g. AI/ML, cloud computing, IoT, RPA, blockchain, data analytics platforms, digital twins, APIs)",
+        "Technology Shortlist with Justification: narrow to 2–3 technologies best suited to your organisation's specific needs — justify each selection with evidence",
+        "Capability & Maturity Assessment: for each shortlisted technology, assess the organisation's current readiness to adopt it (skills, infrastructure, culture)",
+        "Implementation Considerations: key technical, financial and organisational factors in deploying each technology",
+        "CW2 Connection: a short paragraph linking your technology choices to your organisation's strategic objectives from the Digital Audit",
+        "Upload Technology Horizon document to Blackboard Group Workspace",
+      ],
+    },
+
+    8: {
       title: "Transformation Blueprint — Designing the Change",
-      brief: "You have diagnosed the organisation, analysed the market, mapped the stakeholders, and selected your technologies. Now you design the transformation itself.\n\nA Transformation Blueprint is the strategic heart of your CW2 report. It translates ambition into a structured, realistic plan — connecting business goals to digital initiatives, setting out a phased roadmap, and defining what success looks like.\n\nThis is the week where individual thinking must go deepest. Your Guild can workshop ideas together, but each member's blueprint must reflect their own analysis and strategic judgement.",
+      brief: "You have diagnosed the organisation, analysed the market, mapped the stakeholders, and selected your technologies. Now you design the transformation itself.\n\nA Transformation Blueprint is the strategic heart of your CW2 report. It translates ambition into a structured, realistic plan — connecting business goals to digital initiatives, setting out a phased roadmap, and defining what success looks like.\n\nYour Guild can workshop ideas together, but each member's blueprint must reflect their own analysis and strategic judgement.",
       deliverables: [
         "Transformation Vision Statement: one clear sentence describing what the organisation will look like after successful digital transformation",
         "Strategic Objectives: 3–5 specific, measurable transformation goals aligned to the organisation's business strategy",
-        "Digital Transformation Roadmap: phased plan across three horizons — Short term (0–6 months): quick wins and foundations · Medium term (6–18 months): core transformation initiatives · Long term (18 months+): scaled capability and competitive advantage",
+        "Digital Transformation Roadmap: phased plan — Short term (0–6 months): quick wins and foundations · Medium term (6–18 months): core transformation initiatives · Long term (18 months+): scaled capability and competitive advantage",
         "Key Digital Initiatives: for each phase, specify the initiative, the technology involved, the business outcome targeted, and the resources required",
         "KPIs & Success Metrics: 4–6 measurable indicators that will confirm the transformation is working",
         "Upload Transformation Blueprint to Blackboard Group Workspace",
       ],
     },
 
-    8: {
+    9: {
       title: "Risk & Ethics — What Could Go Wrong and What Is Right",
-      brief: "Every digital transformation carries risk. Systems fail, data is breached, employees resist, costs overrun, and technologies underdeliver. Leaders who plan for these risks build more resilient transformations. Those who ignore them are regularly blindsided.\n\nBeyond operational risk, digital transformation raises profound ethical questions — about data privacy, algorithmic fairness, job displacement, environmental impact and the responsibilities organisations have to their employees and communities.\n\nThis week your Guild conducts a rigorous Risk & Ethics analysis for your organisation's transformation. This section is specifically assessed in CW2 and cannot be treated as an afterthought.",
+      brief: "Every digital transformation carries risk. Systems fail, data is breached, employees resist, costs overrun, and technologies underdeliver. Beyond operational risk, digital transformation raises profound ethical questions — about data privacy, algorithmic fairness, job displacement, and the responsibilities organisations have to their employees and communities.\n\nThis week your Guild conducts a rigorous Risk & Ethics analysis. This section is specifically assessed in CW2 and cannot be treated as an afterthought.",
       deliverables: [
-        "Risk Register: identify at least 6 transformation risks across categories — Technical (system failure, integration problems) · Data & Security (breach, compliance) · People & Culture (resistance, skills gaps) · Financial (cost overrun, ROI shortfall) · Strategic (competitor response, market shift). For each: likelihood (H/M/L) · impact (H/M/L) · mitigation strategy",
-        "Ethical Analysis: identify 2–3 specific ethical issues raised by your transformation plan (e.g. AI bias, data collection consent, job displacement, digital exclusion)",
+        "Risk Register: at least 6 transformation risks across categories — Technical · Data & Security · People & Culture · Financial · Strategic. For each: likelihood (H/M/L) · impact (H/M/L) · mitigation strategy",
+        "Ethical Analysis: identify 2–3 specific ethical issues raised by your transformation plan (e.g. AI bias, data consent, job displacement, digital exclusion)",
         "Mitigation & Governance: how should the organisation address each ethical issue? What governance structures are needed?",
         "GDPR & Regulatory Compliance: what data protection and legal obligations apply to your transformation?",
         "Upload Risk & Ethics document to Blackboard Group Workspace",
       ],
     },
 
-    9: {
+    10: {
       title: "Implementation Roadmap — From Plan to Execution",
-      brief: "A strategy without an implementation plan is just a wish. This week your Guild builds the operational layer of your transformation — moving from the 'what' and 'why' of your Blueprint into the 'how', 'who' and 'when' of actual execution.\n\nImplementation planning is where transformation strategies most often fail. Unrealistic timelines, insufficient resources, unclear ownership and poor change sequencing are the most common causes of digital transformation failure. Your roadmap must account for all of these.\n\nThis is a critical CW2 section. A well-evidenced, realistic implementation plan significantly strengthens your report.",
+      brief: "A strategy without an implementation plan is just a wish. This week your Guild builds the operational layer of your transformation — moving from the 'what' and 'why' of your Blueprint into the 'how', 'who' and 'when' of actual execution.\n\nImplementation planning is where transformation strategies most often fail. Unrealistic timelines, insufficient resources, unclear ownership and poor change sequencing are the most common causes of digital transformation failure.",
       deliverables: [
-        "Implementation Plan (detailed): expand your Week 7 roadmap into a concrete execution plan — specific activities, owners, timelines, dependencies and resources for at least the first 12 months",
-        "Resource Requirements: people (roles and skills needed), technology (systems and infrastructure), financial (estimated investment by phase)",
-        "Critical Path: what are the 3–4 activities that must happen on time for the entire transformation to succeed? What could delay them?",
-        "Quick Wins: identify 2–3 high-impact, low-effort initiatives that can demonstrate early value and build organisational confidence in the transformation",
-        "Governance Structure: who owns the transformation programme? What decision-making and oversight mechanisms are needed?",
+        "Implementation Plan: concrete execution plan for at least the first 12 months — specific activities, owners, timelines, dependencies and resources",
+        "Resource Requirements: people (roles and skills), technology (systems and infrastructure), financial (estimated investment by phase)",
+        "Critical Path: 3–4 activities that must happen on time for the whole transformation to succeed — and what could delay them",
+        "Quick Wins: 2–3 high-impact, low-effort initiatives that demonstrate early value and build organisational confidence",
+        "Governance Structure: who owns the programme? What decision-making and oversight mechanisms are needed?",
         "Upload Implementation Roadmap to Blackboard Group Workspace",
       ],
     },
 
-    10: {
-      title: "Change Management — Leading People Through Transformation",
-      brief: "Technology is only half the story. Research consistently shows that 70% of digital transformation programmes fail — and the majority of failures are people problems, not technology problems. Resistance to change, lack of leadership alignment, poor communication and inadequate training derail more transformations than technical failure ever does.\n\nThis week your Guild designs the Change Management dimension of your transformation plan. How will your organisation bring its people with it? How will it build the digital culture and capabilities needed to make transformation stick?\n\nChange Management is a dedicated section of your CW2 report and is directly assessed.",
-      deliverables: [
-        "Change Readiness Assessment: how ready is the organisation culturally and operationally for the scale of change you are proposing? (Score across: Leadership Alignment · Employee Trust · Communication Culture · Learning & Adaptability)",
-        "Change Management Approach: select and justify a change management framework (e.g. Kotter's 8-Step, ADKAR, Lewin's model) and explain how you would apply it to your organisation",
-        "Communication Plan: how will the transformation be communicated to different stakeholder groups at each phase? (what · when · how · who sends it)",
-        "Training & Capability Building Plan: what digital skills need to be developed, for whom, and how?",
-        "Culture Change Strategy: what specific leadership behaviours and organisational practices need to change to embed a digital-first culture?",
-        "Upload Change Management Plan to Blackboard Group Workspace",
-      ],
-    },
-
     11: {
-      title: "Pitch Deck — Making the Case to the Board",
-      brief: "Your analysis is complete. Your strategy is built. Now you must sell it.\n\nThis week your Guild creates an Executive Pitch Deck — a concise, compelling presentation designed to secure board-level approval and investment for your digital transformation programme. Boards don't want to read 10,000-word reports. They want clarity, confidence and commercial credibility.\n\nThis is also final preparation week for CW2. Use your Guild session to peer-review each other's draft reports, check alignment with the marking criteria, and refine your arguments. Your Pitch Deck is an additional artefact — it is not your CW2 submission, but building it will sharpen your CW2 report significantly.\n\n⚠️ CW2 is submitted INDIVIDUALLY next week. Check your submission checklist now.",
+      title: "Change Management & Pitch Deck — People and the Boardroom Case",
+      brief: "Two critical outputs this week, and they are closely connected: how you lead people through transformation, and how you make the case for it at board level.\n\nResearch shows that 70% of digital transformation programmes fail — and most failures are people problems, not technology problems. Your Change Management plan addresses this directly. Your Pitch Deck takes everything you have built and distils it into a compelling case for investment.\n\nThis is also final preparation week for CW2. Use your Guild session to peer-review each other's draft reports.\n\n⚠️ CW2 is submitted INDIVIDUALLY next week.",
       deliverables: [
-        "Executive Pitch Deck (8–10 slides): Slide 1: The Business Case for Transformation · Slide 2: Current State — what the Digital Audit revealed · Slide 3: The Competitive Threat · Slide 4: Our Transformation Vision · Slide 5: The Technology Strategy · Slide 6: The Roadmap · Slide 7: Risk & Mitigation · Slide 8: Change Management Approach · Slide 9: Investment & ROI · Slide 10: Why Now — the cost of inaction",
-        "Deck design: professional, board-ready — clear data visualisations, no walls of text",
-        "Guild CW2 Peer Review: each member shares their draft CW2 report structure — guild gives feedback on one gap and one strength per member",
-        "CW2 Checklist: verify your report covers all required sections before submission next week",
-        "Upload Pitch Deck to Blackboard Group Workspace",
+        "Change Management Plan: (1) Change Readiness Assessment across Leadership Alignment · Employee Trust · Communication Culture · Learning & Adaptability; (2) Framework selection and application (Kotter, ADKAR, or Lewin — justify your choice); (3) Communication plan by stakeholder group; (4) Training & capability building plan",
+        "Executive Pitch Deck (8–10 slides): Business Case · Current State · Competitive Threat · Transformation Vision · Technology Strategy · Roadmap · Risk & Mitigation · Change Plan · Investment & ROI · Why Now",
+        "Guild CW2 Peer Review: each member shares their draft report structure — guild gives one gap and one strength per member",
+        "CW2 Submission Checklist: verify your report covers all required sections before submitting next week",
+        "Upload Change Management document and Pitch Deck to Blackboard Group Workspace",
       ],
     },
 
     12: {
       title: "CW2 — Individual Digital Transformation Report",
-      brief: "This is it. Twelve weeks of research, analysis, collaboration and strategic thinking come together in your INDIVIDUAL Digital Transformation Report.\n\nYour report must demonstrate your own deep understanding of your assigned organisation's digital transformation challenge and your own carefully argued strategy for addressing it. You may reference Guild discussions and shared artefacts, but every word of your report must be your own.\n\nUse your final Guild session to support each other — answer last questions, share formatting tips, and celebrate what you have built together this semester.\n\n⚠️ INDIVIDUAL SUBMISSION — submit via the Blackboard assignment link before the deadline. Late submissions are penalised per Ulster University policy.",
+      brief: "This is it. Twelve weeks of research, analysis, collaboration and strategic thinking come together in your INDIVIDUAL Digital Transformation Report.\n\nYour report must demonstrate your own deep understanding of your assigned organisation's digital transformation challenge and your own carefully argued strategy for addressing it. You may reference Guild discussions and shared artefacts, but every word of your report must be your own.\n\nUse your final Guild session to support each other — answer last questions, share formatting tips, and celebrate what you have built together.\n\n⚠️ INDIVIDUAL SUBMISSION — submit via the Blackboard assignment link before the deadline (date TBC — check the Timeline tab). Late submissions are penalised per Ulster University policy.",
       deliverables: [
         "CW2 Individual Report submitted via Blackboard (word count per module handbook)",
         "Required sections: (1) Executive Summary · (2) Organisation Overview & Digital Context · (3) Digital Audit & Maturity Assessment · (4) Industry & Competitor Analysis · (5) Stakeholder Analysis · (6) Digital Transformation Strategy & Technology Selection · (7) Transformation Roadmap & Implementation Plan · (8) Risk Assessment & Ethical Considerations · (9) Change Management Plan · (10) Conclusion & Recommendations",
         "Marking criteria: Strategic Analysis & Evidence (30 pts) · Digital Transformation Strategy (25 pts) · Implementation Planning (20 pts) · Risk, Ethics & Change Management (15 pts) · Presentation & Referencing (10 pts)",
-        "Guild final activity: Guild Retrospective — what worked well as a team? What would you do differently? Upload a brief reflection to the Group Workspace",
+        "Guild Retrospective: what worked well as a team? What would you do differently? Upload a brief reflection to the Group Workspace",
         "Peer Review: complete your assigned guild's final peer review form via the Peer Review tab",
       ],
     },
@@ -945,38 +946,54 @@ function renderLeaderboard() {
 
 function renderTimeline() {
   const dl = STUDIO.deadlines;
-  const deadlines = [
-    { label: 'CW1 Submission', date: dl.cw1Sub  },
-    { label: 'CW1 Marking',    date: dl.cw1Mark },
-    { label: 'CW2 Submission', date: dl.cw2Sub  },
-    { label: 'CW2 Marking',    date: dl.cw2Mark },
+  const deadlineItems = [
+    { label: 'CW1 Submission', entry: dl.cw1Sub },
+    { label: 'CW1 Feedback',   entry: dl.cw1Ret },
+    { label: 'CW2 Submission', entry: dl.cw2Sub },
+    { label: 'CW2 Feedback',   entry: dl.cw2Ret },
   ];
 
-  document.getElementById('deadlineGrid').innerHTML = deadlines.map(d => {
-    const days = daysUntil(d.date);
-    const cls  = days < 0 ? 'past' : days <= 7 ? 'urgent' : days <= 21 ? 'warn' : 'ok';
-    const lbl  = days < 0 ? 'days ago' : days === 0 ? 'Today!' : days === 1 ? 'day left' : 'days left';
-    const val  = days < 0 ? Math.abs(days) : days;
+  document.getElementById('deadlineGrid').innerHTML = deadlineItems.map(({ label, entry }) => {
+    if (!entry) return '';
+    const dateStr = typeof entry === 'object' ? entry.date : entry;
+    const isTbc   = typeof entry === 'object' && entry.tbc;
+    const days    = daysUntil(dateStr);
+    const cls     = isTbc ? 'warn' : days < 0 ? 'past' : days <= 7 ? 'urgent' : days <= 21 ? 'warn' : 'ok';
+    const val     = isTbc ? '?' : (days < 0 ? Math.abs(days) : days);
+    const lbl     = isTbc ? 'TBC' : days < 0 ? 'days ago' : days === 0 ? 'Today!' : days === 1 ? 'day left' : 'days left';
+    const dateDisp = isTbc ? `~${fmtDate(dateStr)} (TBC)` : fmtDate(dateStr);
     return `<div class="deadline-card ${cls}">
       <div class="days">${val}</div>
       <div class="label">${lbl}</div>
-      <div style="font-size:11px;font-weight:700;color:#334155;margin-top:6px">${d.label}</div>
-      <div class="date">${fmtDate(d.date)}</div>
+      <div style="font-size:11px;font-weight:700;color:#334155;margin-top:6px">${label}</div>
+      <div class="date">${dateDisp}</div>
     </div>`;
   }).join('');
 
-  // 12-week grid
+  // 12-week grid — colour-coded by phase, flagged for CW weeks
   const wkTitles = Object.fromEntries(
     Object.entries(STUDIO.quests).map(([w, q]) => [w, q.title.split('—')[0].trim()])
   );
+  // Phase config: which weeks belong to which phase
+  const phaseOf = w => w <= 5 ? 'discovery' : w === 6 ? 'cw1' : w <= 11 ? 'transform' : 'cw2';
+  const phaseColour = { discovery:'#0D7377', cw1:'#B45309', transform:'#7C3AED', cw2:'#1B3A6B' };
+  const phaseLabel  = { discovery:'Discovery', cw1:'◆ CW1', transform:'Transformation', cw2:'◆ CW2' };
+
   document.getElementById('weekGrid').innerHTML = Array.from({length:12},(_,i) => {
     const w = i + 1;
     const isCurrent = w === STUDIO.currentWeek;
     const isDone    = w < STUDIO.currentWeek;
-    return `<div class="wk-tile ${isCurrent?'current':isDone?'done':''}">
-      <div class="wn">${w}</div>
-      <div class="wt">${(wkTitles[w] || '').replace(/^CW\d\s*[—–]\s*/,'')}</div>
-      ${isCurrent ? '<div style="font-size:9px;color:#0D7377;font-weight:700;margin-top:3px">◉ NOW</div>' : ''}
+    const phase     = phaseOf(w);
+    const accent    = phaseColour[phase];
+    const isCwWeek  = phase === 'cw1' || phase === 'cw2';
+    const border    = isCurrent ? `border:2px solid ${accent}` : isCwWeek ? `border:2px dashed ${accent}` : '';
+    const bg        = isDone ? '#f0fdf4' : isCurrent ? '#eff6ff' : '#fff';
+    return `<div class="wk-tile ${isCurrent?'current':isDone?'done':''}"
+                 style="${border};background:${bg}">
+      <div class="wn" style="color:${accent}">${w}</div>
+      <div class="wt">${(wkTitles[w] || '').replace(/^CW\d[—–\s]*/,'')}</div>
+      ${isCurrent ? `<div style="font-size:9px;color:${accent};font-weight:700;margin-top:3px">◉ NOW</div>` : ''}
+      ${isCwWeek  ? `<div style="font-size:8px;color:${accent};font-weight:700;margin-top:2px">${phaseLabel[phase]}</div>` : ''}
     </div>`;
   }).join('');
 }
