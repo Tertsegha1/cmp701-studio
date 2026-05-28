@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="cmp701-studio-dashboard"
+  version="1.0"
+  xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
+  xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="
+    http://www.imsproject.org/xsd/imscp_rootv1p1p2 imscp_rootv1p1p2.xsd
+    http://www.adlnet.org/xsd/adlcp_rootv1p2 adlcp_rootv1p1p2.xsd">
+
+  <metadata>
+    <schema>ADL SCORM</schema>
+    <schemaversion>1.2</schemaversion>
+  </metadata>
+
+  <organizations default="cmp701-studio-org">
+    <organization identifier="cmp701-studio-org">
+      <title>CMP701 Digital Transformation Studio</title>
+      <item identifier="item-dashboard" identifierref="res-dashboard">
+        <title>Studio Dashboard</title>
+      </item>
+    </organization>
+  </organizations>
+
+  <resources>
+    <resource identifier="res-dashboard"
+              type="webcontent"
+              adlcp:scormtype="sco"
+              href="bb.html">
+      <file href="bb.html"/>
+    </resource>
+  </resources>
+
+</manifest>
