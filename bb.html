@@ -213,42 +213,59 @@ const STUDIO = {
   },
 
   // ── Blackboard Links per group ────────────────────────────────────────
-  //  Paste each group's BB Assignment and Peer Review URLs each week.
-  //  guildWorkspaces: each guild's BB Group Workspace URL (set once at start).
-  //  gradebook: shared "My Grades" URL (same for all students).
+  //  groupSetUrl : The BB Ultra Group Set page URL for this seminar group.
+  //                Students click "Open My Workspace" and land on their group set
+  //                page where they can see and enter their guild workspace.
+  //                Get it from: Course → Groups → click the group set → copy URL
+  //                (remove &mode=edit from the end if present).
+  //
+  //  guildWorkspaces : Optional per-guild URLs for direct deep-links.
+  //                    Leave "" to fall back to groupSetUrl automatically.
+  //
+  //  currentAssignment / peerReviewForm : Update each week.
+  //  gradebook : shared "My Grades" URL — same for all students.
+  //
+  //  Course ID for this cohort: _376756_1  (learning.ulster.ac.uk)
   bbLinks: {
-    gradebook: "",   // My Grades URL — same for all students
+    gradebook: "https://learning.ulster.ac.uk/ultra/courses/_376756_1/gradebook",
     "LDN-A": {
-      currentAssignment: "",   // London Group A — this week's BB Assignment
-      peerReviewForm:    "",   // Peer review URL
+      groupSetUrl:       "",   // ← paste London Group A group set URL here
+      currentAssignment: "",
+      peerReviewForm:    "",
       guildWorkspaces: { "LDN-A-G1":"", "LDN-A-G2":"", "LDN-A-G3":"", "LDN-A-G4":"", "LDN-A-G5":"" },
     },
     "LDN-CD": {
+      groupSetUrl:       "",   // ← paste London Group C&D group set URL here
       currentAssignment: "",
       peerReviewForm:    "",
       guildWorkspaces: { "LDN-CD-G1":"", "LDN-CD-G2":"", "LDN-CD-G3":"", "LDN-CD-G4":"" },
     },
     "BHM-A": {
+      groupSetUrl:       "https://learning.ulster.ac.uk/ultra/courses/_376756_1/groups/groupSet?groupSetId=_189349_1",
       currentAssignment: "",
       peerReviewForm:    "",
       guildWorkspaces: { "BHM-A-G1":"", "BHM-A-G2":"", "BHM-A-G3":"", "BHM-A-G4":"", "BHM-A-G5":"", "BHM-A-G6":"" },
     },
     "BHM-B": {
+      groupSetUrl:       "",   // ← paste Birmingham Group B group set URL here
       currentAssignment: "",
       peerReviewForm:    "",
       guildWorkspaces: { "BHM-B-G1":"", "BHM-B-G2":"", "BHM-B-G3":"" },
     },
     "BHM-E": {
+      groupSetUrl:       "",   // ← paste Birmingham Group E group set URL here
       currentAssignment: "",
       peerReviewForm:    "",
       guildWorkspaces: { "BHM-E-G1":"", "BHM-E-G2":"", "BHM-E-G3":"", "BHM-E-G4":"" },
     },
     "MAN-A": {
+      groupSetUrl:       "",   // ← paste Manchester Group A group set URL here
       currentAssignment: "",
       peerReviewForm:    "",
       guildWorkspaces: { "MAN-A-G1":"", "MAN-A-G2":"", "MAN-A-G3":"", "MAN-A-G4":"", "MAN-A-G5":"", "MAN-A-G6":"", "MAN-A-G7":"", "MAN-A-G8":"" },
     },
     "MAN-BC": {
+      groupSetUrl:       "",   // ← paste Manchester Group B&C group set URL here
       currentAssignment: "",
       peerReviewForm:    "",
       guildWorkspaces: { "MAN-BC-G1":"", "MAN-BC-G2":"", "MAN-BC-G3":"" },
@@ -755,26 +772,37 @@ Keep the tone encouraging and specific. Do not award a formal grade.`;
 function renderWorkspaceButtons() {
   const row  = document.getElementById('workspaceBtnRow');
   if (!row) return;
-  const gl        = groupLinks();
-  const wsLinks   = gl.guildWorkspaces || {};
-  const assignUrl = gl.currentAssignment || '';
-  const gradeUrl  = STUDIO.bbLinks.gradebook || '';
+  const gl         = groupLinks();
+  const wsLinks    = gl.guildWorkspaces || {};
+  const groupSetUrl= gl.groupSetUrl || '';   // fallback when per-guild URL not set
+  const assignUrl  = gl.currentAssignment || '';
+  const gradeUrl   = STUDIO.bbLinks.gradebook || '';
+
+  // Best workspace URL: per-guild if set, otherwise the group set page
+  function wsUrl(guildName) {
+    return wsLinks[guildName] || groupSetUrl || '';
+  }
 
   if (_activeGuild) {
-    // Single guild view
-    const wsUrl = wsLinks[_activeGuild.name] || '';
+    const url = wsUrl(_activeGuild.name);
     row.innerHTML =
-      (wsUrl ? `<a class="btn btn-teal" href="${wsUrl}" target="_blank">🏠 My Guild Workspace (${_activeGuild.name})</a>` : '') +
+      (url       ? `<a class="btn btn-teal"    href="${url}"       target="_blank">🏠 My Guild Workspace (${_activeGuild.name})</a>` : '') +
       (assignUrl ? `<a class="btn btn-primary" href="${assignUrl}" target="_blank">📤 Submit Week ${STUDIO.currentWeek} Artefact</a>` : '') +
-      (gradeUrl  ? `<a class="btn btn-ghost" href="${gradeUrl}"  target="_blank">📊 My Grades</a>` : '') +
-      (!wsUrl && !assignUrl ? '<span style="font-size:11px;color:#94a3b8">Workspace links not configured yet — check with your module leader.</span>' : '');
+      (gradeUrl  ? `<a class="btn btn-ghost"   href="${gradeUrl}"  target="_blank">📊 My Grades</a>` : '') +
+      (!url && !assignUrl ? '<span style="font-size:11px;color:#94a3b8">Workspace links not configured yet — check with your module leader.</span>' : '');
+  } else if (groupSetUrl) {
+    // Group set view — one button to the whole group set
+    row.innerHTML =
+      `<a class="btn btn-teal"    href="${groupSetUrl}" target="_blank">🏠 Open Group Workspaces</a>` +
+      (assignUrl ? `<a class="btn btn-primary" href="${assignUrl}" target="_blank">📤 Submit Artefact</a>` : '') +
+      (gradeUrl  ? `<a class="btn btn-ghost"   href="${gradeUrl}"  target="_blank">📊 My Grades</a>` : '');
   } else {
-    // Generic view — show all visible guild workspace links that are configured
+    // No URLs set yet
     const configured = visibleGuilds().filter(g => wsLinks[g.name]);
     if (configured.length === 0) {
       row.innerHTML = `<span style="font-size:11px;color:#94a3b8">
-        Open this widget with <code>?guild=YourGuildName</code> in the URL to see your workspace link.<br>
-        e.g. <code>…bb.html?guild=Alpha</code></span>`;
+        Workspace links will appear here once your module leader has set them up.<br>
+        Open with <code>?guild=BHM-A-G1</code> for your guild's personalised view.</span>`;
     } else {
       row.innerHTML = configured.map(g =>
         `<a class="btn btn-teal" href="${wsLinks[g.name]}" target="_blank" style="font-size:11px">🏠 ${g.name}</a>`
@@ -818,8 +846,8 @@ function renderGuildBanner() {
         </div>` : ''}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${(groupLinks().guildWorkspaces||{})[g.name]
-          ? `<a class="btn btn-teal" href="${(groupLinks().guildWorkspaces||{})[g.name]}" target="_blank">🏠 Open My Workspace</a>`
+        ${((groupLinks().guildWorkspaces||{})[g.name] || groupLinks().groupSetUrl)
+          ? `<a class="btn btn-teal" href="${(groupLinks().guildWorkspaces||{})[g.name] || groupLinks().groupSetUrl}" target="_blank">🏠 Open My Workspace</a>`
           : `<span style="font-size:11px;color:#94a3b8">Workspace link not set yet</span>`}
         ${groupLinks().currentAssignment
           ? `<a class="btn btn-primary" href="${groupLinks().currentAssignment}" target="_blank">📤 Submit Week ${STUDIO.currentWeek} Artefact</a>`
