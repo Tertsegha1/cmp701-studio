@@ -1686,28 +1686,36 @@ window.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
 
+  <!-- XP Manager launch card -->
   <div class="card">
-    <div class="card-hdr amber">⚙️ Weekly Update Checklist</div>
+    <div class="card-hdr" style="background:#1b3a6b;color:#fff">⚙️ XP Manager &amp; Weekly Publisher</div>
+    <div class="card-body" style="text-align:center;padding:20px 16px">
+      <p style="font-size:12px;color:#334155;margin-bottom:16px;line-height:1.6">
+        Update guild XP scores, paste this week's Blackboard assignment links,
+        and publish changes directly to GitHub — all without touching any files manually.
+      </p>
+      <button class="btn btn-blue" style="font-size:13px;padding:12px 28px"
+              onclick="window.open('admin.html','_blank')">
+        🚀 Open XP Manager
+      </button>
+      <p style="font-size:10px;color:#94a3b8;margin-top:10px">Opens in a new tab within Blackboard</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr amber">📋 Weekly Workflow (~5 min)</div>
     <div class="card-body">
       <div class="deliverable-item">
         <div class="del-num">1</div>
-        <div style="font-size:12px;line-height:1.6;color:#334155">Click <strong>Tutor View ↗</strong> for each group above. Use the Group Hub to generate XP snippets per group (tutors can also do this themselves).</div>
+        <div style="font-size:12px;line-height:1.6;color:#334155">Tutors report XP tallies to you (e.g. G1: 30, G2: 20). Open the <strong>XP Manager</strong> above.</div>
       </div>
       <div class="deliverable-item">
         <div class="del-num">2</div>
-        <div style="font-size:12px;line-height:1.6;color:#334155">Paste all guild snippets into <code>STUDIO.guilds[]</code> in <strong>bb.html</strong>. Increment <code>currentWeek</code>. Update each group's <code>peerReviewOffset</code>.</div>
+        <div style="font-size:12px;line-height:1.6;color:#334155">Enter XP scores per guild, paste this week's Blackboard assignment &amp; peer review URLs for each group.</div>
       </div>
       <div class="deliverable-item">
         <div class="del-num">3</div>
-        <div style="font-size:12px;line-height:1.6;color:#334155">Paste this week's BB Assignment URLs and peer review URLs into <code>bbLinks["GROUP"].currentAssignment</code> and <code>.peerReviewForm</code> for each group.</div>
-      </div>
-      <div class="deliverable-item">
-        <div class="del-num">4</div>
-        <div style="font-size:12px;line-height:1.6;color:#334155">
-          Run in PowerShell from the cmp701-studio folder:<br>
-          <code>git add bb.html; git commit -m "Week N update"; git push origin master</code><br>
-          Students see the updated dashboard in Blackboard within ~60 seconds.
-        </div>
+        <div style="font-size:12px;line-height:1.6;color:#334155">Click <strong>Publish</strong> in the XP Manager. Changes are committed to GitHub — the dashboard updates for all students within ~60 seconds.</div>
       </div>
     </div>
   </div>
