@@ -167,6 +167,11 @@ const STUDIO = {
                             //   set a number (e.g. 3) to override for testing
   semesterStart: "2026-06-16",  // Monday of Week 1 (YYYY-MM-DD) — set once, never change
 
+  // ── Staff access code ─────────────────────────────────────────────────
+  // Tutors and Module Leader must enter this code to access staff views.
+  // Change to any passphrase — share with teaching team only.
+  staffPin: "Studio2026Staff",
+
   // ── Key Dates ──────────────────────────────────────────────────────────
   deadlines: {
     cw1Sub:  "2026-08-14",   // CW1 submission — update once confirmed
@@ -462,9 +467,10 @@ const STUDIO = {
 //  ?group=BHM-A     → shows all guilds in Birmingham Group A (lecturer/group view)
 //  Neither set      → shows all groups (module-leader overview)
 
-let _activeGuild = null;   // set during boot
-let _activeGroup = null;   // group prefix string e.g. "BHM-A"
-let _activeRole  = null;   // 'student' | 'tutor' | 'admin' — null until picker sets it
+let _activeGuild    = null;   // set during boot
+let _activeGroup    = null;   // group prefix string e.g. "BHM-A"
+let _activeRole     = null;   // 'student' | 'tutor' | 'admin' — null until picker sets it
+let _staffVerified  = false;  // true after correct staff PIN entered this session
 
 // ── Auto week calculation ─────────────────────────────────────────────────
 //  Returns 1–12 based on semesterStart. Advances each Monday at 08:00.
@@ -490,11 +496,13 @@ function detectActiveGuild() {
   }
   if (!_activeGroup && groupParam) _activeGroup = groupParam.trim();
 
-  // 2. Role: URL param → localStorage → null (null = show picker)
+  // 2. Role: URL param → sessionStorage → null
+  //    sessionStorage persists across location.reload() but clears when the tab closes,
+  //    so users see the role picker fresh each session without getting stuck mid-reload.
   if (roleParam) {
     _activeRole = roleParam;  // explicit URL override
   } else {
-    _activeRole = null;  // role is always chosen fresh each session (not persisted)
+    _activeRole = sessionStorage.getItem('cmp701_role') || null;
   }
 
   // Infer role from URL params if not yet set
@@ -518,8 +526,10 @@ function detectActiveGuild() {
   }
 }
 
-// ── Picker (SCORM first-use) ──────────────────────────────────────────────
-//  Step 1: Who are you?  Step 2: Pick your guild or group.
+// ── Picker ────────────────────────────────────────────────────────────────
+//  Step 1 : Who are you?   (shown every new session)
+//  Step 1.5: Staff passcode (tutor / admin only — students go straight to Step 2)
+//  Step 2 : Pick guild (student) or group (tutor); admin boots immediately.
 function showPicker() {
   const overlay = document.getElementById('pickerOverlay');
   if (!overlay) return;
@@ -530,8 +540,8 @@ function showPicker() {
     overlay.innerHTML = `
       <div class="picker-box">
         <h2>👋 Welcome to CMP701 Studio</h2>
-        <p>Select your role to get started. This is saved on your device — you only choose once.</p>
-        <div class="picker-grid" style="grid-template-columns:1fr;gap:10px">
+        <p style="margin-bottom:6px">Select your role to continue.</p>
+        <div class="picker-grid" style="grid-template-columns:1fr;gap:10px;margin-bottom:0">
           <button class="guild-pick-btn" style="padding:14px;font-size:13px" onclick="pickRole('student')">
             👤 &nbsp;I'm a <strong>Student</strong>
           </button>
@@ -546,8 +556,38 @@ function showPicker() {
     return;
   }
 
+  // ── Step 1.5: Staff passcode — required for tutor and admin ──────────
+  if ((_activeRole === 'tutor' || _activeRole === 'admin') && !_staffVerified) {
+    overlay.innerHTML = `
+      <div class="picker-box">
+        <h2>🔒 Staff Access</h2>
+        <p>Enter the staff access code to continue.</p>
+        <input type="password" id="pinInput" placeholder="Access code"
+               style="width:100%;padding:10px 12px;font-size:14px;border:2px solid #e2e8f0;
+                      border-radius:8px;margin-bottom:10px;text-align:center;letter-spacing:2px"
+               onkeydown="if(event.key==='Enter')verifyStaffPin()">
+        <button class="guild-pick-btn" style="padding:12px;font-size:13px;width:100%;margin-bottom:4px"
+                onclick="verifyStaffPin()">Continue →</button>
+        <p id="pinError" style="color:#dc2626;font-size:11px;margin:6px 0;display:none">
+          Incorrect access code. Please try again.
+        </p>
+        <button class="btn btn-ghost" style="margin-top:6px;width:100%;font-size:10px"
+                onclick="pickRole(null)">← Back</button>
+      </div>`;
+    // Auto-focus the input
+    setTimeout(() => { const el = document.getElementById('pinInput'); if(el) el.focus(); }, 50);
+    return;
+  }
+
   // ── Step 2a: Student — pick guild ─────────────────────────────────────
   if (_activeRole === 'student') {
+    // If guild already saved from a previous visit, skip the picker
+    const savedGuild = localStorage.getItem('cmp701_guild');
+    if (savedGuild && STUDIO.guilds.find(g => g.name === savedGuild)) {
+      overlay.style.display = 'none';
+      location.reload();
+      return;
+    }
     let prevGroup = null;
     const btns = STUDIO.guilds.map(g => {
       let html = '';
@@ -561,7 +601,7 @@ function showPicker() {
     overlay.innerHTML = `
       <div class="picker-box">
         <h2>🏠 Select Your Guild</h2>
-        <p>Find your guild below. This is saved on your device — you only do this once.</p>
+        <p>Find your guild below. This is saved — you only do this once.</p>
         <div class="picker-grid">${btns}</div>
         <p style="font-size:10px;color:#94a3b8;margin-top:8px">Not sure? Check your Blackboard course or ask your tutor.</p>
         <button class="btn btn-ghost" style="margin-top:10px;width:100%;font-size:10px" onclick="pickRole(null)">← Back</button>
@@ -571,38 +611,61 @@ function showPicker() {
 
   // ── Step 2b: Tutor — pick group ───────────────────────────────────────
   if (_activeRole === 'tutor') {
+    // If group already saved from a previous visit, skip the picker
+    const savedGroup = localStorage.getItem('cmp701_group');
+    if (savedGroup && GROUP_LABELS[savedGroup]) {
+      overlay.style.display = 'none';
+      location.reload();
+      return;
+    }
     const btns = Object.entries(GROUP_LABELS).map(([key, label]) =>
       `<button class="guild-pick-btn" style="grid-column:1/-1;padding:12px" onclick="pickGroup('${key}')">${label}</button>`
     ).join('');
     overlay.innerHTML = `
       <div class="picker-box">
         <h2>🎓 Select Your Seminar Group</h2>
-        <p>Choose the group you are responsible for. You can change this later.</p>
+        <p>Choose the group you are responsible for.</p>
         <div class="picker-grid" style="grid-template-columns:1fr">${btns}</div>
         <button class="btn btn-ghost" style="margin-top:10px;width:100%;font-size:10px" onclick="pickRole(null)">← Back</button>
       </div>`;
     return;
   }
 
-  // ── Step 2c: Admin — no picker needed, just boot the dashboard ────────
+  // ── Step 2c: Admin — hide overlay and boot dashboard ─────────────────
   if (_activeRole === 'admin') {
     overlay.style.display = 'none';
-    location.reload();
+    location.reload();  // sessionStorage has role='admin', so boot completes on reload
     return;
   }
 }
 
 function pickRole(role) {
   if (role === null || role === undefined) {
-    // Back button — clear role so Step 1 shows again
-    localStorage.removeItem('cmp701_role');
-    _activeRole = null;
+    // Back button — clear role and staff verification, return to Step 1
+    sessionStorage.removeItem('cmp701_role');
+    _activeRole     = null;
+    _staffVerified  = false;
     showPicker();
     return;
   }
-  // Role is NOT saved to localStorage — users choose fresh each session
-  _activeRole = role;
-  showPicker();  // advance to Step 2 (guild or group picker)
+  sessionStorage.setItem('cmp701_role', role);
+  _activeRole    = role;
+  _staffVerified = false;  // reset — PIN must be re-entered for the new role
+  showPicker();
+}
+
+function verifyStaffPin() {
+  const input = document.getElementById('pinInput');
+  if (!input) return;
+  if (input.value === (STUDIO.staffPin || '')) {
+    _staffVerified = true;
+    showPicker();
+  } else {
+    const err = document.getElementById('pinError');
+    if (err) err.style.display = 'block';
+    input.value = '';
+    input.focus();
+  }
 }
 
 function pickGuild(name) {
@@ -1329,7 +1392,7 @@ window.addEventListener('DOMContentLoaded', () => {
     <span class="cohort-pill" id="guildPill" style="display:none;background:rgba(13,115,119,.4);border-color:rgba(13,115,119,.6)"></span>
     <span class="role-badge"  id="roleBadge" style="display:none"></span>
     <span class="week-pill"   id="weekLabel">Week —</span>
-    <button onclick="pickRole(null)"
+    <button onclick="sessionStorage.removeItem('cmp701_role');_activeRole=null;_staffVerified=false;showPicker()"
             title="Switch role"
             style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;
                    border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;line-height:1.4">
