@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CMP701 Studio — Weekly Manager</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:13px;background:#f0f4f8;color:#1e293b;min-height:100vh}
+
+.hdr{background:linear-gradient(135deg,#1B3A6B,#0D7377);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.hdr-title{font-size:15px;font-weight:800}
+.hdr-sub{font-size:10px;opacity:.75;margin-top:2px}
+#statusBadge{font-size:10px;font-weight:700;border-radius:20px;padding:4px 12px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3)}
+#statusBadge.ok{background:rgba(21,128,61,.4);border-color:rgba(21,128,61,.7)}
+#statusBadge.err{background:rgba(185,28,28,.4);border-color:rgba(185,28,28,.7)}
+
+.container{max-width:900px;margin:0 auto;padding:16px}
+
+.card{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:14px;overflow:hidden}
+.card-hdr{padding:10px 16px;font-size:12px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+.card-hdr.blue{background:#1B3A6B}.card-hdr.teal{background:#0D7377}.card-hdr.green{background:#15803D}
+.card-hdr.amber{background:#B45309}.card-hdr.purple{background:#7C3AED}.card-hdr.red{background:#B91C1C}
+.card-body{padding:14px 16px}
+
+label{font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:4px}
+input[type=text],input[type=number],input[type=password],select,textarea{
+  width:100%;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;
+  font-size:12px;font-family:Arial,sans-serif;outline:none;transition:.15s}
+input:focus,select:focus,textarea:focus{border-color:#0D7377}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-group{margin-bottom:12px}
+
+.btn{padding:8px 16px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer;transition:.15s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1B3A6B;color:#fff}.btn-primary:hover{background:#162d55}
+.btn-teal{background:#0D7377;color:#fff}.btn-teal:hover{background:#0b5e62}
+.btn-green{background:#15803D;color:#fff}.btn-green:hover{background:#166534}
+.btn-ghost{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}.btn-ghost:hover{background:#e2e8f0}
+.btn-red{background:#B91C1C;color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* XP table */
+.xp-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.xp-tbl th{background:#f1f5f9;padding:6px 10px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0;font-size:10px;white-space:nowrap}
+.xp-tbl td{padding:6px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.xp-tbl tr:hover td{background:#f8fafc}
+.xp-input{width:64px;padding:5px 7px;font-size:11px;border:1.5px solid #cbd5e1;border-radius:4px;text-align:center}
+.xp-new{font-weight:800;color:#0D7377}
+
+/* Group accordion */
+.grp-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;cursor:pointer;user-select:none}
+.grp-header:hover{background:#f1f5f9}
+.grp-header .grp-label{font-size:12px;font-weight:700;color:#1B3A6B}
+.grp-body{padding:14px 16px;border-bottom:1px solid #e2e8f0;display:none}
+.grp-body.open{display:block}
+.grp-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
+
+.alert{padding:10px 14px;border-radius:6px;font-size:12px;margin-bottom:12px;line-height:1.5}
+.alert-info{background:#eff6ff;border-left:4px solid #1D4ED8;color:#1e3a5f}
+.alert-success{background:#f0fdf4;border-left:4px solid #15803D;color:#14532d}
+.alert-error{background:#fef2f2;border-left:4px solid #B91C1C;color:#7f1d1d}
+.alert-warn{background:#fffbeb;border-left:4px solid #B45309;color:#78350f}
+
+.tab-bar{display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:14px}
+.g-tab{padding:8px 16px;border:none;background:none;font-size:11px;font-weight:700;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s}
+.g-tab:hover{color:#1B3A6B}
+.g-tab.on{color:#1B3A6B;border-bottom-color:#1B3A6B}
+
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.section-note{font-size:11px;color:#64748b;margin-bottom:12px;line-height:1.5}
+.publish-bar{position:sticky;bottom:0;background:#fff;border-top:2px solid #0D7377;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 -2px 8px rgba(0,0,0,.08)}
+.changed-count{font-size:11px;color:#64748b}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-title">⚙️ CMP701 Studio — Weekly Manager</div>
+    <div class="hdr-sub">Module Leader admin panel — updates bb.html via GitHub</div>
+  </div>
+  <span id="statusBadge">Not connected</span>
+</div>
+
+<div class="container">
+
+<!-- ── 1. AUTHENTICATION ─────────────────────────────────────────────── -->
+<div class="card" id="authCard">
+  <div class="card-hdr blue">🔑 GitHub Connection</div>
+  <div class="card-body">
+    <div class="alert alert-info">
+      <strong>One-time setup:</strong> Enter your GitHub Personal Access Token (PAT) below. It's saved in this browser only — never sent anywhere except GitHub's own API.
+      <br><br>
+      To create a PAT: GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token → tick <strong>repo</strong> scope.
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr auto">
+      <div>
+        <label>GitHub Personal Access Token</label>
+        <input type="password" id="patInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+      </div>
+      <div style="display:flex;align-items:flex-end">
+        <button class="btn btn-primary" onclick="connect()">🔌 Connect</button>
+      </div>
+    </div>
+    <div id="authMsg" style="margin-top:8px;font-size:11px;color:#64748b"></div>
+  </div>
+</div>
+
+<!-- ── 2. WEEK & ANNOUNCEMENT ─────────────────────────────────────────── -->
+<div class="card" id="weekCard" style="display:none">
+  <div class="card-hdr teal">📅 Week Settings</div>
+  <div class="card-body">
+    <div class="form-row">
+      <div class="form-group" style="margin:0">
+        <label>Current Week (1–12)</label>
+        <input type="number" id="weekInput" min="1" max="12" value="1" onchange="markChanged()">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Announcement Type</label>
+        <select id="announceType" onchange="markChanged()">
+          <option value="info">ℹ️ Info (blue)</option>
+          <option value="good">✅ Good news (green)</option>
+          <option value="warn">⚠️ Warning (amber)</option>
+          <option value="urgent">🔴 Urgent (red)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Announcement message <span style="font-weight:400;color:#94a3b8">(leave blank to hide)</span></label>
+      <input type="text" id="announceBody" placeholder="e.g. Week 3 feedback returned — check your guild workspace" oninput="markChanged()">
+    </div>
+  </div>
+</div>
+
+<!-- ── 3. XP UPDATE ───────────────────────────────────────────────────── -->
+<div class="card" id="xpCard" style="display:none">
+  <div class="card-hdr green">📊 XP Update</div>
+  <div class="card-body">
+    <p class="section-note">
+      Tick <strong>Sub</strong> if a guild submitted this week (+50 XP) · tick <strong>PR</strong> if they completed peer review (+30 XP) · enter any bonus XP in the box.
+      New XP updates automatically.
+    </p>
+    <div class="tab-bar" id="xpGroupTabs"></div>
+    <div id="xpGroupPanels"></div>
+  </div>
+</div>
+
+<!-- ── 4. BB LINKS ────────────────────────────────────────────────────── -->
+<div class="card" id="linksCard" style="display:none">
+  <div class="card-hdr amber">🔗 Blackboard Links (update each week)</div>
+  <div class="card-body">
+    <p class="section-note">
+      Paste this week's Blackboard assignment URL and peer review URL for each seminar group.
+      Only update the groups you have new links for — others are left unchanged.
+    </p>
+    <div id="linksAccordion"></div>
+  </div>
+</div>
+
+<!-- ── 5. PUBLISH ─────────────────────────────────────────────────────── -->
+<div class="publish-bar" id="publishBar" style="display:none">
+  <button class="btn btn-green" id="publishBtn" onclick="publish()" disabled>
+    📤 Publish Update to Blackboard
+  </button>
+  <button class="btn btn-ghost" onclick="reloadConfig()">↺ Reload from GitHub</button>
+  <span class="changed-count" id="changedCount">Connect to GitHub to begin</span>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONFIG
+// ─────────────────────────────────────────────────────────────────────────────
+const REPO  = 'Tertsegha1/cmp701-studio';
+const FPATH = 'bb.html';
+const API   = `https://api.github.com/repos/${REPO}/contents/${FPATH}`;
+
+const GROUP_META = [
+  { key:'LDN-A',  label:'London Group A',      campus:'London' },
+  { key:'LDN-CD', label:'London Group C&D',     campus:'London' },
+  { key:'BHM-A',  label:'Birmingham Group A',   campus:'Birmingham' },
+  { key:'BHM-B',  label:'Birmingham Group B',   campus:'Birmingham' },
+  { key:'BHM-E',  label:'Birmingham Group E',   campus:'Birmingham' },
+  { key:'MAN-A',  label:'Manchester Group A',   campus:'Manchester' },
+  { key:'MAN-BC', label:'Manchester Group B&C', campus:'Manchester' },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────────────────────────────────────
+let _pat     = localStorage.getItem('cmp701_pat') || '';
+let _sha     = '';
+let _raw     = '';        // raw bb.html text from GitHub
+let _config  = null;      // parsed config object
+let _changed = false;
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  AUTH & LOAD
+// ─────────────────────────────────────────────────────────────────────────────
+async function connect() {
+  const val = document.getElementById('patInput').value.trim();
+  if (val) { _pat = val; localStorage.setItem('cmp701_pat', val); }
+  if (!_pat) { showAuthMsg('Enter your GitHub PAT first.', 'error'); return; }
+
+  setStatus('Connecting…', '');
+  showAuthMsg('Connecting to GitHub…', 'info');
+
+  try {
+    const data = await ghGet();
+    _sha = data.sha;
+    _raw = decodeBase64(data.content);
+    _config = parseConfig(_raw);
+    populateForm();
+    showPanels();
+    setStatus('✅ Connected — ' + REPO, 'ok');
+    showAuthMsg('✅ Connected. Config loaded from GitHub.', 'success');
+  } catch (e) {
+    setStatus('Connection failed', 'err');
+    showAuthMsg('❌ ' + e.message, 'error');
+  }
+}
+
+async function reloadConfig() {
+  if (!_pat) { alert('Not connected — enter your PAT first.'); return; }
+  try {
+    setStatus('Reloading…', '');
+    const data = await ghGet();
+    _sha = data.sha;
+    _raw = decodeBase64(data.content);
+    _config = parseConfig(_raw);
+    populateForm();
+    _changed = false;
+    updatePublishBtn();
+    setStatus('✅ Reloaded from GitHub', 'ok');
+  } catch(e) {
+    alert('Reload failed: ' + e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  GITHUB API HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+async function ghGet() {
+  const r = await fetch(API, {
+    headers: { 'Authorization': `token ${_pat}`, 'Accept': 'application/vnd.github+json' }
+  });
+  if (!r.ok) throw new Error(`GitHub API ${r.status}: ${r.statusText}`);
+  return r.json();
+}
+
+async function ghPut(message, content) {
+  // Encode UTF-8 content to base64
+  const bytes = new TextEncoder().encode(content);
+  const binStr = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
+  const b64 = btoa(binStr);
+
+  const r = await fetch(API, {
+    method: 'PUT',
+    headers: {
+      'Authorization':  `token ${_pat}`,
+      'Accept':         'application/vnd.github+json',
+      'Content-Type':   'application/json',
+    },
+    body: JSON.stringify({ message, content: b64, sha: _sha }),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(`GitHub API ${r.status}: ${err.message || r.statusText}`);
+  }
+  return r.json();
+}
+
+function decodeBase64(b64) {
+  const binStr = atob(b64.replace(/\n/g, ''));
+  const bytes  = Uint8Array.from(binStr, c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PARSE bb.html CONFIG
+// ─────────────────────────────────────────────────────────────────────────────
+function parseConfig(content) {
+  const cfg = { guilds: [], bbLinks: {}, peerReviewOffset: {} };
+
+  // Current week
+  const wkM = content.match(/currentWeek:\s+(\d+),/);
+  cfg.currentWeek = wkM ? parseInt(wkM[1]) : 1;
+
+  // Announcement
+  const bdM = content.match(/body:\s+"([^"]*)"/);
+  const tyM = content.match(/type:\s+"([^"]*)"/);
+  cfg.announcementBody = bdM ? bdM[1] : '';
+  cfg.announcementType = tyM ? tyM[1] : 'info';
+
+  // Guilds (each on its own line)
+  const gRx = /\{ name: "([^"]+)", campus: "([^"]+)", group: "([^"]+)", xp: (\d+), badges: (\[[^\]]*\]), submissions: (\[[^\]]*\]) \}/g;
+  let m;
+  while ((m = gRx.exec(content)) !== null) {
+    cfg.guilds.push({
+      name: m[1], campus: m[2], group: m[3],
+      xp: parseInt(m[4]),
+      badges: JSON.parse(m[5]),
+      submissions: JSON.parse(m[6]),
+    });
+  }
+
+  // bbLinks per group
+  for (const grp of GROUP_META) {
+    cfg.bbLinks[grp.key] = {
+      currentAssignment: extractGroupField(content, grp.key, 'currentAssignment'),
+      peerReviewForm:    extractGroupField(content, grp.key, 'peerReviewForm'),
+    };
+  }
+
+  // peerReviewOffset per group
+  for (const grp of GROUP_META) {
+    const oM = content.match(new RegExp(`"${grp.key}":\\s*(\\d+),\\s*//`));
+    cfg.peerReviewOffset[grp.key] = oM ? parseInt(oM[1]) : 1;
+  }
+
+  return cfg;
+}
+
+function extractGroupField(content, groupKey, field) {
+  const lines = content.split('\n');
+  let inGroup = false;
+  for (const line of lines) {
+    if (!inGroup && line.includes(`"${groupKey}":`) && line.includes('{')) {
+      inGroup = true; continue;
+    }
+    if (inGroup) {
+      if (line.includes(`${field}:`)) {
+        const vM = line.match(/:\s+"([^"]*)"/);
+        return vM ? vM[1] : '';
+      }
+      if (line.trim().match(/^"[A-Z]+-[A-Z]+":/)) inGroup = false;
+    }
+  }
+  return '';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  POPULATE FORM
+// ─────────────────────────────────────────────────────────────────────────────
+function populateForm() {
+  const cfg = _config;
+
+  // Week + announcement
+  document.getElementById('weekInput').value   = cfg.currentWeek;
+  document.getElementById('announceBody').value = cfg.announcementBody;
+  document.getElementById('announceType').value = cfg.announcementType;
+
+  // XP group tabs + panels
+  buildXPSection(cfg);
+
+  // BB links accordion
+  buildLinksAccordion(cfg);
+}
+
+function buildXPSection(cfg) {
+  const tabBar   = document.getElementById('xpGroupTabs');
+  const panels   = document.getElementById('xpGroupPanels');
+  tabBar.innerHTML = '';
+  panels.innerHTML = '';
+
+  GROUP_META.forEach((grp, gi) => {
+    // Tab button
+    const btn = document.createElement('button');
+    btn.className = 'g-tab' + (gi === 0 ? ' on' : '');
+    btn.textContent = grp.label.replace('Group ', '').replace('Birmingham', 'BHM').replace('Manchester', 'MAN').replace('London', 'LDN');
+    btn.onclick = () => {
+      document.querySelectorAll('.g-tab').forEach(t => t.classList.remove('on'));
+      btn.classList.add('on');
+      document.querySelectorAll('.xp-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('xp-panel-' + grp.key).style.display = '';
+    };
+    tabBar.appendChild(btn);
+
+    // Panel
+    const guilds = cfg.guilds.filter(g => g.group === grp.key);
+    const panel  = document.createElement('div');
+    panel.id    = 'xp-panel-' + grp.key;
+    panel.className = 'xp-panel';
+    panel.style.display = gi === 0 ? '' : 'none';
+
+    const rows = guilds.map(g => {
+      const wkDone = Math.max(0, cfg.currentWeek - 1);
+      const subs   = (g.submissions || []).length;
+      const subPct = wkDone > 0 ? Math.round(subs / wkDone * 100) : 0;
+      return `<tr id="xrow-${g.name}">
+        <td><strong style="color:#1B3A6B">${g.name}</strong></td>
+        <td style="text-align:center" id="xpcur-${g.name}">${g.xp}</td>
+        <td style="text-align:center;font-size:10px;color:#64748b">${subs}/${wkDone}</td>
+        <td style="text-align:center">
+          <input class="xp-input" type="number" id="xpbonus-${g.name}" min="0" placeholder="0"
+            oninput="recalcXP('${g.name}'); markChanged()">
+        </td>
+        <td style="text-align:center">
+          <input type="checkbox" id="xpsub-${g.name}"
+            onchange="recalcXP('${g.name}'); markChanged()">
+        </td>
+        <td style="text-align:center">
+          <input type="checkbox" id="xppr-${g.name}"
+            onchange="recalcXP('${g.name}'); markChanged()">
+        </td>
+        <td style="text-align:center" class="xp-new" id="xpnew-${g.name}">${g.xp}</td>
+      </tr>`;
+    }).join('');
+
+    panel.innerHTML = `
+      <div style="overflow-x:auto">
+        <table class="xp-tbl">
+          <thead><tr>
+            <th>Guild</th>
+            <th style="text-align:center">Current XP</th>
+            <th style="text-align:center">Subs</th>
+            <th style="text-align:center">+ Bonus</th>
+            <th style="text-align:center">Sub? (+50)</th>
+            <th style="text-align:center">PR? (+30)</th>
+            <th style="text-align:center">New XP</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    panels.appendChild(panel);
+  });
+}
+
+function recalcXP(guildName) {
+  const cfg   = _config;
+  const guild = cfg.guilds.find(g => g.name === guildName);
+  if (!guild) return;
+  const bonus = parseInt(document.getElementById('xpbonus-' + guildName)?.value || '0') || 0;
+  const sub   = document.getElementById('xpsub-' + guildName)?.checked ? 50 : 0;
+  const pr    = document.getElementById('xppr-'  + guildName)?.checked ? 30 : 0;
+  const newXP = guild.xp + bonus + sub + pr;
+  const el    = document.getElementById('xpnew-' + guildName);
+  if (el) { el.textContent = newXP; el.style.color = newXP !== guild.xp ? '#15803D' : '#0D7377'; }
+}
+
+function buildLinksAccordion(cfg) {
+  const acc = document.getElementById('linksAccordion');
+  acc.innerHTML = '';
+
+  GROUP_META.forEach((grp, i) => {
+    const bl    = cfg.bbLinks[grp.key] || {};
+    const item  = document.createElement('div');
+    item.style.borderBottom = '1px solid #e2e8f0';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'grp-header';
+    hdr.innerHTML = `
+      <span class="grp-label">${grp.label}</span>
+      <span style="font-size:10px;color:#94a3b8" id="grp-status-${grp.key}">
+        ${bl.currentAssignment ? '✅ Assignment set' : '⏳ No assignment URL'}
+      </span>`;
+    hdr.onclick = () => body.classList.toggle('open');
+
+    const body = document.createElement('div');
+    body.className = 'grp-body' + (i === 0 ? ' open' : '');
+    body.innerHTML = `
+      <div class="grp-row">
+        <div class="form-group" style="margin:0">
+          <label>This Week's Assignment URL</label>
+          <input type="text" id="assign-${grp.key}" value="${bl.currentAssignment || ''}"
+            placeholder="https://learning.ulster.ac.uk/ultra/…"
+            oninput="updateGrpStatus('${grp.key}'); markChanged()">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Peer Review Form URL</label>
+          <input type="text" id="prurl-${grp.key}" value="${bl.peerReviewForm || ''}"
+            placeholder="https://learning.ulster.ac.uk/ultra/…"
+            oninput="markChanged()">
+        </div>
+      </div>`;
+
+    item.appendChild(hdr);
+    item.appendChild(body);
+    acc.appendChild(item);
+  });
+}
+
+function updateGrpStatus(key) {
+  const val = document.getElementById('assign-' + key)?.value.trim();
+  const el  = document.getElementById('grp-status-' + key);
+  if (el) el.textContent = val ? '✅ Assignment set' : '⏳ No assignment URL';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  APPLY UPDATES TO RAW bb.html
+// ─────────────────────────────────────────────────────────────────────────────
+function buildUpdatedContent() {
+  let c = _raw;
+  const cfg = _config;
+
+  // currentWeek
+  const newWeek = parseInt(document.getElementById('weekInput').value) || cfg.currentWeek;
+  c = c.replace(/currentWeek:\s+\d+,/, `currentWeek:   ${newWeek},`);
+
+  // peerReviewOffset — set all groups to new week
+  for (const grp of GROUP_META) {
+    c = c.replace(
+      new RegExp(`("${grp.key}":\\s*)\\d+(,\\s*//)`, 'g'),
+      `$1${newWeek}$2`
+    );
+  }
+
+  // Announcement
+  const aBody = document.getElementById('announceBody').value.replace(/"/g, '\\"');
+  const aType = document.getElementById('announceType').value;
+  c = c.replace(/body:\s+"[^"]*",/, `body:  "${aBody}",`);
+  c = c.replace(/type:\s+"[^"]*",/, `type:  "${aType}",`);
+
+  // Guilds XP
+  for (const guild of cfg.guilds) {
+    const bonus = parseInt(document.getElementById('xpbonus-' + guild.name)?.value || '0') || 0;
+    const sub   = document.getElementById('xpsub-' + guild.name)?.checked || false;
+    const pr    = document.getElementById('xppr-'  + guild.name)?.checked || false;
+
+    if (bonus === 0 && !sub && !pr) continue; // nothing changed
+
+    const newXP   = guild.xp + bonus + (sub ? 50 : 0) + (pr ? 30 : 0);
+    const newSubs = sub
+      ? [...new Set([...(guild.submissions || []), newWeek])].sort((a, b) => a - b)
+      : guild.submissions || [];
+
+    c = c.replace(
+      new RegExp(`(\\{ name: "${guild.name}", campus: "[^"]+", group: "[^"]+", xp: )\\d+(, badges: )\\[[^\\]]*\\](, submissions: )\\[[^\\]]*\\]( \\})`),
+      `$1${newXP}$2${JSON.stringify(guild.badges || [])}$3${JSON.stringify(newSubs)}$4`
+    );
+  }
+
+  // bbLinks per group
+  for (const grp of GROUP_META) {
+    const assignVal = document.getElementById('assign-' + grp.key)?.value.trim() || '';
+    const prVal     = document.getElementById('prurl-'  + grp.key)?.value.trim() || '';
+    c = updateGroupField(c, grp.key, 'currentAssignment', assignVal);
+    c = updateGroupField(c, grp.key, 'peerReviewForm',    prVal);
+  }
+
+  return c;
+}
+
+function updateGroupField(content, groupKey, field, value) {
+  const lines = content.split('\n');
+  let inGroup = false;
+  let updated = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (!inGroup && lines[i].includes(`"${groupKey}":`) && lines[i].includes('{')) {
+      inGroup = true; continue;
+    }
+    if (inGroup && !updated) {
+      if (lines[i].includes(`${field}:`)) {
+        lines[i] = lines[i].replace(new RegExp(`(${field}:\\s*)"[^"]*"`), `$1"${value}"`);
+        updated = true; inGroup = false;
+      }
+      if (!updated && lines[i].trim().match(/^"[A-Z]+-[A-Z]+":/)) inGroup = false;
+    }
+  }
+  return lines.join('\n');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PUBLISH
+// ─────────────────────────────────────────────────────────────────────────────
+async function publish() {
+  const btn = document.getElementById('publishBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Publishing…';
+
+  try {
+    const newContent = buildUpdatedContent();
+    const weekNum    = document.getElementById('weekInput').value;
+    const result     = await ghPut(`Week ${weekNum} update — XP, links and announcement`, newContent);
+
+    // Update SHA for next commit
+    _sha = result.content.sha;
+    _raw = newContent;
+    _config = parseConfig(newContent);
+
+    btn.innerHTML = '✅ Published!';
+    document.getElementById('changedCount').textContent =
+      'Published ✅ — students see the update in Blackboard within ~60 seconds.';
+    btn.style.background = '#15803D';
+
+    setTimeout(() => {
+      btn.innerHTML = '📤 Publish Update to Blackboard';
+      btn.style.background = '';
+      btn.disabled = false;
+      _changed = false;
+      updatePublishBtn();
+    }, 4000);
+
+  } catch (e) {
+    btn.innerHTML = '📤 Publish Update to Blackboard';
+    btn.disabled = false;
+    const errDiv = document.createElement('div');
+    errDiv.className = 'alert alert-error';
+    errDiv.style.marginTop = '8px';
+    errDiv.innerHTML = `<strong>Publish failed:</strong> ${e.message}`;
+    document.getElementById('publishBar').appendChild(errDiv);
+    setTimeout(() => errDiv.remove(), 8000);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  UI HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+function showPanels() {
+  ['weekCard','xpCard','linksCard'].forEach(id => document.getElementById(id).style.display = '');
+  document.getElementById('publishBar').style.display = 'flex';
+  document.getElementById('publishBtn').disabled = false;
+  document.getElementById('changedCount').textContent = 'Ready — make changes then publish.';
+}
+
+function setStatus(text, cls) {
+  const el = document.getElementById('statusBadge');
+  el.textContent = text;
+  el.className   = cls ? cls : '';
+}
+
+function showAuthMsg(msg, type) {
+  const el = document.getElementById('authMsg');
+  const cls = type === 'error' ? '#B91C1C' : type === 'success' ? '#15803D' : '#475569';
+  el.style.color   = cls;
+  el.textContent   = msg;
+}
+
+function markChanged() {
+  _changed = true;
+  updatePublishBtn();
+}
+
+function updatePublishBtn() {
+  const btn = document.getElementById('publishBtn');
+  const cnt = document.getElementById('changedCount');
+  if (_changed) {
+    btn.disabled = false;
+    cnt.textContent = '⚠️ Unsaved changes — click Publish to go live.';
+    cnt.style.color = '#B45309';
+  } else {
+    cnt.textContent = 'No unsaved changes.';
+    cnt.style.color = '#64748b';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  BOOT
+// ─────────────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  if (_pat) {
+    document.getElementById('patInput').value = '••••••••••••••••••••';
+    connect();
+  }
+});
+</script>
+</body>
+</html>
