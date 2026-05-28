@@ -494,7 +494,7 @@ function detectActiveGuild() {
   if (roleParam) {
     _activeRole = roleParam;  // explicit URL override
   } else {
-    _activeRole = localStorage.getItem('cmp701_role') || null;
+    _activeRole = null;  // role is always chosen fresh each session (not persisted)
   }
 
   // Infer role from URL params if not yet set
@@ -600,7 +600,7 @@ function pickRole(role) {
     showPicker();
     return;
   }
-  localStorage.setItem('cmp701_role', role);
+  // Role is NOT saved to localStorage — users choose fresh each session
   _activeRole = role;
   showPicker();  // advance to Step 2 (guild or group picker)
 }
@@ -620,6 +620,17 @@ function clearGuildChoice() {
   localStorage.removeItem('cmp701_guild');
   localStorage.removeItem('cmp701_group');
   location.reload();
+}
+
+function closeStudio() {
+  // Works whether Blackboard opens SCORM in a popup or an inline iframe
+  if (window.opener && !window.opener.closed) {
+    window.close();          // popup / new window
+  } else if (window.parent !== window) {
+    window.parent.history.back();  // embedded iframe
+  } else {
+    history.back();          // standalone tab
+  }
 }
 
 // Return guilds filtered to the active group (or all if no group set)
@@ -1318,6 +1329,18 @@ window.addEventListener('DOMContentLoaded', () => {
     <span class="cohort-pill" id="guildPill" style="display:none;background:rgba(13,115,119,.4);border-color:rgba(13,115,119,.6)"></span>
     <span class="role-badge"  id="roleBadge" style="display:none"></span>
     <span class="week-pill"   id="weekLabel">Week —</span>
+    <button onclick="pickRole(null)"
+            title="Switch role"
+            style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;
+                   border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;line-height:1.4">
+      ⇄ Switch Role
+    </button>
+    <button onclick="closeStudio()"
+            title="Close and return to Blackboard"
+            style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;
+                   border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;line-height:1.4">
+      ✕ Close
+    </button>
   </div>
 </div>
 
