@@ -583,6 +583,13 @@ function showPicker() {
       </div>`;
     return;
   }
+
+  // ── Step 2c: Admin — no picker needed, just boot the dashboard ────────
+  if (_activeRole === 'admin') {
+    overlay.style.display = 'none';
+    location.reload();
+    return;
+  }
 }
 
 function pickRole(role) {
@@ -687,7 +694,7 @@ function getPeerPairs(week) {
 
 // ── Render: Quest ────────────────────────────────────────────────────────
 
-let _selectedWeek = STUDIO.currentWeek;
+let _selectedWeek = null;  // set in boot after currentWeek auto-resolution
 
 function renderQuestNav() {
   const nav = document.getElementById('questWeekNav');
@@ -1235,9 +1242,11 @@ window.addEventListener('DOMContentLoaded', () => {
   if (STUDIO.currentWeek === 'auto' || typeof STUDIO.currentWeek !== 'number') {
     STUDIO.currentWeek = calcCurrentWeek();
   }
+  _selectedWeek = STUDIO.currentWeek;  // safe to set now — "auto" is resolved
 
-  // ── Show picker if role is set but guild/group is missing ────────────
+  // ── Show picker if no role yet, or role set but guild/group missing ───
   const needsPicker =
+    !_activeRole ||
     (_activeRole === 'student' && !_activeGuild) ||
     (_activeRole === 'tutor'   && !_activeGroup);
   if (needsPicker) { showPicker(); return; }   // stop here — picker handles the rest
