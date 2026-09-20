@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CMP701 Digital Transformation Studio</title>
+<link rel="stylesheet" href="css/studio-extra.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;font-size:13px;background:#f0f4f8;color:#1e293b;min-height:100vh}
@@ -238,7 +239,11 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
 <div class="tabs" id="leaderTabs">
   <button class="tab on" onclick="showTab('dashboard',this)">Dashboard</button>
   <button class="tab" onclick="showTab('guilds',this)">Guilds</button>
+  <button class="tab" onclick="showTab('companies',this)">Companies</button>
   <button class="tab" onclick="showTab('quests',this)">Quest Manager</button>
+  <button class="tab" onclick="showTab('studio-tools',this)">Studio Tools</button>
+  <button class="tab" onclick="showTab('deadlines',this)">Deadlines</button>
+  <button class="tab" onclick="showTab('prototypes',this)">Prototypes &amp; LunchPoint</button>
   <button class="tab" onclick="showTab('submissions',this)">Submissions</button>
   <button class="tab" onclick="showTab('peer-review',this)">Peer Review</button>
   <button class="tab" onclick="showTab('ai-tool',this)">Formative Feedback</button>
@@ -253,6 +258,10 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
 <div class="tabs" id="lecturerTabs" style="display:none">
   <button class="tab on" onclick="showTab('dashboard',this)">Dashboard</button>
   <button class="tab" onclick="showTab('submissions',this)">Submissions</button>
+  <button class="tab" onclick="showTab('companies',this)">Companies</button>
+  <button class="tab" onclick="showTab('studio-tools',this)">Studio Tools</button>
+  <button class="tab" onclick="showTab('prototypes',this)">Prototypes &amp; LunchPoint</button>
+  <button class="tab" onclick="showTab('deadlines',this)">Deadlines</button>
   <button class="tab" onclick="showTab('peer-review',this)">Peer Review</button>
   <button class="tab" onclick="showTab('ai-tool',this)">Formative Feedback</button>
   <button class="tab" onclick="showTab('announcements',this)">Announcements</button>
@@ -263,6 +272,9 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
 <div class="tabs" id="studentTabs" style="display:none">
   <button class="tab on" onclick="showTab('s-quest',this)">This Week's Quest</button>
   <button class="tab" onclick="showTab('s-guild',this)">My Guild</button>
+  <button class="tab" onclick="showTab('s-workspace',this)">My Workspace</button>
+  <button class="tab" onclick="showTab('studio-tools',this)">Studio Tools</button>
+  <button class="tab" onclick="showTab('prototypes',this)">Prototype Builder</button>
   <button class="tab" onclick="showTab('s-submit',this)">Submit Artefact</button>
   <button class="tab" onclick="showTab('s-peer',this)">Peer Review</button>
   <button class="tab" onclick="showTab('s-ai',this)">AI Feedback</button>
@@ -320,6 +332,32 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
     </select>
   </div>
   <div class="guild-grid" id="guildGrid"><p style="color:#94a3b8;font-size:12px">No guilds yet. Click "+ New Guild" to create one.</p></div>
+</div>
+
+<!-- COMPANIES / CONFLICT REGISTRY -->
+<div class="pg" id="pg-companies">
+  <div class="alert alert-info" style="margin-bottom:14px"><strong>Critical rule:</strong> a Guild's practice company is a shared, formative exemplar — no member may use it for their own individual CW1/CW2. This registry surfaces conflicts; approval and enforcement are a tutor judgement call.</div>
+  <div id="companiesBody"><p style="color:#94a3b8;font-size:12px">No data yet.</p></div>
+</div>
+
+<!-- STUDIO TOOLS (shared: student uses own Guild; leader/lecturer pick a Guild to review) -->
+<div class="pg" id="pg-studio-tools">
+  <div id="studioToolStaffPicker" style="display:none;margin-bottom:12px">
+    <label style="font-size:11px;font-weight:700;color:#475569;margin-right:8px">Viewing Guild:</label>
+    <select id="studioToolGuildPicker" onchange="viewingGuildId=this.value||null; renderStudioTools()" style="padding:6px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px"></select>
+  </div>
+  <div id="studioToolNav" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+  <div class="card"><div class="card-body" id="studioToolPanel"></div></div>
+</div>
+
+<!-- DEADLINES (leader only) -->
+<div class="pg" id="pg-deadlines">
+  <div id="deadlinesBody"><p style="color:#94a3b8;font-size:12px">Loading…</p></div>
+</div>
+
+<!-- PROTOTYPE BUILDER / LUNCHPOINT (shared) -->
+<div class="pg" id="pg-prototypes">
+  <div id="prototypesBody"><p style="color:#94a3b8;font-size:12px">Loading…</p></div>
 </div>
 
 <!-- QUEST MANAGER -->
@@ -810,6 +848,11 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
   </div>
 </div>
 
+<!-- STUDENT: My (Individual) Workspace -->
+<div class="pg" id="pg-s-workspace">
+  <div id="individualWorkspaceBody"><p style="color:#94a3b8;font-size:12px">Select your name from the top bar first.</p></div>
+</div>
+
 <!-- STUDENT: Submit Artefact -->
 <div class="pg" id="pg-s-submit">
   <div class="card">
@@ -1033,6 +1076,42 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeModal('guildModal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveGuild()">Save Guild</button>
+    </div>
+  </div>
+</div>
+
+<!-- Guild Company Modal -->
+<div class="modal-overlay" id="companyModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('companyModal')">✕</button>
+    <h3>Guild Practice Company — <span id="companyGuildLabel"></span></h3>
+    <input type="hidden" id="companyGuildId">
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Company Name</label>
+      <input type="text" id="companyName" placeholder="e.g. Tesco">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Website / identifier</label>
+        <input type="text" id="companyWebsite" placeholder="e.g. tesco.com">
+      </div>
+      <div class="form-group">
+        <label>Sector</label>
+        <input type="text" id="companySector" placeholder="e.g. Grocery retail">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Geography</label>
+      <input type="text" id="companyGeography" placeholder="e.g. UK / global">
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Why this offers a meaningful transformation problem</label>
+      <textarea id="companyRationale" rows="3" placeholder="Public evidence, disruption pressure, accessible data…"></textarea>
+    </div>
+    <div class="alert alert-info">No Guild member may use this company for their own individual CW1/CW2.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('companyModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGuildCompany()">Save Company</button>
     </div>
   </div>
 </div>
@@ -1435,6 +1514,10 @@ function refreshAll() {
   if (!isLeader) refreshStudentViews();
   loadConfig();
   updateWeekSelectors();
+  if (typeof renderCompanies === 'function') renderCompanies();
+  if (typeof renderStudioTools === 'function') renderStudioTools();
+  if (typeof renderDeadlines === 'function') renderDeadlines();
+  if (typeof renderPrototypesPage === 'function') renderPrototypesPage();
 }
 
 // ─── Role Management ─────────────────────────────────────────
@@ -1620,9 +1703,10 @@ function renderGuilds() {
       </div>
       <ul class="member-list">${memberHTML || '<li style="color:#94a3b8;font-size:11px">No members yet — add from Students tab</li>'}</ul>
       <div style="margin-top:10px">
-        <button class="btn btn-ghost btn-sm" onclick="openAddToGuildModal('${gid}')">+ Add Member</button>
+        <button class="btn btn-ghost btn-sm" onclick="openAddToGuildModal('${gid}')" ${members.length >= GUILD_MAX_MEMBERS ? 'disabled title="Guild is full (max 4)"' : ''}>+ Add Member</button>
         <button class="btn btn-ghost btn-sm" onclick="rotateRoles('${gid}')">↻ Rotate Roles</button>
       </div>
+      ${typeof renderGuildCompanySection === 'function' ? renderGuildCompanySection(gid, g) : ''}
     </div>`;
   }).join('');
 
@@ -1694,19 +1778,47 @@ function openAddToGuildModal(gid) {
 
 async function addStudentToGuild(sid, gid) {
   const student = appData.students[sid];
-  if (!student) return;
+  const guild = appData.guilds[gid];
+  if (!student || !guild) return false;
+  const currentSize = guild.members ? Object.keys(guild.members).length : 0;
+  if (currentSize >= GUILD_MAX_MEMBERS) {
+    toast(`${guild.name} is already full (max ${GUILD_MAX_MEMBERS} members)`, 'err');
+    return false;
+  }
   await sRef(`guilds/${gid}/members/${sid}`).set({ id: sid, name: student.name });
   await sRef(`students/${sid}/guildId`).set(gid);
   toast(`${student.name} added to guild`, 'ok');
+  return true;
 }
 
-function autoAssignGuilds() {
+// Deterministic, capacity-aware allocation: fills guilds to GUILD_MAX_MEMBERS
+// before moving to the next, in guild-list order. A leftover single student
+// (no guild with a free place) is flagged for tutor review rather than forced
+// into a 5th slot, matching the framework's singleton-guild rule.
+async function autoAssignGuilds() {
   const unassigned = Object.entries(appData.students).filter(([,s]) => !s.guildId);
   if (!unassigned.length) { toast('All students are already assigned', 'err'); return; }
-  const guilds = Object.keys(appData.guilds);
+  const guilds = Object.entries(appData.guilds);
   if (!guilds.length) { toast('Create at least one guild first', 'err'); return; }
-  const promises = unassigned.map(([sid], i) => addStudentToGuild(sid, guilds[i % guilds.length]));
-  Promise.all(promises).then(() => toast(`Assigned ${unassigned.length} students to guilds`, 'ok'));
+
+  let assigned = 0;
+  const overflow = [];
+  for (const [sid] of unassigned) {
+    const target = guilds.find(([gid, g]) => (g.members ? Object.keys(g.members).length : 0) < GUILD_MAX_MEMBERS);
+    if (!target) { overflow.push(sid); continue; }
+    const ok = await addStudentToGuild(sid, target[0]);
+    if (ok) {
+      assigned++;
+      target[1].members = target[1].members || {};
+      target[1].members[sid] = { id: sid, name: appData.students[sid].name };
+    }
+  }
+  if (overflow.length) {
+    const names = overflow.map(sid => appData.students[sid].name).join(', ');
+    toast(`Assigned ${assigned}. All guilds are full — flag for tutor review: ${names}`, 'err');
+  } else {
+    toast(`Assigned ${assigned} students to guilds`, 'ok');
+  }
 }
 
 function openImportModal() { openModal('importModal'); }
@@ -1939,7 +2051,7 @@ function renderStudents() {
       <td style="font-weight:700">${s.name}</td>
       <td>${s.campus || '—'}</td>
       <td>${guildName}</td>
-      <td>${s.business || '<span style="color:#94a3b8">Not chosen</span>'}</td>
+      <td>${s.business || '<span style="color:#94a3b8">Not chosen</span>'}${typeof companyConflictBadgeHTML === 'function' ? companyConflictBadgeHTML(sid) : ''}</td>
       <td class="C">${subsCount}/12</td>
       <td class="C">
         <button class="btn btn-ghost btn-sm" onclick="editStudent('${sid}')">Edit</button>
@@ -2522,6 +2634,8 @@ function refreshStudentViews() {
   renderStudentXP();
   renderGuildLeaderboard();
   populateSubmitWeeks();
+  if (typeof renderIndividualWorkspace === 'function') renderIndividualWorkspace();
+  if (typeof renderPrototypesPage === 'function') renderPrototypesPage();
 }
 
 function renderStudentQuest() {
@@ -3254,53 +3368,53 @@ function renderTimeline() {
 // SEED QUEST BRIEFS (12 WEEKS)
 // ═══════════════════════════════════════════════════════════
 const DEFAULT_QUESTS = [
-  { week:1, title:'Business Snapshot — Know Your Organisation',
-    brief:'Welcome to the CMP701 Digital Transformation Studio. You will not just learn digital transformation concepts — you will apply them continuously to a real organisation across the semester.\n\nThis week your Guild confirms its identity and builds its foundation. Working together, you will review and deeply understand your assigned business, agree on rotating studio roles, and produce two essential artefacts that will anchor everything you do for the next 12 weeks.\n\nRemember: CW1 (Week 6) and CW2 (Week 12) are INDIVIDUAL submissions. Group work supports your learning, but all assessment writing, analysis and reflection must be your own.',
-    deliverables:'Business Snapshot slide (1 slide max): Company name · Industry/sector · What the business does · Why digital transformation matters for this organisation\nGuild Working Contract (bullet points): Attendance expectations · Communication method · How tasks will be shared · How disagreements will be resolved\nRotating roles agreed for the semester (Facilitator, Analyst, Strategist, Innovator, Reporter)\nUpload one combined PDF or PowerPoint to the Studio' },
+  { week:1, title:'Foundations — Digital Transformation & the Cloud',
+    brief:'Welcome to the CMP701 Digital Transformation Studio. You will not just learn digital transformation concepts — you will apply them continuously to a real organisation across the semester.\n\nThis week\'s lecture introduces core digital transformation ideas (digitisation, Moore\'s Law, network effects, and how AI reshapes business processes). The lab moves straight into practice: setting up an Azure account, exploring Identity and Access Management (IAM), and using the Azure Pricing Calculator to cost a simple cloud architecture.\n\nYour Guild confirms its identity and builds its foundation this week. Remember: CW1 (Week 6) and CW2 (Week 12) are INDIVIDUAL submissions — Guild work is shared practice, not shared assessment.',
+    deliverables:'Business Snapshot slide (1 slide max): Company name · Industry/sector · What the business does · Why digital transformation matters for this organisation\nCloud Opportunity & IAM Risk Note: one cloud use case for the business, plus one IAM/access-control risk to manage\nGuild Working Contract: attendance, communication method, task sharing, how disagreements are resolved\nRotating roles agreed for the semester (Facilitator, Analyst, Strategist, Innovator, Reporter)\nStudio Tools to use: Evidence Library — start logging your sources now (Studio Tools tab)' },
 
-  { week:2, title:'Data-Driven — Using Analytics to Justify Transformation',
-    brief:'Digital transformation is driven by data, not guesswork. Before any organisation can transform, it must understand what its data reveals about its current state, its customers, and the gaps that digital technology could close.\n\nThis week you focus on descriptive analytics — the foundation of all data-driven decision-making. You will identify, collect and analyse data relevant to your assigned business, then draw connections between what the numbers show and what transformation could achieve.\n\nThis work feeds directly into the data strategy and justification sections of your CW2 report.',
-    deliverables:'Data & Analytics Overview document covering:\n  – Types of data relevant to your business (operational, customer, financial, social)\n  – At least 3 descriptive insights drawn from publicly available data\n  – Clear link between each insight and a digital transformation opportunity\nData sources referenced (e.g. company reports, Statista, ONS, industry publications)\nReflection: what does the data suggest your business must prioritise?' },
+  { week:2, title:'The Internet of Things — Implications for Strategy',
+    brief:'This week\'s lecture examines the Internet of Things as a technology paradigm — smart, connected products with physical, "smart" and connectivity components — and how IoT reshapes industry structure and competitive strategy (Porter & Heppelmann).\n\nThe lab is preparatory rather than analytical: install RapidMiner Studio and its Python scripting extension, ready for the visualisation and analytics work starting next week. No dataset work yet — get the tool working reliably now so Week 3 isn\'t lost to setup problems.',
+    deliverables:'IoT Opportunity Map: could your business\'s products/services become "smart and connected"? What data would that generate?\nRapidMiner Studio installed and Python scripting extension enabled — screenshot as evidence\nData source shortlist for Week 3\'s visualisation work (identify a real or public dataset relevant to your business)\nStudio Tools to use: Evidence Library — keep building your source base (Studio Tools tab)' },
 
-  { week:3, title:'Industry Intelligence — PESTLE & Porter\'s Five Forces',
-    brief:'No digital transformation happens in isolation. Every organisation operates within an industry shaped by political decisions, economic forces, social shifts, technological change, legal constraints and environmental pressures — and by the competitive forces that determine profitability and survival.\n\nThis week you conduct a rigorous industry environment analysis of your assigned business using two of the most powerful strategic frameworks available. The insights you generate this week feed directly into the industry analysis section of your CW2 report.',
-    deliverables:'PESTLE Analysis: one substantive point per factor (Political, Economic, Social, Technological, Legal, Environmental) with specific digital transformation implications for your business\nPorter\'s Five Forces Analysis: assess each force (Supplier Power, Buyer Power, Competitive Rivalry, Threat of New Entrants, Threat of Substitutes) and its digital dimension\nSynthesis statement: based on your analysis, what is the single greatest external driver pushing your business to transform digitally?\nFormat: structured document or annotated diagram — clear and evidence-based' },
+  { week:3, title:'Platform Businesses — Strategy & Descriptive Analytics',
+    brief:'This week\'s lecture contrasts platform and pipeline business models — network effects, Rogers\' platform business model map, and the risks of platform dependency (Cutolo et al.). The lab puts RapidMiner to work: visualising a real dataset with bar charts, scatter plots and histograms, grouping and colouring by categorical fields, and exporting a chart.\n\nBoth threads feed the same question: is your business closer to a pipeline or a platform, and what does the data already tell you about it?',
+    deliverables:'Platform vs Pipeline Assessment: which model best describes your business today, and could platform logic apply?\nFirst RapidMiner Visualisation: one chart with a written interpretation (what does it show, and why does it matter?)\nNetwork Effects Note: are there same-side or cross-side network effects present (or missing) in this business?\nStudio Tools to use: Platform & Customer Networks, Data Workbench (Studio Tools tab)' },
 
-  { week:4, title:'AS-IS to TO-BE — Mapping Organisational Impact',
-    brief:'Digital transformation does not only change technology — it changes people, roles, structures and ways of working. Understanding the gap between where an organisation is now (AS-IS) and where it needs to be (TO-BE) is one of the most critical skills a digital transformation practitioner must have.\n\nThis week you map your assigned business\'s current organisational state and design the future state that digital transformation would create. This directly supports the Business–Technology Interface section of your CW2 report.',
-    deliverables:'AS-IS Organisational Overview: current structure, key roles, existing digital capabilities, and identified gaps\nTO-BE Vision: how the organisation should look after digital transformation — changes to structure, roles, skills, and processes\nPeople & Skills Impact Assessment: which roles change, which are created, which become redundant, and what upskilling is required\nTransition narrative: a brief explanation of how the organisation moves from AS-IS to TO-BE' },
+  { week:4, title:'Business Analysis Toolkit — PESTLE, Five Forces, SWOT & More',
+    brief:'This week is a hands-on strategy workshop built around a worked scenario (Suzuki\'s EV pivot), covering PESTLE, Porter\'s Five Forces, SWOT, MOST, a resource audit, Ansoff\'s Matrix, and stakeholder power-interest mapping. The lab sets up a Trello board so your Guild can track research, analysis and change-planning tasks as you apply each framework to your own business.\n\nThis is the busiest analytical week of the module — the frameworks you complete here are the backbone of the CW2 industry-analysis and strategy sections.',
+    deliverables:'PESTLE Analysis: one substantive, evidenced point per factor for your business\nFive Forces Analysis: each force rated and explained, with a digital dimension noted\nSWOT: at least 3 points per quadrant\nStakeholder Power-Interest Grid: key stakeholders plotted with an engagement strategy for each\nTrello board set up and linked for Guild task tracking\nStudio Tools to use: Industry Strategy Suite — PESTLE / Five Forces / SWOT / MOST / Ansoff / Stakeholder Grid (Studio Tools tab)' },
 
-  { week:5, title:'Transformation Strategy — Roadmap, Technologies & KPIs',
-    brief:'A digital transformation strategy is not a wish list — it is a structured plan that connects business objectives to specific digital technologies, sets out a realistic roadmap, and defines measurable outcomes.\n\nThis week you build the strategic core of your transformation plan for your assigned business. The work you produce here feeds directly into the Digital Transformation Strategy section of your CW2 report — one of the highest-weighted components of the assessment.',
-    deliverables:'Business Objective: the specific business problem or opportunity that digital transformation will address\nDigital Technologies Selected: identify 2–3 technologies (e.g. cloud, AI/ML, IoT, automation, data analytics platform) with justification for each\nTransformation Roadmap: a phased plan (short/medium/long term) showing what gets implemented when and why\nKPIs: 4–6 measurable indicators that will confirm the transformation is succeeding\nDocument format: structured strategy brief suitable for a board audience' },
+  { week:5, title:'Digital Transformation Strategy — Roadmap, Technologies & KPIs',
+    brief:'This week\'s lecture covers strategic capabilities (resources vs competences, threshold vs distinctive), digital culture and CDO leadership, grounded in real cases (Nike, Starbucks, Ford, and a detailed Tesco/Peugeot use case). The lab uses Jira Service Management to build a digital strategy roadmap and run a change-management simulation.\n\nThe work you produce here feeds directly into the Digital Transformation Strategy section of your CW2 report — one of its highest-weighted components.',
+    deliverables:'Capability Audit: which of your business\'s capabilities are threshold vs distinctive, and how digitally mature is each?\nDigital Technologies Selected: 2–3 technologies with justification, matched to a real capability gap\nTransformation Roadmap: phased (short/medium/long term) in Jira or an equivalent board\nKPIs: 4–6 measurable indicators of transformation success\nStudio Tools to use: Current State & Maturity (Studio Tools tab)' },
 
   { week:6, title:'CW1 — Individual Video Presentation',
-    brief:'This is CW1 assessment week. Each student submits their individual 7–8 minute video presentation demonstrating their understanding of their assigned business, the analytical insights developed over the first five weeks, and their proposed direction for digital transformation.\n\nThis is an INDIVIDUAL submission — your video must reflect your own analysis, your own voice, and your own recommendations. You may draw on ideas developed in your Guild, but the content, structure and delivery must be entirely your own work.\n\nSubmit via the Blackboard assignment link before the deadline.',
-    deliverables:'CW1 Video Presentation submitted via Blackboard (7–8 minutes)\nCovers: business context · data/analytical findings · industry analysis · proposed transformation direction\nMarking criteria: Content Understanding (25pts) · Clarity & Engagement (20pts) · Structure & Organisation (20pts) · Visual Aids (20pts) · Delivery & Time Management (15pts)\nGuild activity: provide peer support and verbal feedback to at least one guild member after their presentation' },
+    brief:'This is CW1 assessment week. Each student submits their individual 7–8 minute video presentation, due Friday, Week 6, 12:00 noon via Blackboard.\n\nThis is an INDIVIDUAL submission on YOUR OWN chosen company (which must differ from your Guild\'s practice company) — content, structure and delivery must be entirely your own work. The official brief expects: an introduction to your business and its current digital-transformation state, your projected CW2 report outline, a high-level literature scan, the datasets/technologies you intend to use, and any prototype or preliminary analysis.',
+    deliverables:'CW1 video submitted via Blackboard (7–8 minutes)\nMarking criteria: Content Understanding (25%) · Clarity & Engagement (20%) · Structure & Organisation (20%) · Use of Visual Aids (20%) · Delivery & Time Management (15%)\nUse the CW1 Planner checklist and rehearsal timer in My Workspace before recording\nGuild activity: give verbal feedback to at least one Guild member after their rehearsal' },
 
-  { week:7, title:'Business Model Redesign — How Digital Changes the Game',
-    brief:'Digital disruption does not just change how businesses operate — it fundamentally changes the rules of competition and the logic of value creation. Entirely new business models become possible when digital technologies are applied strategically.\n\nThis week your Guild analyses your assigned business\'s current value proposition and business model, identifies digital disruptors and threats, and designs a proposed digital business model that could reposition the organisation for the future.\n\nThis work contributes directly to the industry analysis, platform models, new business models, and customer networks sections of your CW2 report.',
-    deliverables:'Current Value Proposition: what does the business currently offer, to whom, and how?\nDigital Disruption Analysis: 2–3 digital forces or competitors threatening the existing model\nProposed Digital Business Model: how should the business model change to remain competitive?\nBusiness Model Canvas: completed for both current state and proposed future state\nRevenue Model: how does the digital transformation change how the business makes money?' },
+  { week:7, title:'Digital Innovation Management & Business Models',
+    brief:'This week\'s lecture covers digital innovation management — incremental, modular and radical innovation, the four ways IT drives innovation (Hopkins), open vs closed innovation, and the digital workplace. The lab is a Business Model Canvas exercise built around Netflix, Airbnb, Spotify, Google and Tesla — comparing model patterns, running a SWOT, and sketching a revenue model.\n\nApply the same exercise to your own business: what digital business model pattern fits, and how would revenue change?',
+    deliverables:'Business Model Canvas: current state, completed for your business\nProposed Digital Business Model: which pattern applies (subscription, freemium, multi-sided platform, other) and why\nRevenue Model: a simple scenario showing how digital transformation changes how the business makes money\nStudio Tools to use: Business Model & Revenue (Studio Tools tab)' },
 
-  { week:8, title:'Strategy Alignment — Linking Business & Digital Transformation',
-    brief:'A digital transformation strategy that exists in isolation from the organisation\'s core business strategy will fail. The most successful transformations are those where digital goals are inseparable from business goals — where technology choices are made in service of strategic priorities.\n\nThis week you analyse how your assigned business\'s existing strategy connects (or fails to connect) to digital transformation, and you design the linkage that would make transformation strategically coherent.\n\nThis contributes to the strategy linkage, business process transformation, and innovation planning sections of your CW2 report.',
-    deliverables:'Current Business Strategy Summary: what is the organisation\'s core strategic direction?\nDigital Strategy Linkage: how do (or should) digital initiatives reinforce the business strategy?\nStrategic Digital Initiatives: 2–3 specific initiatives with rationale, timeline, and expected impact\nOrganisational Impact: what changes to culture, structure or capability are needed to execute these initiatives?' },
+  { week:8, title:'Strategy & Digital Transformation — Case-Based Analysis',
+    brief:'This week\'s lecture uses the Tate Modern case alongside Porter\'s competitive strategy and the Hess et al. digital transformation strategy framework (technology use, value creation, structural change, financial impact). The lab explicitly exists "as a foundation for your CW2 case study" — mapping organisational structure before/after digital change and comparing digital tools (e.g. Salesforce vs SAP).\n\nUse this week to lock in the case-study lens you\'ll carry through the rest of CW2.',
+    deliverables:'Before/After Organisation Map: structure, roles and processes before and after your proposed digital change\nBusiness Process Redesign: one process redesigned with a named digital tool and the workforce impact\nStrategy Alignment Statement: how your digital initiatives reinforce (not just sit alongside) the core business strategy\nStudio Tools to use: Process & Implementation (Studio Tools tab)' },
 
-  { week:9, title:'Predictive Analytics — Forecasting with RapidMiner',
-    brief:'This is one of the most important technical weeks in the module. Digital transformation strategies must be grounded in evidence, not just vision — and Business Intelligence tools give organisations the power to move from describing what happened to forecasting what will happen.\n\nThis week you use RapidMiner to build a predictive model relevant to your assigned business, generating forecast results that can directly inform your transformation recommendations.\n\nThis work contributes to the Data Strategy, Predictive Analytics, and Innovation Planning sections of your CW2 report.',
-    deliverables:'BI Application: how could Business Intelligence and predictive analytics be applied in your business context?\nPredictive Model: built in RapidMiner (regression, classification, or clustering) using a relevant dataset\nForecast Results: what does the model predict, and with what confidence?\nBusiness Insights: 3 actionable recommendations derived from your model\'s output\nCW2 Link: a brief methodology paragraph (100–150 words) suitable for inclusion in your report' },
+  { week:9, title:'Business Intelligence — Forecasting with RapidMiner',
+    brief:'This is one of the most technical weeks in the module, and the lab is explicitly built "for CW2". You will work with time-series data in RapidMiner — handling missing values, applying Fast Fourier Transformation, and building an ARIMA forecast — plus separate classification, clustering and association-rule exercises (credit default, customer segmentation, market-basket analysis).\n\nPick the technique that actually fits your business question — the goal is a defensible method, not a maximal one.',
+    deliverables:'Task & Method Selection: which technique fits your business question (forecasting, classification, clustering or association) and why\nModel built in RapidMiner with a stated validation approach (chronological split for forecasting; train/test otherwise)\nResults & Business Insight: what the model found, its limitations, and one recommendation it supports\nStudio Tools to use: Model Lab, Data Workbench (Studio Tools tab)' },
 
-  { week:10, title:'Strategy Convergence — Mind Mapping Your Transformation Plan',
-    brief:'Ten weeks of research, data, frameworks, models and strategic thinking. Now it is time to synthesise everything into a coherent, integrated digital transformation strategy.\n\nThis week your Guild uses mind mapping (Miro recommended) and structured discussion to help each member clarify and strengthen their individual strategy. The goal is a fully developed digital transformation strategy mind map that is directly aligned to the structure of your CW2 report.\n\nThis is a Guild Milestone week — your collective output should demonstrate the depth and breadth of your collaborative learning.',
-    deliverables:'Current State Analysis: a summary of key findings from weeks 1–9\nTransformation Goals: 3–5 clear, specific goals for your business\'s digital transformation\nTechnologies & Frameworks: the core technologies and strategic frameworks underpinning your plan\nChallenges & Opportunities Mind Map: created in Miro (or equivalent), shared as a link or export\nBusiness Model Integration: how does your transformation strategy connect to the business model redesign from Week 7?' },
+  { week:10, title:'Business Model Innovation — Mind Mapping Your Strategy',
+    brief:'This week\'s lecture covers business model innovation patterns (razor-and-blade, freemium, multi-sided platforms), Amit & Zott\'s value drivers, and strategic drift. The lab is a CW2-focused mind-mapping session (Miro recommended): mapping your business\'s current state, transformation goals, technologies/frameworks used, and remaining challenges — then presenting to your Guild for peer feedback.\n\nThis is a synthesis week: pull weeks 1–9 together into one coherent picture before you start writing.',
+    deliverables:'Digital Transformation Strategy Mind Map (Miro or equivalent), covering current state, goals, technologies/frameworks, and challenges/opportunities\nGuild presentation delivered and peer feedback received on your mind map\nIntegration note: how does this connect to your Week 7 business model work?\nStudio Tools to use: review your Business Model & Revenue and Industry Strategy Suite entries so far (Studio Tools tab)' },
 
-  { week:11, title:'Innovation & Knowledge Management — The Human Side of Transformation',
-    brief:'Sustainable digital transformation requires more than technology — it requires organisations that innovate continuously, manage knowledge deliberately, and develop people who can adapt and lead change.\n\nThis is one of the final strategic components of your CW2 report. This week you design the innovation and knowledge management dimensions of your transformation plan — addressing not just what technology will be implemented, but how the organisation will learn, adapt, and improve continuously.\n\nThis contributes to the Innovation Strategy, Knowledge Management, AI-enabled learning systems, and continuous improvement planning sections of CW2.',
-    deliverables:'Innovation Proposal: a specific innovation initiative for your business\nInnovation Type: classify as Product Innovation, Process Innovation, or Business Model Innovation — and justify\nKnowledge Management Strategy: how will your business capture, store, share and apply digital expertise across the organisation?\nVisual Representation: a diagram or framework showing how innovation and knowledge management connect to your overall transformation strategy' },
+  { week:11, title:'Innovation & Knowledge Management',
+    brief:'This week\'s lecture uses the Encyclopaedia Britannica and Kodak cases to explore digital disruption and product/process/business-model innovation types. The lab is a design-thinking exercise (healthcare AI ideation) plus a Power BI sentiment-analysis dashboard built from customer-feedback data — both applied "to your case study" for CW2.\n\nSustainable transformation needs more than technology: this week is about how the organisation learns, adapts and shares knowledge.',
+    deliverables:'Innovation Proposal: one specific initiative, classified as product/process/business-model innovation, with justification\nKnowledge Management Approach: how the business captures, shares and retains digital expertise\nSentiment/Feedback Mini-Dashboard: a simple chart from customer-feedback data (Power BI or the Data Workbench) with an interpretation\nStudio Tools to use: Innovation & Knowledge (Studio Tools tab)' },
 
-  { week:12, title:'Power BI Dashboard — Final Artefact & CW2 Review',
-    brief:'The final studio session of the semester. You will build a professional Power BI dashboard that visualises the key metrics, trends and insights from your entire semester of research — a strategic intelligence tool that a real boardroom could use to monitor transformation progress.\n\nThis is also CW2 review week. Use guild time to do a final check of your individual reports, share last feedback, and ensure your submission is ready. CW2 is an INDIVIDUAL written report — all content must be your own.\n\nSubmit CW2 via the Blackboard assignment link before the deadline.',
-    deliverables:'Power BI Dashboard: at least 5 interactive visualisations covering KPIs, trends and insights relevant to your transformation strategy\nExecutive Summary Slide: 1 page summarising your digital transformation strategy and key findings\nFinal CW2 draft reviewed and ready for individual submission via Blackboard\nGuild Retrospective: what did your Guild learn this semester? What would you do differently?' },
+  { week:12, title:'Power BI, Business Process Analytics & LunchPoint',
+    brief:'The final studio session. This week\'s lecture and lab cover the full business-analytics workflow in Power BI — import, clean, chart, and publish an interactive dashboard — using real analytics-domain examples.\n\nThis is also CW2 submission week (Wednesday, Week 12, 12:00 noon via Blackboard — an INDIVIDUAL written report) and your Guild\'s LunchPoint showcase: freeze your prototype and present your working system, built in the Studio\'s Prototype Builder, to demonstrate a real user journey and business outcome.',
+    deliverables:'Power BI-style dashboard: at least 3 charts covering KPIs/trends relevant to your transformation strategy (Data Workbench or Power BI)\nCW2 final draft checked against the CW2 Planner checklist and word count, then submitted via Blackboard\nGuild Prototype frozen for LunchPoint, with 3 test cases (normal/edge/error) recorded\nLunchPoint pitch delivered: problem, users, live demo, decision logic, business value, next steps\nStudio Tools to use: My Workspace (CW2 Planner), Prototype Builder (Studio Tools / Prototype Builder tabs)' },
 ];
 
 async function seedDefaultQuests() {
@@ -3684,6 +3798,10 @@ function renderStudentXP() {
     { id:'master', icon:'🏅', label:'Quest Master',     desc:'Complete all 12 quests' },
     { id:'streak', icon:'🔥', label:'On a Roll',        desc:'3 consecutive submissions' },
     { id:'peer',   icon:'🤝', label:'Peer Champion',    desc:'Guild completes 5 peer reviews' },
+    { id:'evidenceScout',    icon:'🔍', label:'Evidence Scout',    desc:'Guild logs 3+ evidence sources' },
+    { id:'dataInterpreter',  icon:'📈', label:'Data Interpreter',  desc:'Guild completes Data Workbench + Model Lab' },
+    { id:'strategyArchitect',icon:'🧭', label:'Strategy Architect',desc:'Guild completes PESTLE, SWOT and Business Model Canvas' },
+    { id:'changeDesigner',   icon:'🛠', label:'Change Designer',   desc:'Guild defines a process implementation roadmap' },
   ];
   const earnedIds = new Set(badges.map(b => b.id));
   const allBadgesHTML = allBadgeDefs.map(b =>
@@ -3833,5 +3951,13 @@ function renderGamificationDashboard() {
     </div>`;
 }
 </script>
+
+<!-- Framework-alignment modules: company/guild rules, individual workspace,
+     Section 5 artefact tools, prototype builder + LunchPoint, deadline editor -->
+<script src="js/company.js"></script>
+<script src="js/individual-workspace.js"></script>
+<script src="js/studio-tools.js"></script>
+<script src="js/prototype.js"></script>
+<script src="js/deadlines.js"></script>
 </body>
 </html>
