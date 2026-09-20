@@ -157,6 +157,35 @@ This gives students a developmental signal — how much of their work reads as A
 
 ---
 
+## Framework Alignment (2026 rebuild)
+
+This system was rebuilt against the *CMP701 Digital Transformation Studio System Framework* (20 September 2026 design reference) to close specific gaps between the original studio-management tool above and that framework's requirements. The additions live in separate, additive files (`js/company.js`, `js/individual-workspace.js`, `js/studio-tools.js`, `js/prototype.js`, `js/deadlines.js`, `css/studio-extra.css`) loaded after the main script — the original tabs, data and workflows above are unchanged.
+
+### Guild vs individual company (critical rule)
+A Guild now proposes its own shared **practice company** (Guilds tab → Set/Edit Company), separate from each student's own CW1/CW2 company (declared privately in **My Workspace**, from the brief's approved list — Zara, Mayo Clinic, JPMorgan Chase, General Electric, Tesla, Verizon, Netflix, Marriott International, Coursera, FedEx, or an "Other" pending Module Coordinator approval). Declaring the same company as your own Guild's practice company is blocked client-side; a **Companies** tab (Module Leader / Lecturer) lists every Guild and student company with conflicts flagged in red. The system cannot detect the same company being used outside this platform — declarations and tutor review remain the actual safeguard, exactly as the framework specifies.
+
+### Guild capacity
+Guilds are capped at 4 members, enforced in `addStudentToGuild()` and `autoAssignGuilds()` (which fills existing Guilds to capacity before flagging any leftover student for tutor review rather than creating a 5th slot).
+
+### My Workspace (individual, private)
+A new student-only tab holding the CW1 planner (content checklist matching the official brief, an outline box, and a rehearsal timer targeting 7–8 minutes), the CW2 planner (content checklist matching the official Appendix II sections, a draft box with a live word-count vs the 3,000-word +10% margin rule), and a CW1-feedback-to-CW2-reflection capture box.
+
+### Studio Tools (Section 5 artefact generators)
+A shared **Studio Tools** tab (students see their own Guild; Module Leader/Lecturer pick any Guild to review) with nine tools, each saving structured, versioned data per Guild rather than a free-text link: Evidence Library (with missing-date/low-reliability/broken-link flags), Current State & Maturity (scored radar), Industry Strategy Suite (PESTLE, Five Forces, SWOT, MOST, Ansoff, Stakeholder Grid), Platform & Customer Networks, Data Workbench (paste CSV → column stats and a simple distribution chart), Model Lab (task type, method, validation, metrics, decision implication), Business Model & Revenue (9-block canvas plus a revenue/margin calculator), Process & Implementation (before/after steps plus a roadmap), and Innovation & Knowledge (experiment cards). New capability badges (Evidence Scout, Data Interpreter, Strategy Architect, Change Designer) award bonus XP for completing them.
+
+### Prototype Builder & LunchPoint
+A shared **Prototypes & LunchPoint** tab. Students scope their Guild's system prototype (users, problem, value proposition, process, data, success measures, risks) and submit it for tutor scope approval, then build it in a lightweight visual builder — screens made of typed components (heading, stat card, table, chart, form, button, navigation) with a live preview — plus a simple data model, workflow rules, and test cases (normal/edge/error). A "Save Version" + "Freeze" flow lets a Guild lock a stable copy for the LunchPoint demo while continuing to edit. The Module Leader configures the LunchPoint date, venue, slot length, rehearsal and freeze times, and generates a running order across Guilds.
+
+### Deadline Editor
+A **Deadlines** tab (Module Leader edits; Lecturer views read-only) for CW1/CW2 submission and marking dates plus a release/close date and peer-review checkpoint for every one of the 12 Quests. Publishing logs every changed field to a change-history table (editor, old → new value, reason) and flags basic conflicts (a Quest closing before it releases, or LunchPoint scheduled before CW2 or before its own freeze deadline). **Publishing here never changes the formal Blackboard submission date** — a banner says so on every visit, matching the framework's reconciliation requirement. No historical dates are hard-coded as live defaults; every field starts blank until the Module Leader enters and confirms it.
+
+### Known limitations (carried over from the original system, not fixed by this rebuild)
+- No real institutional SSO/LTI — students still self-select their name from a dropdown (see **Access Roles** above). Individual-workspace "privacy" is therefore procedural, not enforced by authentication.
+- Company-conflict detection only catches a student picking the *same name* as their own Guild's company; it cannot detect the same organisation being used for coursework outside this platform.
+- The Firebase Realtime Database rules for the `studio` node are fully open (`.read`/`.write: true`, matching the existing `cmp701`/`adminPin`/`blackcolours` nodes in the same shared project) — there is no server-side check that a "student" write is actually coming from that student, a "Module Leader" write from the Module Leader, etc. Role gates (leader admin code, lecturer identity picker) are client-side only.
+
+---
+
 ## For the Module Leader
 
 ### First-Time Setup (new semester)
@@ -281,8 +310,8 @@ The Blackboard Guild Workspace is not required once this system is live. The **S
 ## Technical Architecture
 
 ### Stack
-- **Frontend:** Vanilla HTML/CSS/JavaScript — no framework, no build step, no npm
-- **Database:** Firebase Realtime Database (`cmp701markingtracker` project)
+- **Frontend:** Vanilla HTML/CSS/JavaScript — no framework, no build step, no npm. `index.html` holds the original app; `js/company.js`, `js/individual-workspace.js`, `js/studio-tools.js`, `js/prototype.js`, `js/deadlines.js` and `css/studio-extra.css` are the additive framework-alignment modules, loaded after the main inline script
+- **Database:** Firebase Realtime Database (`cmp701markingtracker` project — shared with the separate [CMP701 Marking Tracker](https://github.com/Tertsegha1/cmp701-tracker) repo, which owns `database.rules.json` for this project since that's the only repo that deploys rules to it. If Firebase writes ever start failing with `PERMISSION_DENIED` again, check that repo's `database.rules.json` still has a `studio` node and redeploy with `firebase deploy --only database`)
 - **Hosting:** GitHub Pages, auto-deploys from `master` branch on push
 - **AI:** Anthropic Claude API (`claude-sonnet-4-6`), called directly from the browser
 
@@ -291,7 +320,18 @@ The Blackboard Guild Workspace is not required once this system is live. The **S
 ```
 studio/                          ← default cohort (2025–26 S2)
   guilds/{guildId}
+    members / currentRoles / contract
+    company                      ← NEW: {name, website, sector, geography, rationale, status, proposedAt, approvedAt}
+    artefacts/{toolKey}          ← NEW: Studio Tools data — evidence, maturity, strategy_pestle,
+                                    strategy_fiveforces, strategy_swot, strategy_most, strategy_ansoff,
+                                    strategy_stakeholders, platform, data, model, bmc, process, innovation
+    prototype                    ← NEW: {scopeStatus, users, problem, valueProp, screens[], dataModel[],
+                                    workflowRules[], testCases[], versions[], frozenVersionId}
   students/{studentId}
+    business                     ← individual CW1/CW2 company (existing field, now conflict-checked)
+    individualCompanyDetail      ← NEW: {name, rationale, declaredAt, status}
+    individual                   ← NEW: {cw1Checklist, cw1Outline, cw1TimerLog, cw1FeedbackNotes,
+                                    cw2Checklist, cw2Draft, cw2ReflectionText}
   quests/week-{n}
   submissions/{studentId}/week-{n}
     title, link, description, reflection, submittedAt, status
@@ -299,6 +339,11 @@ studio/                          ← default cohort (2025–26 S2)
   peerReviews/week-{n}/{guildId}
   announcements/{id}
   config
+    cw1Deadline, cw1MarkDeadline, cw2Deadline, cw2MarkDeadline    ← NEW: marking dates
+    questDates/{week}            ← NEW: {release, close}
+    peerReviewDates/{week}       ← NEW: {date}
+    deadlineHistory[]            ← NEW: {ts, editor, field, oldValue, newValue, reason}
+    lunchpoint                   ← NEW: {date, venue, slotMinutes, rehearsalAt, freezeAt, runningOrder[]}
 
 studio/__cohorts/{cohortId}      ← cohort metadata registry
   name, year, semester

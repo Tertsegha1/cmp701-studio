@@ -1,0 +1,46 @@
+/* Additive styles for the framework-alignment modules (company, individual
+   workspace, studio tools, prototype builder, deadlines). Reuses the base
+   app's colour tokens and component classes (.card, .btn, .b, .alert,
+   .form-group, .xp-bar-wrap) — this file only covers what's new. */
+
+.company-box {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.company-box.empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#studioToolPanel h4 {
+  font-size: 14px;
+  color: #1B3A6B;
+  margin-bottom: 4px;
+}
+#studioToolPanel textarea,
+#prototypesBody textarea {
+  width: 100%;
+}
+#studioToolNav .btn,
+#studioToolStaffPicker select {
+  white-space: nowrap;
+}
+
+.badge-chip {
+  display: inline-block;
+  margin: 2px 4px 2px 0;
+  padding: 4px 9px;
+  border-radius: 20px;
+  background: #f1f5f9;
+  font-size: 11px;
+  font-weight: 700;
+}
+.badge-chip.earned {
+  background: #ede9fe;
+  color: #6d28d9;
+}
