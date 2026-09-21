@@ -168,7 +168,7 @@ A Guild now proposes its own shared **practice company** (Guilds tab → Set/Edi
 Guilds are capped at 4 members, enforced in `addStudentToGuild()` and `autoAssignGuilds()` (which fills existing Guilds to capacity before flagging any leftover student for tutor review rather than creating a 5th slot).
 
 ### My Workspace (individual, private)
-A new student-only tab holding the CW1 planner (content checklist matching the official brief, an outline box, and a rehearsal timer targeting 7–8 minutes), the CW2 planner (content checklist matching the official Appendix II sections, a draft box with a live word-count vs the 3,000-word +10% margin rule), and a CW1-feedback-to-CW2-reflection capture box.
+**Students never complete, draft or submit any part of CW1/CW2 in this Studio** — that happens entirely through Blackboard, as normal. My Workspace exists only so a student can privately declare their own CW1/CW2 company, checked against their Guild's practice company (see above). Nothing else lives here.
 
 ### Studio Tools (Section 5 artefact generators)
 A shared **Studio Tools** tab (students see their own Guild; Module Leader/Lecturer pick any Guild to review) with nine tools, each saving structured, versioned data per Guild rather than a free-text link: Evidence Library (with missing-date/low-reliability/broken-link flags), Current State & Maturity (scored radar), Industry Strategy Suite (PESTLE, Five Forces, SWOT, MOST, Ansoff, Stakeholder Grid), Platform & Customer Networks, Data Workbench (paste CSV → column stats and a simple distribution chart), Model Lab (task type, method, validation, metrics, decision implication), Business Model & Revenue (9-block canvas plus a revenue/margin calculator), Process & Implementation (before/after steps plus a roadmap), and Innovation & Knowledge (experiment cards). New capability badges (Evidence Scout, Data Interpreter, Strategy Architect, Change Designer) award bonus XP for completing them.
@@ -329,9 +329,8 @@ studio/                          ← default cohort (2025–26 S2)
                                     workflowRules[], testCases[], versions[], frozenVersionId}
   students/{studentId}
     business                     ← individual CW1/CW2 company (existing field, now conflict-checked)
-    individualCompanyDetail      ← NEW: {name, rationale, declaredAt, status}
-    individual                   ← NEW: {cw1Checklist, cw1Outline, cw1TimerLog, cw1FeedbackNotes,
-                                    cw2Checklist, cw2Draft, cw2ReflectionText}
+    individualCompanyDetail      ← NEW: {name, rationale, declaredAt, status} — declaration only,
+                                    no CW1/CW2 content is ever stored here
   quests/week-{n}
   submissions/{studentId}/week-{n}
     title, link, description, reflection, submittedAt, status
