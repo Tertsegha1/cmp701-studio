@@ -240,6 +240,7 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
   <button class="tab on" onclick="showTab('dashboard',this)">Dashboard</button>
   <button class="tab" onclick="showTab('guilds',this)">Guilds</button>
   <button class="tab" onclick="showTab('companies',this)">Companies</button>
+  <button class="tab" onclick="showTab('progress',this)">Progress</button>
   <button class="tab" onclick="showTab('quests',this)">Quest Manager</button>
   <button class="tab" onclick="showTab('studio-tools',this)">Studio Tools</button>
   <button class="tab" onclick="showTab('deadlines',this)">Deadlines</button>
@@ -259,6 +260,7 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
   <button class="tab on" onclick="showTab('dashboard',this)">Dashboard</button>
   <button class="tab" onclick="showTab('submissions',this)">Submissions</button>
   <button class="tab" onclick="showTab('companies',this)">Companies</button>
+  <button class="tab" onclick="showTab('progress',this)">Progress</button>
   <button class="tab" onclick="showTab('studio-tools',this)">Studio Tools</button>
   <button class="tab" onclick="showTab('prototypes',this)">Prototypes &amp; LunchPoint</button>
   <button class="tab" onclick="showTab('deadlines',this)">Deadlines</button>
@@ -339,6 +341,11 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
 <div class="pg" id="pg-companies">
   <div class="alert alert-info" style="margin-bottom:14px"><strong>Critical rule:</strong> a Guild's practice company is a shared, formative exemplar — no member may use it for their own individual CW1/CW2. This registry surfaces conflicts; approval and enforcement are a tutor judgement call.</div>
   <div id="companiesBody"><p style="color:#94a3b8;font-size:12px">No data yet.</p></div>
+</div>
+
+<!-- TUTOR PROGRESS DASHBOARD (leader/lecturer) -->
+<div class="pg" id="pg-progress">
+  <div id="progressBody"><p style="color:#94a3b8;font-size:12px">No data yet.</p></div>
 </div>
 
 <!-- STUDIO TOOLS (shared: student uses own Guild; leader/lecturer pick a Guild to review) -->
@@ -1530,6 +1537,7 @@ function refreshAll() {
   if (typeof renderStudioTools === 'function') renderStudioTools();
   if (typeof renderDeadlines === 'function') renderDeadlines();
   if (typeof renderPrototypesPage === 'function') renderPrototypesPage();
+  if (typeof renderProgressDashboard === 'function') renderProgressDashboard();
 }
 
 // ─── Role Management ─────────────────────────────────────────
@@ -4019,5 +4027,6 @@ function renderGamificationDashboard() {
 <script src="js/studio-tools.js"></script>
 <script src="js/prototype.js"></script>
 <script src="js/deadlines.js"></script>
+<script src="js/progress.js"></script>
 </body>
 </html>
