@@ -1070,11 +1070,18 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
       <label>Guild Name</label>
       <input type="text" id="guildName" placeholder="e.g. Guild Alpha">
     </div>
-    <div class="form-group" style="margin-bottom:12px">
-      <label>Campus</label>
-      <select id="guildCampus"><option>London</option><option>Birmingham</option><option>Manchester</option></select>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Campus</label>
+        <select id="guildCampus"><option>London</option><option>Birmingham</option><option>Manchester</option></select>
+      </div>
+      <div class="form-group">
+        <label>Seminar Group (optional)</label>
+        <input type="text" id="guildSeminarGroup" placeholder="e.g. A, or B&C">
+      </div>
     </div>
-    <div class="form-group" style="margin-bottom:16px">
+    <div class="alert alert-info" style="margin-top:8px">Auto-assign only places students into a Guild whose Campus (and Seminar Group, if set) matches their own — leave Seminar Group blank if this campus runs as one combined group.</div>
+    <div class="form-group" style="margin-bottom:16px;margin-top:12px">
       <label>Guild Working Contract</label>
       <textarea id="guildContract" rows="4" placeholder="e.g. We agree to meet every Tuesday at 2pm, share notes within 24 hours, and respect each other's ideas…"></textarea>
     </div>
@@ -1716,7 +1723,7 @@ function renderGuilds() {
       <div class="guild-card-hdr">
         <div>
           <div class="guild-name">${g.name}</div>
-          <div class="guild-campus">${g.campus || ''} &nbsp;·&nbsp; ${members.length} members</div>
+          <div class="guild-campus">${g.campus || ''}${g.seminarGroup ? ' Group ' + g.seminarGroup : ''} &nbsp;·&nbsp; ${members.length} members</div>
         </div>
         <div style="display:flex;gap:5px">
           <button class="btn btn-ghost btn-sm" onclick="editGuild('${gid}')">Edit</button>
@@ -1743,9 +1750,11 @@ function openGuildModal(gid) {
     const g = appData.guilds[gid];
     document.getElementById('guildName').value = g.name || '';
     document.getElementById('guildCampus').value = g.campus || 'London';
+    document.getElementById('guildSeminarGroup').value = g.seminarGroup || '';
     document.getElementById('guildContract').value = g.contract || '';
   } else {
     document.getElementById('guildName').value = '';
+    document.getElementById('guildSeminarGroup').value = '';
     document.getElementById('guildContract').value = '';
   }
   openModal('guildModal');
@@ -1756,12 +1765,13 @@ function editGuild(gid) { openGuildModal(gid); }
 async function saveGuild() {
   const name = document.getElementById('guildName').value.trim();
   const campus = document.getElementById('guildCampus').value;
+  const seminarGroup = document.getElementById('guildSeminarGroup').value.trim();
   const contract = document.getElementById('guildContract').value.trim();
   if (!name) { toast('Guild name is required', 'err'); return; }
 
   const gid = document.getElementById('guildEditId').value || sRef('guilds').push().key;
   const existing = appData.guilds[gid] || {};
-  await sRef('guilds/' + gid).update({ name, campus, contract, ...existing.members ? { members: existing.members } : {} });
+  await sRef('guilds/' + gid).update({ name, campus, seminarGroup, contract, ...existing.members ? { members: existing.members } : {} });
   closeModal('guildModal');
   toast('Guild saved!', 'ok');
 }
@@ -1788,13 +1798,24 @@ async function rotateRoles(gid) {
 }
 
 function openAddToGuildModal(gid) {
-  // Add unassigned students to this guild
+  const guild = appData.guilds[gid];
+  // Add unassigned students to this guild — matching campus/seminar group listed first
   const unassigned = Object.entries(appData.students).filter(([sid, s]) => !s.guildId);
   if (!unassigned.length) { toast('No unassigned students available', 'err'); return; }
-  const name = prompt('Enter student ID or name to add to this guild:\n\nUnassigned: ' + unassigned.map(([,s])=>s.name).join(', '));
+  const matching = unassigned.filter(([,s]) => guildMatchesStudent(guild, s));
+  const other = unassigned.filter(([,s]) => !guildMatchesStudent(guild, s));
+  const listText = [
+    matching.length ? matching.map(([,s]) => s.name).join(', ') : null,
+    other.length ? '\n\nOther campuses/groups (will ask to confirm): ' + other.map(([,s]) => s.name).join(', ') : null
+  ].filter(Boolean).join('');
+  const name = prompt('Enter student name to add to this guild:\n\nUnassigned: ' + listText);
   if (!name) return;
   const match = unassigned.find(([,s]) => s.name.toLowerCase().includes(name.toLowerCase()));
   if (!match) { toast('Student not found', 'err'); return; }
+  if (!guildMatchesStudent(guild, match[1])) {
+    const proceed = confirm(`${match[1].name} is ${match[1].campus}${match[1].seminarGroup ? ' Group ' + match[1].seminarGroup : ''}, but this Guild is ${guild.campus}${guild.seminarGroup ? ' Group ' + guild.seminarGroup : ''}. Add anyway (e.g. a confirmed transfer)?`);
+    if (!proceed) return;
+  }
   addStudentToGuild(match[0], gid);
 }
 
@@ -1813,10 +1834,21 @@ async function addStudentToGuild(sid, gid) {
   return true;
 }
 
-// Deterministic, capacity-aware allocation: fills guilds to GUILD_MAX_MEMBERS
-// before moving to the next, in guild-list order. A leftover single student
-// (no guild with a free place) is flagged for tutor review rather than forced
-// into a 5th slot, matching the framework's singleton-guild rule.
+// A Guild eligible for student `s`: same campus always; same seminarGroup too,
+// but only when BOTH the student and the guild actually have one set (a guild
+// left blank on Seminar Group is treated as "runs as one combined group" and
+// accepts any student from that campus).
+function guildMatchesStudent(g, s) {
+  if (g.campus !== s.campus) return false;
+  if (g.seminarGroup && s.seminarGroup && g.seminarGroup !== s.seminarGroup) return false;
+  return true;
+}
+
+// Deterministic, capacity-aware allocation: fills eligible guilds to
+// GUILD_MAX_MEMBERS before moving to the next, in guild-list order, and never
+// crosses a campus or seminar-group boundary. A student with no eligible
+// guild with a free place (wrong campus/group, or all full) is flagged for
+// tutor review rather than forced into a mismatched guild or a 5th slot.
 async function autoAssignGuilds() {
   const unassigned = Object.entries(appData.students).filter(([,s]) => !s.guildId);
   if (!unassigned.length) { toast('All students are already assigned', 'err'); return; }
@@ -1825,8 +1857,10 @@ async function autoAssignGuilds() {
 
   let assigned = 0;
   const overflow = [];
-  for (const [sid] of unassigned) {
-    const target = guilds.find(([gid, g]) => (g.members ? Object.keys(g.members).length : 0) < GUILD_MAX_MEMBERS);
+  for (const [sid, s] of unassigned) {
+    const target = guilds.find(([gid, g]) =>
+      guildMatchesStudent(g, s) && (g.members ? Object.keys(g.members).length : 0) < GUILD_MAX_MEMBERS
+    );
     if (!target) { overflow.push(sid); continue; }
     const ok = await addStudentToGuild(sid, target[0]);
     if (ok) {
@@ -1837,7 +1871,7 @@ async function autoAssignGuilds() {
   }
   if (overflow.length) {
     const names = overflow.map(sid => appData.students[sid].name).join(', ');
-    toast(`Assigned ${assigned}. All guilds are full — flag for tutor review: ${names}`, 'err');
+    toast(`Assigned ${assigned}. No matching Guild (campus/seminar group) or all full — flag for tutor review: ${names}`, 'err');
   } else {
     toast(`Assigned ${assigned} students to guilds`, 'ok');
   }
