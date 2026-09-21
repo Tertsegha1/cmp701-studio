@@ -226,59 +226,520 @@ function computeColumnStats(headers, rows) {
   });
 }
 
-async function analyseDataset() {
-  const gid = myGuildId();
-  if (!gid) return;
-  const text = document.getElementById('dwCsvInput').value;
-  const parsed = parseCSVText(text);
-  if (!parsed.headers.length) { toast('Paste some CSV data first', 'err'); return; }
+// ─── Multiple datasets ─────────────────────────────────────────────
+function newId(prefix) { return prefix + Date.now() + Math.floor(Math.random() * 1000); }
+
+function getPrimaryDataset(gid) {
+  const data = toolData(gid, 'data');
+  const datasets = data.datasets || {};
+  const id = (data.primaryDatasetId && datasets[data.primaryDatasetId]) ? data.primaryDatasetId : Object.keys(datasets)[0];
+  return id ? { id, ...datasets[id] } : null;
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
+async function addDatasetFromText(gid, name, csvText) {
+  const parsed = parseCSVText(csvText);
+  if (!parsed.headers.length) { toast('That file/text has no readable rows', 'err'); return; }
   const stats = computeColumnStats(parsed.headers, parsed.rows);
-  await sRef(`guilds/${gid}/artefacts/data`).update({ csvText: text, rowCount: parsed.rows.length, stats, updatedAt: Date.now() });
+  const did = newId('d');
+  const dataset = { name: name || 'Dataset', headers: parsed.headers, csvText, rowCount: parsed.rows.length, stats, uploadedAt: Date.now() };
+  await sRef(`guilds/${gid}/artefacts/data/datasets/${did}`).set(dataset);
+  const existing = toolData(gid, 'data');
+  if (!existing.primaryDatasetId) await sRef(`guilds/${gid}/artefacts/data/primaryDatasetId`).set(did);
+  toast('Dataset added', 'ok');
   renderStudioToolPanel();
 }
 
-function renderDataTool(gid) {
+async function handlePasteDataset(gid) {
+  const name = document.getElementById('dwNewName').value.trim() || 'Pasted dataset';
+  const text = document.getElementById('dwCsvInput').value;
+  if (!text.trim()) { toast('Paste some CSV data first', 'err'); return; }
+  await addDatasetFromText(gid, name, text);
+  document.getElementById('dwCsvInput').value = '';
+  document.getElementById('dwNewName').value = '';
+}
+
+async function handleFileUpload(gid, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const text = await readFileAsText(file);
+  await addDatasetFromText(gid, file.name.replace(/\.csv$/i, ''), text);
+  input.value = '';
+}
+
+async function renameDataset(gid, did, name) {
+  await sRef(`guilds/${gid}/artefacts/data/datasets/${did}/name`).set(name || 'Dataset');
+}
+
+async function setPrimaryDataset(gid, did) {
+  await sRef(`guilds/${gid}/artefacts/data/primaryDatasetId`).set(did);
+  toast('Set as the dataset Prototype Builder uses', 'ok');
+  renderStudioToolPanel();
+}
+
+async function removeDataset(gid, did) {
+  if (!confirm('Remove this dataset and any analyses built on it?')) return;
   const data = toolData(gid, 'data');
-  const statsHTML = (data.stats || []).map(s => {
+  const analyses = data.analyses || {};
+  const keepAnalyses = {};
+  Object.entries(analyses).forEach(([aid, a]) => { if (a.datasetId !== did) keepAnalyses[aid] = a; });
+  await sRef(`guilds/${gid}/artefacts/data/datasets/${did}`).remove();
+  await sRef(`guilds/${gid}/artefacts/data/analyses`).set(keepAnalyses);
+  if (data.primaryDatasetId === did) await sRef(`guilds/${gid}/artefacts/data/primaryDatasetId`).remove();
+  renderStudioToolPanel();
+}
+
+function downloadDatasetStats(gid, did) {
+  const data = toolData(gid, 'data');
+  const ds = data.datasets && data.datasets[did];
+  if (!ds) return;
+  const rows = [['Column', 'Type', 'Missing', 'Min/Max/Mean or Top Values']];
+  (ds.stats || []).forEach(s => {
+    rows.push([s.name, s.type, s.missing,
+      s.type === 'numeric' ? `min ${s.min}; max ${s.max}; mean ${s.mean}` : s.top.map(([v,c])=>`${v} (${c})`).join('; ')]);
+  });
+  downloadCSV(rows, `${ds.name.replace(/\s+/g,'_')}_descriptive_stats.csv`);
+}
+
+// ─── Analysis engine: descriptive / diagnostic / predictive / prescriptive ─
+function linearRegression(ys) {
+  const n = ys.length;
+  const xs = ys.map((_, i) => i + 1);
+  const meanX = xs.reduce((a,b)=>a+b,0) / n, meanY = ys.reduce((a,b)=>a+b,0) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) { num += (xs[i]-meanX) * (ys[i]-meanY); den += (xs[i]-meanX) ** 2; }
+  const slope = den === 0 ? 0 : num / den;
+  const intercept = meanY - slope * meanX;
+  return { slope: +slope.toFixed(4), intercept: +intercept.toFixed(4) };
+}
+
+function renderDatasetCard(gid, ds, isPrimary) {
+  const statsHTML = (ds.stats || []).map(s => {
     if (s.type === 'numeric') {
       return `<tr><td>${s.name}</td><td>numeric</td><td class="C">${s.missing}</td><td colspan="2">min ${s.min} · max ${s.max} · mean ${s.mean}</td></tr>`;
     }
-    const bars = s.top.map(entry => {
-      const v = entry[0], c = entry[1];
-      const pct = Math.round(c / (data.rowCount || 1) * 100);
+    const bars = s.top.map(([v, c]) => {
+      const pct = Math.round(c / (ds.rowCount || 1) * 100);
       return `<div style="display:flex;align-items:center;gap:6px;font-size:10px;margin-bottom:2px"><span style="width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v}</span><div class="xp-bar-wrap" style="flex:1;height:6px;margin:0"><div class="xp-bar-fill" style="width:${pct}%;background:#7C3AED"></div></div><span>${c}</span></div>`;
     }).join('');
     return `<tr><td>${s.name}</td><td>categorical</td><td class="C">${s.missing}</td><td colspan="2">${s.distinct} distinct<br>${bars}</td></tr>`;
   }).join('');
+
+  return `<div class="card" style="margin-bottom:12px">
+    <div class="card-hdr ${isPrimary ? 'teal' : 'slate'}" style="display:flex;justify-content:space-between;align-items:center">
+      <input value="${ds.name}" onblur="renameDataset('${gid}','${ds.id}',this.value)" style="background:transparent;border:none;color:#fff;font-weight:700;font-size:12px;flex:1">
+      <span style="display:flex;gap:6px;align-items:center">
+        ${isPrimary ? '<span class="b b-green">★ Used in Prototype Builder</span>' : `<button class="btn btn-ghost btn-sm" onclick="setPrimaryDataset('${gid}','${ds.id}')">Use in Prototype Builder</button>`}
+        <button class="btn btn-danger btn-sm" onclick="removeDataset('${gid}','${ds.id}')">✕</button>
+      </span>
+    </div>
+    <div class="card-body">
+      <div style="font-size:11px;color:#64748b;margin-bottom:6px">${ds.rowCount} rows · ${ds.headers.length} columns · uploaded ${new Date(ds.uploadedAt).toLocaleDateString('en-GB')}</div>
+      <table><thead><tr><th>Column</th><th>Type</th><th class="C">Missing</th><th colspan="2">Summary</th></tr></thead><tbody>${statsHTML}</tbody></table>
+      <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="downloadDatasetStats('${gid}','${ds.id}')">⬇ Download Descriptive Stats (CSV)</button>
+    </div>
+  </div>`;
+}
+
+function renderDataTool(gid) {
+  const data = toolData(gid, 'data');
+  const datasets = Object.entries(data.datasets || {});
+
+  const datasetCards = datasets.map(([did, ds]) =>
+    renderDatasetCard(gid, { id: did, ...ds }, did === data.primaryDatasetId)
+  ).join('');
+
   return `<h4>Data Workbench</h4>${exportHeader(gid)}
-    <div class="alert alert-info">Paste CSV text (first row = headers). No live customer/patient data — use public, synthetic, or anonymised datasets only.</div>
-    <textarea id="dwCsvInput" rows="6" placeholder="date,region,units_sold">${data.csvText || ''}</textarea>
-    <div style="margin:8px 0"><button class="btn btn-primary btn-sm" onclick="analyseDataset()">Analyse Dataset</button>
-      ${data.rowCount !== undefined ? `<span style="margin-left:8px;font-size:11px;color:#64748b">${data.rowCount} rows loaded</span>` : ''}</div>
-    ${data.stats ? `<table><thead><tr><th>Column</th><th>Type</th><th class="C">Missing</th><th colspan="2">Summary</th></tr></thead><tbody>${statsHTML}</tbody></table>` : ''}
-    <div class="form-group" style="margin-top:10px"><label>Interpretation and caveats</label>
+    <div class="alert alert-info">Upload one or more full datasets (CSV file, or paste text — first row = headers) and get an automatic column profile. To run Descriptive, Forecasting, Classification, Clustering or Association analysis on a dataset, use the <strong>Model Lab</strong> tool. No live customer/patient data — public, synthetic, or anonymised only.</div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-hdr blue">Add a Dataset</div>
+      <div class="card-body">
+        <div class="form-group" style="margin-bottom:8px"><label>Upload a CSV file</label>
+          <input type="file" accept=".csv,text/csv" onchange="handleFileUpload('${gid}',this)"></div>
+        <div class="form-group" style="margin-bottom:8px"><label>Dataset name (for pasted text)</label>
+          <input type="text" id="dwNewName" placeholder="e.g. Q1 Sales"></div>
+        <div class="form-group" style="margin-bottom:8px"><label>…or paste CSV text</label>
+          <textarea id="dwCsvInput" rows="5" placeholder="date,region,units_sold"></textarea></div>
+        <button class="btn btn-primary btn-sm" onclick="handlePasteDataset('${gid}')">Add Pasted Dataset</button>
+      </div>
+    </div>
+    ${datasetCards || '<p style="color:#94a3b8;font-size:12px">No datasets yet — upload or paste one above.</p>'}
+    <div class="form-group" style="margin-top:10px"><label>Interpretation and caveats (overall)</label>
       <textarea rows="3" onblur="saveToolField('${gid}','data','interpretation',this.value)">${data.interpretation || ''}</textarea></div>`;
 }
 
 // ─── Model Lab ─────────────────────────────────────────────────────────
-function renderModelTool(gid) {
+// ═══ Model Lab: guided sandbox — pick a task, pick a dataset already in the
+// Data Workbench, the system suggests cleaning, confirms the columns that
+// matter, then runs the analysis and saves a result card. ═══
+const MODEL_TASKS = ['Descriptive', 'Forecasting', 'Classification', 'Clustering', 'Association'];
+let modelLabState = {};
+function mlState(gid) { return modelLabState[gid] || (modelLabState[gid] = { datasetId: null, taskType: 'Descriptive', autoClean: true }); }
+function setModelLabDataset(gid, did) { mlState(gid).datasetId = did || null; renderStudioToolPanel(); }
+function setModelLabTaskType(gid, type) { mlState(gid).taskType = type; renderStudioToolPanel(); }
+function toggleModelLabClean(gid, checked) { mlState(gid).autoClean = checked; }
+
+// Step 1 of the pipeline every task shares: drop rows missing any column the
+// chosen task actually needs — "takes them through the data cleaning process."
+function cleanRowsForColumns(headers, rows, cols) {
+  const idxs = cols.map(c => headers.indexOf(c));
+  const cleaned = rows.filter(r => idxs.every(i => r[i] !== undefined && r[i] !== ''));
+  return { cleaned, droppedCount: rows.length - cleaned.length };
+}
+
+function pearsonCorrelation(xs, ys) {
+  const n = xs.length;
+  const mx = xs.reduce((a,b)=>a+b,0)/n, my = ys.reduce((a,b)=>a+b,0)/n;
+  let num=0, dx=0, dy=0;
+  for (let i=0;i<n;i++){ num += (xs[i]-mx)*(ys[i]-my); dx += (xs[i]-mx)**2; dy += (ys[i]-my)**2; }
+  return (dx===0||dy===0) ? 0 : +(num/Math.sqrt(dx*dy)).toFixed(3);
+}
+
+function euclideanDist(a, b) { return Math.sqrt(a.reduce((s,v,i)=>s+(v-b[i])**2,0)); }
+
+function kMeans(points, k, iterations) {
+  const dim = points[0].length;
+  const sorted = [...points].sort((a,b)=>a[0]-b[0]);
+  let centroids = Array.from({length:k}, (_,i) => sorted[Math.round(i*(sorted.length-1)/Math.max(k-1,1))]);
+  let assignments = new Array(points.length).fill(0);
+  for (let iter=0; iter<iterations; iter++) {
+    assignments = points.map(p => {
+      let best=0, bestDist=Infinity;
+      centroids.forEach((c,ci)=>{ const d=euclideanDist(p,c); if(d<bestDist){bestDist=d;best=ci;} });
+      return best;
+    });
+    const sums = Array.from({length:k},()=>({sum:new Array(dim).fill(0),count:0}));
+    points.forEach((p,i)=>{ const c=assignments[i]; sums[c].count++; p.forEach((v,d)=>sums[c].sum[d]+=v); });
+    centroids = sums.map((s,ci)=> s.count ? s.sum.map(v=>+(v/s.count).toFixed(2)) : centroids[ci]);
+  }
+  return { centroids, assignments };
+}
+
+// Simple one-rule (decision stump) classifier: the single threshold on one
+// numeric feature that best separates the two most common classes.
+function decisionStump(featureVals, labels, classes) {
+  const uniq = [...new Set(featureVals)].sort((a,b)=>a-b);
+  let best = { threshold: uniq[0], flip: false, acc: -1 };
+  for (let i=0;i<uniq.length-1;i++){
+    const t = (uniq[i]+uniq[i+1])/2;
+    for (const flip of [false,true]) {
+      let correct=0;
+      for (let j=0;j<featureVals.length;j++){
+        const pred = (featureVals[j] > t) !== flip ? classes[1] : classes[0];
+        if (pred === labels[j]) correct++;
+      }
+      const acc = correct/featureVals.length;
+      if (acc>best.acc) best = { threshold:t, flip, acc };
+    }
+  }
+  return best;
+}
+function stumpPredict(stump, classes, value) {
+  return (value > stump.threshold) !== stump.flip ? classes[1] : classes[0];
+}
+
+function runDescriptiveTask(headers, rows, colA, colB) {
+  const ai = headers.indexOf(colA), bi = headers.indexOf(colB);
+  const xs = rows.map(r=>+r[ai]), ys = rows.map(r=>+r[bi]);
+  const r = pearsonCorrelation(xs, ys);
+  const strength = Math.abs(r) >= 0.7 ? 'strong' : Math.abs(r) >= 0.3 ? 'moderate' : 'weak';
+  const direction = r > 0 ? 'positive' : r < 0 ? 'negative' : 'no';
+  return { colA, colB, n: rows.length, correlation: r, strength, direction,
+    colAStats: { mean: +(xs.reduce((a,b)=>a+b,0)/xs.length).toFixed(2), min: Math.min(...xs), max: Math.max(...xs) },
+    colBStats: { mean: +(ys.reduce((a,b)=>a+b,0)/ys.length).toFixed(2), min: Math.min(...ys), max: Math.max(...ys) } };
+}
+
+function runForecastingTask(headers, rows, valueCol, periods) {
+  const vi = headers.indexOf(valueCol);
+  const ys = rows.map(r=>+r[vi]);
+  const { slope, intercept } = linearRegression(ys);
+  const fitted = ys.map((_,i) => slope*(i+1)+intercept);
+  const mean = ys.reduce((a,b)=>a+b,0)/ys.length;
+  const modelMSE = ys.reduce((s,y,i)=>s+(y-fitted[i])**2,0)/ys.length;
+  const baselineMSE = ys.reduce((s,y)=>s+(y-mean)**2,0)/ys.length;
+  const projections = Array.from({length:periods},(_,i)=>+(slope*(ys.length+i+1)+intercept).toFixed(2));
+  return { valueCol, n: ys.length, slope, intercept, trend: slope>0?'upward':slope<0?'downward':'flat',
+    modelMSE: +modelMSE.toFixed(2), baselineMSE: +baselineMSE.toFixed(2),
+    improvedOnBaseline: modelMSE < baselineMSE, historical: ys, projections };
+}
+
+function runClassificationTask(headers, rows, targetCol, featureCol) {
+  const ti = headers.indexOf(targetCol), fi = headers.indexOf(featureCol);
+  const counts = {};
+  rows.forEach(r => counts[r[ti]] = (counts[r[ti]]||0)+1);
+  const classes = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,2).map(e=>e[0]);
+  if (classes.length < 2) return null;
+  const usable = rows.filter(r => classes.includes(r[ti]));
+  const splitAt = Math.max(1, Math.floor(usable.length * 0.8));
+  const train = usable.slice(0, splitAt), test = usable.slice(splitAt).length ? usable.slice(splitAt) : usable.slice(0, splitAt);
+  const trainFeature = train.map(r=>+r[fi]), trainLabels = train.map(r=>r[ti]);
+  const stump = decisionStump(trainFeature, trainLabels, classes);
+  const acc = (set) => {
+    let correct = 0;
+    set.forEach(r => { if (stumpPredict(stump, classes, +r[fi]) === r[ti]) correct++; });
+    return set.length ? +(correct/set.length*100).toFixed(1) : 0;
+  };
+  const majorityClass = classes[0];
+  const baselineAcc = (set) => set.length ? +(set.filter(r=>r[ti]===majorityClass).length/set.length*100).toFixed(1) : 0;
+  return { targetCol, featureCol, classes, n: usable.length, trainN: train.length, testN: test.length,
+    threshold: +stump.threshold.toFixed(2), flip: stump.flip,
+    trainAcc: acc(train), testAcc: acc(test), baselineTrainAcc: baselineAcc(train), baselineTestAcc: baselineAcc(test) };
+}
+
+function runClusteringTask(headers, rows, cols, k) {
+  const idxs = cols.map(c => headers.indexOf(c));
+  const points = rows.map(r => idxs.map(i => +r[i]));
+  const { centroids, assignments } = kMeans(points, k, 15);
+  const sizes = new Array(k).fill(0);
+  assignments.forEach(a => sizes[a]++);
+  return { cols, k, n: points.length, clusters: centroids.map((c,i)=>({ id: i+1, size: sizes[i], centroid: c })) };
+}
+
+function runAssociationTask(headers, rows, colA, colB) {
+  const ai = headers.indexOf(colA), bi = headers.indexOf(colB);
+  const n = rows.length;
+  const countA = {}, countPair = {};
+  rows.forEach(r => {
+    countA[r[ai]] = (countA[r[ai]]||0) + 1;
+    const key = r[ai] + '→' + r[bi];
+    countPair[key] = (countPair[key]||0) + 1;
+  });
+  const rules = Object.entries(countPair)
+    .filter(([,c]) => c >= 2)
+    .map(([key, count]) => {
+      const [a, b] = key.split('→');
+      return { a, b, count, support: +(count/n).toFixed(3), confidence: +(count/countA[a]).toFixed(3) };
+    })
+    .sort((x,y) => y.confidence - x.confidence)
+    .slice(0, 8);
+  return { colA, colB, n, rules };
+}
+
+async function runModelLabAnalysis(gid) {
+  const st = mlState(gid);
+  const data = toolData(gid, 'data');
+  const ds = st.datasetId && data.datasets && data.datasets[st.datasetId];
+  if (!ds) { toast('Choose a dataset first', 'err'); return; }
+  const parsed = parseCSVText(ds.csvText);
+  const type = st.taskType;
+  let config = {}, colsNeeded = [], results = null;
+
+  if (type === 'Descriptive') {
+    config.colA = document.getElementById('ml-colA').value;
+    config.colB = document.getElementById('ml-colB').value;
+    if (!config.colA || !config.colB) { toast('Choose two numeric columns', 'err'); return; }
+    colsNeeded = [config.colA, config.colB];
+  } else if (type === 'Forecasting') {
+    config.valueCol = document.getElementById('ml-forecast-col').value;
+    config.periods = +document.getElementById('ml-periods').value || 3;
+    if (!config.valueCol) { toast('Choose a numeric column to forecast', 'err'); return; }
+    colsNeeded = [config.valueCol];
+  } else if (type === 'Classification') {
+    config.targetCol = document.getElementById('ml-target').value;
+    config.featureCol = document.getElementById('ml-feature').value;
+    if (!config.targetCol || !config.featureCol) { toast('Choose a target and a feature column', 'err'); return; }
+    colsNeeded = [config.targetCol, config.featureCol];
+  } else if (type === 'Clustering') {
+    const c1 = document.getElementById('ml-cluster-col1').value;
+    const c2 = document.getElementById('ml-cluster-col2').value;
+    config.cols = c2 && c2 !== c1 ? [c1, c2] : [c1];
+    config.k = +document.getElementById('ml-k').value || 3;
+    if (!c1) { toast('Choose at least one numeric column', 'err'); return; }
+    colsNeeded = config.cols;
+  } else if (type === 'Association') {
+    config.colA = document.getElementById('ml-assoc-colA').value;
+    config.colB = document.getElementById('ml-assoc-colB').value;
+    if (!config.colA || !config.colB) { toast('Choose two categorical columns', 'err'); return; }
+    colsNeeded = [config.colA, config.colB];
+  }
+
+  const { cleaned, droppedCount } = st.autoClean
+    ? cleanRowsForColumns(parsed.headers, parsed.rows, colsNeeded)
+    : { cleaned: parsed.rows, droppedCount: 0 };
+  if (cleaned.length < 2) { toast('Not enough complete rows for those columns', 'err'); return; }
+
+  if (type === 'Descriptive') results = runDescriptiveTask(parsed.headers, cleaned, config.colA, config.colB);
+  else if (type === 'Forecasting') results = runForecastingTask(parsed.headers, cleaned, config.valueCol, config.periods);
+  else if (type === 'Classification') results = runClassificationTask(parsed.headers, cleaned, config.targetCol, config.featureCol);
+  else if (type === 'Clustering') results = runClusteringTask(parsed.headers, cleaned, config.cols, config.k);
+  else if (type === 'Association') results = runAssociationTask(parsed.headers, cleaned, config.colA, config.colB);
+
+  if (!results) { toast('Could not run that analysis — check your target column has at least two distinct values', 'err'); return; }
+
+  const name = document.getElementById('ml-run-name').value.trim() || `${type} — ${ds.name}`;
+  const rid = newId('m');
+  const run = { datasetId: st.datasetId, datasetName: ds.name, type, config, results,
+    rowsUsed: cleaned.length, rowsDropped: droppedCount, createdAt: Date.now(), name };
+  await sRef(`guilds/${gid}/artefacts/model/runs/${rid}`).set(run);
+  toast('Model run complete and saved', 'ok');
+  renderStudioToolPanel();
+}
+
+async function removeModelRun(gid, rid) {
+  await sRef(`guilds/${gid}/artefacts/model/runs/${rid}`).remove();
+  renderStudioToolPanel();
+}
+
+function downloadModelRun(gid, rid) {
   const data = toolData(gid, 'model');
-  const taskType = data.taskType || '';
-  const taskOptions = ['Descriptive','Forecasting','Classification','Clustering','Association']
-    .map(t => `<option ${taskType===t?'selected':''}>${t}</option>`).join('');
+  const run = data.runs && data.runs[rid];
+  if (!run) return;
+  const r = run.results;
+  let rows = [];
+  if (run.type === 'Descriptive') {
+    rows = [['Metric','Value'],['Column A', r.colA],['Column B', r.colB],['Correlation (r)', r.correlation],
+      ['Strength', r.strength],['Direction', r.direction],['Rows used', r.n]];
+  } else if (run.type === 'Forecasting') {
+    rows = [['Period','Value']];
+    r.historical.forEach((v,i)=>rows.push(['Historical '+(i+1), v]));
+    r.projections.forEach((v,i)=>rows.push(['Projected +'+(i+1), v]));
+    rows.push(['Model MSE', r.modelMSE]); rows.push(['Baseline MSE (mean)', r.baselineMSE]);
+  } else if (run.type === 'Classification') {
+    rows = [['Metric','Value'],['Target', r.targetCol],['Feature', r.featureCol],['Classes', r.classes.join(' vs ')],
+      ['Threshold', r.threshold],['Train accuracy %', r.trainAcc],['Test accuracy %', r.testAcc],
+      ['Baseline train %', r.baselineTrainAcc],['Baseline test %', r.baselineTestAcc]];
+  } else if (run.type === 'Clustering') {
+    rows = [['Cluster','Size', ...r.cols]].concat(r.clusters.map(c=>[c.id, c.size, ...c.centroid]));
+  } else if (run.type === 'Association') {
+    rows = [[run.results.colA, run.results.colB, 'Count', 'Support', 'Confidence']]
+      .concat(r.rules.map(rule=>[rule.a, rule.b, rule.count, rule.support, rule.confidence]));
+  }
+  downloadCSV(rows, `${run.name.replace(/\s+/g,'_')}.csv`);
+}
+
+function renderModelRunResult(run) {
+  const r = run.results;
+  const meta = `<div style="font-size:10px;color:#94a3b8;margin-bottom:4px">${run.rowsUsed} rows used${run.rowsDropped ? `, ${run.rowsDropped} dropped during cleaning` : ''}</div>`;
+  if (run.type === 'Descriptive') {
+    return meta + `<span style="font-size:11px">Correlation between <strong>${r.colA}</strong> and <strong>${r.colB}</strong>: <strong>${r.correlation}</strong> (${r.strength} ${r.direction})</span>
+      <div style="font-size:10px;color:#64748b;margin-top:4px">${r.colA}: mean ${r.colAStats.mean} (min ${r.colAStats.min}, max ${r.colAStats.max}) · ${r.colB}: mean ${r.colBStats.mean} (min ${r.colBStats.min}, max ${r.colBStats.max})</div>`;
+  }
+  if (run.type === 'Forecasting') {
+    return meta + `<span style="font-size:11px">Trend: <strong>${r.trend}</strong> — next ${r.projections.length} periods: ${r.projections.join(', ')}</span>
+      <div style="font-size:10px;color:${r.improvedOnBaseline?'#15803D':'#B45309'};margin-top:4px">Model MSE ${r.modelMSE} vs baseline (predict the mean) MSE ${r.baselineMSE} — ${r.improvedOnBaseline ? 'beats' : 'does not beat'} the baseline</div>
+      <div class="alert" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;margin-top:6px">Simple linear trend — assumes rows are already in chronological order. Treat as a hypothesis to test, not a guarantee.</div>`;
+  }
+  if (run.type === 'Classification') {
+    return meta + `<span style="font-size:11px">Predicting <strong>${r.targetCol}</strong> (${r.classes.join(' vs ')}) from <strong>${r.featureCol}</strong> at threshold ${r.threshold}</span>
+      <table style="font-size:11px;margin-top:4px"><thead><tr><th></th><th class="C">Train</th><th class="C">Test</th></tr></thead>
+      <tbody><tr><td>Model accuracy</td><td class="C">${r.trainAcc}%</td><td class="C">${r.testAcc}%</td></tr>
+      <tr><td>Baseline (majority class)</td><td class="C">${r.baselineTrainAcc}%</td><td class="C">${r.baselineTestAcc}%</td></tr></tbody></table>
+      <div class="alert" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;margin-top:6px">A single-rule classifier on one feature — a starting baseline, not a production model. Compare test accuracy to the baseline, not to 100%.</div>`;
+  }
+  if (run.type === 'Clustering') {
+    const rows = r.clusters.map(c => `<tr><td>Cluster ${c.id}</td><td class="C">${c.size}</td><td>${c.centroid.join(', ')}</td></tr>`).join('');
+    return meta + `<table style="font-size:11px"><thead><tr><th>Cluster</th><th class="C">Size</th><th>Centroid (${r.cols.join(', ')})</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  if (run.type === 'Association') {
+    const rows = r.rules.map(rule => `<tr><td>${run.results.colA}=${rule.a} → ${run.results.colB}=${rule.b}</td><td class="C">${rule.count}</td><td class="C">${rule.support}</td><td class="C">${rule.confidence}</td></tr>`).join('');
+    return meta + `<table style="font-size:11px"><thead><tr><th>Rule</th><th class="C">Count</th><th class="C">Support</th><th class="C">Confidence</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No rule occurred more than once</td></tr>'}</tbody></table>`;
+  }
+  return '';
+}
+
+function renderModelLabConfig(gid, ds, type) {
+  const numericCols = (ds.stats || []).filter(s => s.type === 'numeric').map(s => s.name);
+  const catCols = (ds.stats || []).filter(s => s.type === 'categorical').map(s => s.name);
+  const opts = (cols, placeholder) => `<option value="">${placeholder}</option>` + cols.map(c=>`<option>${c}</option>`).join('');
+
+  if (type === 'Descriptive') {
+    return `<div class="form-row">
+      <div class="form-group"><label>Column A (numeric)</label><select id="ml-colA">${opts(numericCols,'— column —')}</select></div>
+      <div class="form-group"><label>Column B (numeric)</label><select id="ml-colB">${opts(numericCols,'— column —')}</select></div>
+    </div>`;
+  }
+  if (type === 'Forecasting') {
+    return `<div class="form-row">
+      <div class="form-group"><label>Column to forecast (numeric, chronological order)</label><select id="ml-forecast-col">${opts(numericCols,'— column —')}</select></div>
+      <div class="form-group"><label>Periods ahead</label><input type="number" id="ml-periods" value="3" min="1" max="12"></div>
+    </div>`;
+  }
+  if (type === 'Classification') {
+    return `<div class="form-row">
+      <div class="form-group"><label>Target to predict (categorical)</label><select id="ml-target">${opts(catCols,'— column —')}</select></div>
+      <div class="form-group"><label>Feature to predict from (numeric)</label><select id="ml-feature">${opts(numericCols,'— column —')}</select></div>
+    </div><div class="alert alert-info">Uses the two most common categories if there are more than two.</div>`;
+  }
+  if (type === 'Clustering') {
+    return `<div class="form-row">
+      <div class="form-group"><label>Column 1 (numeric)</label><select id="ml-cluster-col1">${opts(numericCols,'— column —')}</select></div>
+      <div class="form-group"><label>Column 2 (optional, numeric)</label><select id="ml-cluster-col2">${opts(numericCols,'— none —')}</select></div>
+      <div class="form-group"><label>Number of clusters (k)</label><input type="number" id="ml-k" value="3" min="2" max="6"></div>
+    </div>`;
+  }
+  if (type === 'Association') {
+    return `<div class="form-row">
+      <div class="form-group"><label>Column A (categorical)</label><select id="ml-assoc-colA">${opts(catCols,'— column —')}</select></div>
+      <div class="form-group"><label>Column B (categorical)</label><select id="ml-assoc-colB">${opts(catCols,'— column —')}</select></div>
+    </div>`;
+  }
+  return '';
+}
+
+function renderModelTool(gid) {
+  const dataArt = toolData(gid, 'data');
+  const datasets = Object.entries(dataArt.datasets || {});
+  const modelArt = toolData(gid, 'model');
+  const runs = Object.entries(modelArt.runs || {});
+  const st = mlState(gid);
+  if (!st.datasetId && datasets.length) st.datasetId = datasets[0][0];
+  const ds = st.datasetId && dataArt.datasets[st.datasetId] ? { id: st.datasetId, ...dataArt.datasets[st.datasetId] } : null;
+
+  if (!datasets.length) {
+    return `<h4>Model Lab</h4>${exportHeader(gid)}
+      <div class="alert alert-info">Upload a dataset in the <strong>Data Workbench</strong> tool first — Model Lab runs its analyses on datasets stored there.</div>`;
+  }
+
+  const taskBtns = MODEL_TASKS.map(t => `<button class="btn ${st.taskType===t?'btn-primary':'btn-ghost'} btn-sm" onclick="setModelLabTaskType('${gid}','${t}')">${t}</button>`).join(' ');
+  const dsOptions = datasets.map(([did,d]) => `<option value="${did}" ${did===st.datasetId?'selected':''}>${d.name} (${d.rowCount} rows)</option>`).join('');
+  const missingSummary = ds ? (ds.stats||[]).filter(s=>s.missing>0).map(s=>`${s.name}: ${s.missing} missing`).join(' · ') : '';
+
+  const runsHTML = runs.filter(([,r])=>r.datasetId===st.datasetId || true).map(([rid, r]) => `
+    <div style="border-top:1px solid #e2e8f0;padding:8px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:700;font-size:12px">${r.name} <span class="b b-slate">${r.type}</span></span>
+        <span><button class="btn btn-ghost btn-sm" onclick="downloadModelRun('${gid}','${rid}')">⬇ Download</button>
+        <button class="btn btn-danger btn-sm" onclick="removeModelRun('${gid}','${rid}')">✕</button></span>
+      </div>
+      <div style="margin-top:4px">${renderModelRunResult(r)}</div>
+    </div>`).join('');
+
   return `<h4>Model Lab</h4>${exportHeader(gid)}
-    <div class="form-group" style="margin-bottom:10px"><label>Task type</label>
-      <select onchange="saveToolField('${gid}','model','taskType',this.value)">
-        <option value="">— Select —</option>${taskOptions}
-      </select></div>
-    ${renderTextSections(gid, 'model', [
-      {key:'method',label:'Method and tool used (e.g. RapidMiner ARIMA, k-means, association rules)'},
-      {key:'validation',label:'Validation approach (train/test split, or chronological order for forecasting)'},
-      {key:'metrics',label:'Performance metrics, or support/confidence for association rules'},
-      {key:'limitations',label:'Limitations and risk of leakage'},
-      {key:'decision',label:'Business decision implication'},
-      {key:'rapidMinerLink',label:'Link to RapidMiner result export (optional)'}
-    ], data)}`;
+    <div class="alert alert-info">Pick a task type and dataset, confirm the columns that matter, and run — the sandbox cleans the data and computes the result automatically.</div>
+
+    <div class="form-group" style="margin-bottom:8px"><label>1. Dataset</label>
+      <select onchange="setModelLabDataset('${gid}',this.value)">${dsOptions}</select></div>
+
+    <div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:4px">2. Task type</label>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${taskBtns}</div></div>
+
+    ${ds ? `<div class="alert" style="background:#f8fafc;border:1px solid #e2e8f0;color:#475569">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" ${st.autoClean?'checked':''} onchange="toggleModelLabClean('${gid}',this.checked)">
+        3. Clean data automatically (drop rows missing the columns used below)
+      </label>
+      ${missingSummary ? `<div style="font-size:10px;margin-top:4px">Missing values found — ${missingSummary}</div>` : '<div style="font-size:10px;margin-top:4px">No missing values detected in this dataset.</div>'}
+    </div>
+
+    <div style="margin:10px 0"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:4px">4. Confirm columns</label>
+      ${renderModelLabConfig(gid, ds, st.taskType)}
+    </div>
+
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:14px">
+      <input type="text" id="ml-run-name" placeholder="Name this run" style="flex:1">
+      <button class="btn btn-primary btn-sm" onclick="runModelLabAnalysis('${gid}')">▶ Run Analysis</button>
+    </div>` : ''}
+
+    <div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:4px">SAVED RUNS (${runs.length})</div>
+    ${runsHTML || '<p style="color:#94a3b8;font-size:12px">No runs yet.</p>'}`;
 }
 
 // ─── Business Model & Revenue ────────────────────────────────────────
@@ -402,7 +863,7 @@ computeStudentBadges = function(studentId, submCount, prCount) {
 
   if (((art.evidence && art.evidence.rows) || []).length >= 3)
     badges.push({ id: 'evidenceScout', icon: '🔍', label: 'Evidence Scout', desc: 'Guild logged 3+ evidence sources', bonus: 20 });
-  if ((art.data && art.data.stats) && (art.model && art.model.method))
+  if ((art.data && art.data.datasets && Object.keys(art.data.datasets).length) && (art.model && art.model.runs && Object.keys(art.model.runs).length))
     badges.push({ id: 'dataInterpreter', icon: '📈', label: 'Data Interpreter', desc: 'Completed Data Workbench + Model Lab', bonus: 30 });
   if (hasText(art.strategy_pestle) && hasText(art.strategy_swot) && hasText(art.bmc))
     badges.push({ id: 'strategyArchitect', icon: '🧭', label: 'Strategy Architect', desc: 'Completed PESTLE, SWOT and Business Model Canvas', bonus: 30 });

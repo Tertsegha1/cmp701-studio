@@ -21,10 +21,13 @@ const STAT_SOURCES = [
 // this Guild's own Studio Tools work (Data Workbench, Evidence Library,
 // Business Model & Revenue), so the prototype reflects actual Guild data
 // instead of placeholder numbers.
+// getPrimaryDataset(gid) is defined in studio-tools.js (loaded before this
+// file) and reads the Guild's chosen dataset from the Data Workbench's
+// multi-dataset structure — the one the Guild marked "Use in Prototype
+// Builder" (defaults to the first uploaded dataset).
 function getDataColumns(gid) {
-  const g = appData.guilds[gid];
-  const stats = g && g.artefacts && g.artefacts.data && g.artefacts.data.stats;
-  return stats || [];
+  const ds = getPrimaryDataset(gid);
+  return (ds && ds.stats) || [];
 }
 function getNumericColumns(gid) {
   return getDataColumns(gid).filter(s => s.type === 'numeric');
@@ -33,8 +36,9 @@ function getNumericColumns(gid) {
 function computeStatCardValue(gid, c) {
   const g = appData.guilds[gid] || {};
   const art = g.artefacts || {};
+  const ds = getPrimaryDataset(gid);
   switch (c.source) {
-    case 'rowCount': return (art.data && art.data.rowCount !== undefined) ? String(art.data.rowCount) : '—';
+    case 'rowCount': return (ds && ds.rowCount !== undefined) ? String(ds.rowCount) : '—';
     case 'colAvg': case 'colSum': case 'colMax': case 'colMin': {
       const col = getDataColumns(gid).find(s => s.name === c.column && s.type === 'numeric');
       if (!col) return '—';
@@ -150,25 +154,25 @@ function renderComponentPreview(c, ctx) {
     }
 
     case 'Table': {
-      const data = (appData.guilds[gid].artefacts || {}).data;
-      if (!data || !data.csvText) return `<div class="alert alert-info" style="margin:0">${c.label}: no dataset yet — add one in the Data Workbench tool.</div>`;
-      const parsed = parseCSVText(data.csvText);
+      const ds = getPrimaryDataset(gid);
+      if (!ds || !ds.csvText) return `<div class="alert alert-info" style="margin:0">${c.label}: no dataset yet — add one in the Data Workbench tool.</div>`;
+      const parsed = parseCSVText(ds.csvText);
       const rows = parsed.rows.slice(0, 5);
-      return `<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:4px">${c.label}</div>
+      return `<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:4px">${c.label} (${ds.name})</div>
         <table style="font-size:10px"><thead><tr>${parsed.headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
         <tbody>${rows.map(r => `<tr>${r.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
     }
 
     case 'Chart': {
-      const data = (appData.guilds[gid].artefacts || {}).data;
-      const col = data && data.stats && data.stats.find(s => s.name === c.column);
+      const ds = getPrimaryDataset(gid);
+      const col = ds && ds.stats && ds.stats.find(s => s.name === c.column);
       if (!col) return `<div class="alert alert-info" style="margin:0">${c.label}: choose a column bound to the Data Workbench dataset.</div>`;
       if (col.type === 'numeric') {
         return `<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:4px">${c.label} — ${col.name}</div>
           <div style="font-size:11px">min ${col.min} · max ${col.max} · mean ${col.mean}</div>`;
       }
       const bars = col.top.map(([v, n]) => {
-        const pct = Math.round(n / (data.rowCount || 1) * 100);
+        const pct = Math.round(n / (ds.rowCount || 1) * 100);
         return `<div style="display:flex;align-items:center;gap:6px;font-size:10px;margin-bottom:2px"><span style="width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v}</span><div class="xp-bar-wrap" style="flex:1;height:6px;margin:0"><div class="xp-bar-fill" style="width:${pct}%;background:#7C3AED"></div></div><span>${n}</span></div>`;
       }).join('');
       return `<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:4px">${c.label} — ${col.name}</div>${bars}`;
