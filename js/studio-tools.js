@@ -42,6 +42,115 @@ async function saveSnapshotVersion(gid, key, label) {
   toast('Version saved', 'ok');
 }
 
+// ─── Lightweight canvas charts (no external library) ────────────────
+// Every chart drawn here can be saved as a real PNG artefact, not just a
+// CSV of the numbers behind it. Render functions build HTML containing a
+// <canvas id="..."> placeholder and call queueChart(id, drawFn); once that
+// HTML is actually in the DOM, renderStudioToolPanel() calls
+// drawPendingCharts() to paint them.
+let pendingCharts = [];
+function queueChart(id, drawFn) { pendingCharts.push({ id, drawFn }); }
+function drawPendingCharts() {
+  const queue = pendingCharts; pendingCharts = [];
+  queue.forEach(({ id, drawFn }) => { const c = document.getElementById(id); if (c) { try { drawFn(c); } catch (e) { /* leave canvas blank on bad data */ } } });
+}
+function downloadCanvasPNG(canvasId, filename) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  const a = document.createElement('a');
+  a.href = c.toDataURL('image/png');
+  a.download = filename;
+  a.click();
+}
+function chartCanvasHTML(id, w, h) { return `<canvas id="${id}" width="${w}" height="${h}" style="max-width:100%;border:1px solid #e2e8f0;border-radius:6px;background:#fff"></canvas>`; }
+function downloadChartButton(id, filename) { return `<button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="downloadCanvasPNG('${id}','${filename}')">⬇ Download Chart (PNG)</button>`; }
+
+const CHART_MARGIN = { top: 22, right: 16, bottom: 40, left: 46 };
+function setupCanvas(canvas) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  return ctx;
+}
+function drawAxes(ctx, w, h, m) {
+  ctx.strokeStyle = '#cbd5e1'; ctx.beginPath();
+  ctx.moveTo(m.left, m.top); ctx.lineTo(m.left, h - m.bottom); ctx.lineTo(w - m.right, h - m.bottom);
+  ctx.stroke();
+}
+
+function drawBarChart(canvas, categories, values, opts) {
+  opts = opts || {};
+  const ctx = setupCanvas(canvas), w = canvas.width, h = canvas.height, m = CHART_MARGIN;
+  const plotW = w - m.left - m.right, plotH = h - m.top - m.bottom;
+  const maxV = Math.max(...values, 1);
+  const gap = plotW / values.length, barW = gap * 0.7;
+  drawAxes(ctx, w, h, m);
+  values.forEach((v, i) => {
+    const barH = plotH * (v / maxV);
+    const x = m.left + gap * i + (gap - barW) / 2, y = h - m.bottom - barH;
+    ctx.fillStyle = opts.color || '#7C3AED';
+    ctx.fillRect(x, y, barW, barH);
+    ctx.fillStyle = '#1e293b'; ctx.font = '9px Arial'; ctx.textAlign = 'center';
+    ctx.fillText(String(v), x + barW / 2, y - 3);
+    ctx.fillText(String(categories[i]).slice(0, 9), x + barW / 2, h - m.bottom + 12);
+  });
+  if (opts.title) { ctx.fillStyle = '#1e293b'; ctx.font = 'bold 11px Arial'; ctx.textAlign = 'left'; ctx.fillText(opts.title, m.left, 14); }
+}
+
+function drawScatterChart(canvas, points, opts) {
+  opts = opts || {};
+  const ctx = setupCanvas(canvas), w = canvas.width, h = canvas.height, m = CHART_MARGIN;
+  const plotW = w - m.left - m.right, plotH = h - m.top - m.bottom;
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs), yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const xr = (xMax - xMin) || 1, yr = (yMax - yMin) || 1;
+  const sx = x => m.left + (x - xMin) / xr * plotW, sy = y => h - m.bottom - (y - yMin) / yr * plotH;
+  drawAxes(ctx, w, h, m);
+  const colors = ['#7C3AED', '#0D7377', '#B45309', '#1D4ED8'];
+  const groups = [...new Set(points.map(p => p.group ?? 0))];
+  points.forEach(p => {
+    ctx.fillStyle = colors[groups.indexOf(p.group ?? 0) % colors.length];
+    ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 4, 0, Math.PI * 2); ctx.fill();
+  });
+  if (opts.vLine !== undefined) {
+    ctx.strokeStyle = '#B91C1C'; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(sx(opts.vLine), m.top); ctx.lineTo(sx(opts.vLine), h - m.bottom); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  (opts.marks || []).forEach(mk => {
+    const cx = sx(mk.x), cy = sy(mk.y);
+    ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - 6, cy - 6); ctx.lineTo(cx + 6, cy + 6); ctx.moveTo(cx + 6, cy - 6); ctx.lineTo(cx - 6, cy + 6); ctx.stroke();
+    ctx.lineWidth = 1;
+  });
+  ctx.fillStyle = '#1e293b'; ctx.font = '10px Arial'; ctx.textAlign = 'center';
+  ctx.fillText(opts.xLabel || '', m.left + plotW / 2, h - 6);
+  ctx.save(); ctx.translate(11, m.top + plotH / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(opts.yLabel || '', 0, 0); ctx.restore();
+  if (opts.title) { ctx.font = 'bold 11px Arial'; ctx.textAlign = 'left'; ctx.fillText(opts.title, m.left, 14); }
+}
+
+function drawLineChart(canvas, values, splitIndex, opts) {
+  opts = opts || {};
+  const ctx = setupCanvas(canvas), w = canvas.width, h = canvas.height, m = CHART_MARGIN;
+  const plotW = w - m.left - m.right, plotH = h - m.top - m.bottom;
+  const yMin = Math.min(...values), yMax = Math.max(...values), yr = (yMax - yMin) || 1;
+  const sx = i => m.left + i / ((values.length - 1) || 1) * plotW, sy = v => h - m.bottom - (v - yMin) / yr * plotH;
+  drawAxes(ctx, w, h, m);
+  ctx.beginPath();
+  values.forEach((v, i) => { const x = sx(i), y = sy(v); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+  ctx.strokeStyle = '#1B3A6B'; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1;
+  values.forEach((v, i) => {
+    ctx.fillStyle = i >= splitIndex ? '#B45309' : '#0D7377';
+    ctx.beginPath(); ctx.arc(sx(i), sy(v), 3, 0, Math.PI * 2); ctx.fill();
+  });
+  if (splitIndex > 0 && splitIndex < values.length) {
+    ctx.strokeStyle = '#94a3b8'; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(sx(splitIndex - 0.5), m.top); ctx.lineTo(sx(splitIndex - 0.5), h - m.bottom); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  if (opts.title) { ctx.fillStyle = '#1e293b'; ctx.font = 'bold 11px Arial'; ctx.textAlign = 'left'; ctx.fillText(opts.title, m.left, 14); }
+}
+
 function exportHeader(gid) {
   const g = appData.guilds[gid] || {};
   const c = g.company || {};
@@ -321,6 +430,16 @@ function linearRegression(ys) {
   return { slope: +slope.toFixed(4), intercept: +intercept.toFixed(4) };
 }
 
+function binNumeric(values, bins) {
+  bins = bins || 8;
+  const min = Math.min(...values), max = Math.max(...values);
+  const width = (max - min) / bins || 1;
+  const counts = new Array(bins).fill(0);
+  values.forEach(v => { const i = Math.min(bins - 1, Math.floor((v - min) / width)); counts[i]++; });
+  const labels = counts.map((_, i) => (min + i * width).toFixed(1));
+  return { labels, counts };
+}
+
 function renderDatasetCard(gid, ds, isPrimary) {
   const statsHTML = (ds.stats || []).map(s => {
     if (s.type === 'numeric') {
@@ -331,6 +450,27 @@ function renderDatasetCard(gid, ds, isPrimary) {
       return `<div style="display:flex;align-items:center;gap:6px;font-size:10px;margin-bottom:2px"><span style="width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v}</span><div class="xp-bar-wrap" style="flex:1;height:6px;margin:0"><div class="xp-bar-fill" style="width:${pct}%;background:#7C3AED"></div></div><span>${c}</span></div>`;
     }).join('');
     return `<tr><td>${s.name}</td><td>categorical</td><td class="C">${s.missing}</td><td colspan="2">${s.distinct} distinct<br>${bars}</td></tr>`;
+  }).join('');
+
+  // One small chart per column — numeric gets a histogram (parsed live from
+  // the stored CSV since only summary stats are kept), categorical gets a
+  // bar chart of its top values. Each is a real PNG a student can save.
+  const parsedForCharts = parseCSVText(ds.csvText);
+  const chartsHTML = (ds.stats || []).map((s, colIdx) => {
+    const canvasId = `chart-ds-${ds.id}-${colIdx}`;
+    if (s.type === 'numeric') {
+      const values = parsedForCharts.rows.map(r => +r[colIdx]).filter(v => !isNaN(v));
+      queueChart(canvasId, canvas => {
+        const { labels, counts } = binNumeric(values, 8);
+        drawBarChart(canvas, labels, counts, { title: s.name, color: '#0D7377' });
+      });
+    } else {
+      queueChart(canvasId, canvas => drawBarChart(canvas, s.top.map(t=>t[0]), s.top.map(t=>t[1]), { title: s.name, color: '#7C3AED' }));
+    }
+    return `<div style="display:inline-block;margin:4px 8px 4px 0;text-align:center">
+      ${chartCanvasHTML(canvasId, 220, 140)}
+      ${downloadChartButton(canvasId, `${ds.name.replace(/\s+/g,'_')}_${s.name.replace(/\s+/g,'_')}.png`)}
+    </div>`;
   }).join('');
 
   return `<div class="card" style="margin-bottom:12px">
@@ -345,6 +485,7 @@ function renderDatasetCard(gid, ds, isPrimary) {
       <div style="font-size:11px;color:#64748b;margin-bottom:6px">${ds.rowCount} rows · ${ds.headers.length} columns · uploaded ${new Date(ds.uploadedAt).toLocaleDateString('en-GB')}</div>
       <table><thead><tr><th>Column</th><th>Type</th><th class="C">Missing</th><th colspan="2">Summary</th></tr></thead><tbody>${statsHTML}</tbody></table>
       <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="downloadDatasetStats('${gid}','${ds.id}')">⬇ Download Descriptive Stats (CSV)</button>
+      <div style="margin-top:10px">${chartsHTML}</div>
     </div>
   </div>`;
 }
@@ -453,6 +594,7 @@ function runDescriptiveTask(headers, rows, colA, colB) {
   const strength = Math.abs(r) >= 0.7 ? 'strong' : Math.abs(r) >= 0.3 ? 'moderate' : 'weak';
   const direction = r > 0 ? 'positive' : r < 0 ? 'negative' : 'no';
   return { colA, colB, n: rows.length, correlation: r, strength, direction,
+    points: xs.map((x,i)=>({x, y: ys[i]})),
     colAStats: { mean: +(xs.reduce((a,b)=>a+b,0)/xs.length).toFixed(2), min: Math.min(...xs), max: Math.max(...xs) },
     colBStats: { mean: +(ys.reduce((a,b)=>a+b,0)/ys.length).toFixed(2), min: Math.min(...ys), max: Math.max(...ys) } };
 }
@@ -491,7 +633,8 @@ function runClassificationTask(headers, rows, targetCol, featureCol) {
   const baselineAcc = (set) => set.length ? +(set.filter(r=>r[ti]===majorityClass).length/set.length*100).toFixed(1) : 0;
   return { targetCol, featureCol, classes, n: usable.length, trainN: train.length, testN: test.length,
     threshold: +stump.threshold.toFixed(2), flip: stump.flip,
-    trainAcc: acc(train), testAcc: acc(test), baselineTrainAcc: baselineAcc(train), baselineTestAcc: baselineAcc(test) };
+    trainAcc: acc(train), testAcc: acc(test), baselineTrainAcc: baselineAcc(train), baselineTestAcc: baselineAcc(test),
+    points: usable.map(r => ({ x: +r[fi], group: r[ti], isTest: usable.indexOf(r) >= splitAt })) };
 }
 
 function runClusteringTask(headers, rows, cols, k) {
@@ -500,7 +643,8 @@ function runClusteringTask(headers, rows, cols, k) {
   const { centroids, assignments } = kMeans(points, k, 15);
   const sizes = new Array(k).fill(0);
   assignments.forEach(a => sizes[a]++);
-  return { cols, k, n: points.length, clusters: centroids.map((c,i)=>({ id: i+1, size: sizes[i], centroid: c })) };
+  return { cols, k, n: points.length, clusters: centroids.map((c,i)=>({ id: i+1, size: sizes[i], centroid: c })),
+    points, assignments };
 }
 
 function runAssociationTask(headers, rows, colA, colB) {
@@ -615,32 +759,49 @@ function downloadModelRun(gid, rid) {
   downloadCSV(rows, `${run.name.replace(/\s+/g,'_')}.csv`);
 }
 
-function renderModelRunResult(run) {
+function renderModelRunResult(run, rid) {
   const r = run.results;
   const meta = `<div style="font-size:10px;color:#94a3b8;margin-bottom:4px">${run.rowsUsed} rows used${run.rowsDropped ? `, ${run.rowsDropped} dropped during cleaning` : ''}</div>`;
+  const chartId = `chart-run-${rid}`;
+  const chartFile = n => `${run.name.replace(/\s+/g,'_')}_${n}.png`;
+
   if (run.type === 'Descriptive') {
+    queueChart(chartId, canvas => drawScatterChart(canvas, r.points, { xLabel: r.colA, yLabel: r.colB, title: `${r.colA} vs ${r.colB}` }));
     return meta + `<span style="font-size:11px">Correlation between <strong>${r.colA}</strong> and <strong>${r.colB}</strong>: <strong>${r.correlation}</strong> (${r.strength} ${r.direction})</span>
-      <div style="font-size:10px;color:#64748b;margin-top:4px">${r.colA}: mean ${r.colAStats.mean} (min ${r.colAStats.min}, max ${r.colAStats.max}) · ${r.colB}: mean ${r.colBStats.mean} (min ${r.colBStats.min}, max ${r.colBStats.max})</div>`;
+      <div style="font-size:10px;color:#64748b;margin-top:4px">${r.colA}: mean ${r.colAStats.mean} (min ${r.colAStats.min}, max ${r.colAStats.max}) · ${r.colB}: mean ${r.colBStats.mean} (min ${r.colBStats.min}, max ${r.colBStats.max})</div>
+      <div style="margin-top:6px">${chartCanvasHTML(chartId, 300, 180)}${downloadChartButton(chartId, chartFile('scatter'))}</div>`;
   }
   if (run.type === 'Forecasting') {
+    queueChart(chartId, canvas => drawLineChart(canvas, [...r.historical, ...r.projections], r.historical.length, { title: r.valueCol + ' — historical vs projected' }));
     return meta + `<span style="font-size:11px">Trend: <strong>${r.trend}</strong> — next ${r.projections.length} periods: ${r.projections.join(', ')}</span>
       <div style="font-size:10px;color:${r.improvedOnBaseline?'#15803D':'#B45309'};margin-top:4px">Model MSE ${r.modelMSE} vs baseline (predict the mean) MSE ${r.baselineMSE} — ${r.improvedOnBaseline ? 'beats' : 'does not beat'} the baseline</div>
-      <div class="alert" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;margin-top:6px">Simple linear trend — assumes rows are already in chronological order. Treat as a hypothesis to test, not a guarantee.</div>`;
+      <div class="alert" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;margin-top:6px">Simple linear trend — assumes rows are already in chronological order. Treat as a hypothesis to test, not a guarantee.</div>
+      <div style="margin-top:6px">${chartCanvasHTML(chartId, 300, 180)}${downloadChartButton(chartId, chartFile('forecast'))}</div>`;
   }
   if (run.type === 'Classification') {
+    queueChart(chartId, canvas => drawScatterChart(canvas, r.points.map(p => ({ x: p.x, y: p.isTest ? 1 : 0, group: p.group })), { xLabel: r.featureCol, yLabel: 'train=0 / test=1', vLine: r.threshold, title: `${r.featureCol} split at ${r.threshold}` }));
     return meta + `<span style="font-size:11px">Predicting <strong>${r.targetCol}</strong> (${r.classes.join(' vs ')}) from <strong>${r.featureCol}</strong> at threshold ${r.threshold}</span>
       <table style="font-size:11px;margin-top:4px"><thead><tr><th></th><th class="C">Train</th><th class="C">Test</th></tr></thead>
       <tbody><tr><td>Model accuracy</td><td class="C">${r.trainAcc}%</td><td class="C">${r.testAcc}%</td></tr>
       <tr><td>Baseline (majority class)</td><td class="C">${r.baselineTrainAcc}%</td><td class="C">${r.baselineTestAcc}%</td></tr></tbody></table>
-      <div class="alert" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;margin-top:6px">A single-rule classifier on one feature — a starting baseline, not a production model. Compare test accuracy to the baseline, not to 100%.</div>`;
+      <div class="alert" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;margin-top:6px">A single-rule classifier on one feature — a starting baseline, not a production model. Compare test accuracy to the baseline, not to 100%.</div>
+      <div style="margin-top:6px">${chartCanvasHTML(chartId, 300, 180)}${downloadChartButton(chartId, chartFile('classes'))}</div>`;
   }
   if (run.type === 'Clustering') {
     const rows = r.clusters.map(c => `<tr><td>Cluster ${c.id}</td><td class="C">${c.size}</td><td>${c.centroid.join(', ')}</td></tr>`).join('');
-    return meta + `<table style="font-size:11px"><thead><tr><th>Cluster</th><th class="C">Size</th><th>Centroid (${r.cols.join(', ')})</th></tr></thead><tbody>${rows}</tbody></table>`;
+    if (r.points && r.points[0]) {
+      queueChart(chartId, canvas => drawScatterChart(canvas,
+        r.points.map((p,i) => ({ x: p[0], y: p[1] !== undefined ? p[1] : p[0], group: r.assignments[i] })),
+        { xLabel: r.cols[0], yLabel: r.cols[1] || r.cols[0], title: `${r.k} clusters`, marks: r.clusters.map(c => ({ x: c.centroid[0], y: c.centroid[1] !== undefined ? c.centroid[1] : c.centroid[0] })) }));
+    }
+    return meta + `<table style="font-size:11px"><thead><tr><th>Cluster</th><th class="C">Size</th><th>Centroid (${r.cols.join(', ')})</th></tr></thead><tbody>${rows}</tbody></table>
+      <div style="margin-top:6px">${chartCanvasHTML(chartId, 300, 180)}${downloadChartButton(chartId, chartFile('clusters'))}</div>`;
   }
   if (run.type === 'Association') {
-    const rows = r.rules.map(rule => `<tr><td>${run.results.colA}=${rule.a} → ${run.results.colB}=${rule.b}</td><td class="C">${rule.count}</td><td class="C">${rule.support}</td><td class="C">${rule.confidence}</td></tr>`).join('');
-    return meta + `<table style="font-size:11px"><thead><tr><th>Rule</th><th class="C">Count</th><th class="C">Support</th><th class="C">Confidence</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No rule occurred more than once</td></tr>'}</tbody></table>`;
+    const rows = r.rules.map(rule => `<tr><td>${r.colA}=${rule.a} → ${r.colB}=${rule.b}</td><td class="C">${rule.count}</td><td class="C">${rule.support}</td><td class="C">${rule.confidence}</td></tr>`).join('');
+    queueChart(chartId, canvas => drawBarChart(canvas, r.rules.map(rule => `${rule.a}→${rule.b}`), r.rules.map(rule => rule.confidence), { title: 'Confidence by rule', color: '#B45309' }));
+    return meta + `<table style="font-size:11px"><thead><tr><th>Rule</th><th class="C">Count</th><th class="C">Support</th><th class="C">Confidence</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No rule occurred more than once</td></tr>'}</tbody></table>
+      ${r.rules.length ? `<div style="margin-top:6px">${chartCanvasHTML(chartId, 300, 180)}${downloadChartButton(chartId, chartFile('rules'))}</div>` : ''}`;
   }
   return '';
 }
@@ -690,8 +851,9 @@ function renderModelTool(gid) {
   const modelArt = toolData(gid, 'model');
   const runs = Object.entries(modelArt.runs || {});
   const st = mlState(gid);
-  if (!st.datasetId && datasets.length) st.datasetId = datasets[0][0];
-  const ds = st.datasetId && dataArt.datasets[st.datasetId] ? { id: st.datasetId, ...dataArt.datasets[st.datasetId] } : null;
+  if ((!st.datasetId || !(dataArt.datasets || {})[st.datasetId]) && datasets.length) st.datasetId = datasets[0][0];
+  const dsRaw = st.datasetId && (dataArt.datasets || {})[st.datasetId];
+  const ds = dsRaw ? { id: st.datasetId, ...dsRaw } : null;
 
   if (!datasets.length) {
     return `<h4>Model Lab</h4>${exportHeader(gid)}
@@ -709,7 +871,7 @@ function renderModelTool(gid) {
         <span><button class="btn btn-ghost btn-sm" onclick="downloadModelRun('${gid}','${rid}')">⬇ Download</button>
         <button class="btn btn-danger btn-sm" onclick="removeModelRun('${gid}','${rid}')">✕</button></span>
       </div>
-      <div style="margin-top:4px">${renderModelRunResult(r)}</div>
+      <div style="margin-top:4px">${renderModelRunResult(r, rid)}</div>
     </div>`).join('');
 
   return `<h4>Model Lab</h4>${exportHeader(gid)}
@@ -840,6 +1002,7 @@ function renderStudioToolPanel() {
   if (!gid) { panel.innerHTML = '<p style="color:#94a3b8;font-size:12px">Join a Guild first (see My Guild tab).</p>'; return; }
   const renderer = TOOL_RENDERERS[currentTool];
   panel.innerHTML = renderer ? renderer(gid) : '<p>Tool not found.</p>';
+  drawPendingCharts();
 }
 
 function renderStudioTools() {
