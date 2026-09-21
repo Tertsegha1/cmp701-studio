@@ -3917,18 +3917,15 @@ function renderGamificationDashboard() {
     return;
   }
 
-  // Aggregate stats
+  // Aggregate stats — students are never individually ranked here: CW1/CW2 are
+  // graded per student but Studio participation is graded and shown per Guild.
   let totalXP = 0, totalBadges = 0;
-  const studentXPs = [];
   Object.entries(appData.students || {}).forEach(([sid, s]) => {
-    const xp = computeStudentXP(sid);
-    totalXP += xp;
+    totalXP += computeStudentXP(sid);
     const submCount = countStudentSubmissions(sid);
     const prCount   = countGuildPeerReviews(s.guildId);
     totalBadges += computeStudentBadges(sid, submCount, prCount).length;
-    studentXPs.push({ name: s.name, xp, guild: s.guild || '' });
   });
-  studentXPs.sort((a, b) => b.xp - a.xp);
 
   const topGuild    = lb[0];
   const avgXP       = totalStudents ? Math.round(totalXP / totalStudents) : 0;
@@ -3941,17 +3938,6 @@ function renderGamificationDashboard() {
       <div class="kpi gr" style="flex:1 1 110px"><div class="v">${totalBadges}</div><div class="l">Badges Awarded</div></div>
       <div class="kpi am" style="flex:1 1 110px"><div class="v">${topGuild ? topGuild.guild.name : '—'}</div><div class="l">Top Guild</div></div>
     </div>`;
-
-  // Top 5 students
-  const top5 = studentXPs.slice(0, 5).map((s, i) => {
-    const lv = getLevel(s.xp);
-    return `<div class="lb-row">
-      <div class="lb-rank ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i+1}</div>
-      <div style="flex:1"><span style="font-size:12px;font-weight:700;color:#1B3A6B">${s.name}</span>
-        <span style="font-size:10px;color:#64748b;margin-left:6px">${lv.icon} ${lv.label}</span></div>
-      <div style="font-size:11px;font-weight:800;color:#7C3AED">${s.xp} XP</div>
-    </div>`;
-  }).join('');
 
   // Guild leaderboard strip
   const guildStrip = lb.map(({ guild, xp, rank }) => {
@@ -3967,15 +3953,9 @@ function renderGamificationDashboard() {
   }).join('');
 
   body.innerHTML = kpis +
-    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex-wrap:wrap">
-      <div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#7C3AED;margin-bottom:8px">Top Students</div>
-        ${top5 || '<p style="color:#94a3b8;font-size:12px">No data yet.</p>'}
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#7C3AED;margin-bottom:8px">Guild Rankings</div>
-        ${guildStrip || '<p style="color:#94a3b8;font-size:12px">No guilds yet.</p>'}
-      </div>
+    `<div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#7C3AED;margin-bottom:8px">Guild Rankings</div>
+      ${guildStrip || '<p style="color:#94a3b8;font-size:12px">No guilds yet.</p>'}
     </div>`;
 }
 </script>
