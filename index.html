@@ -577,10 +577,10 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
     <div class="card-hdr blue">Student Roster</div>
     <div class="tw">
       <table><thead><tr>
-        <th>Name</th><th>Campus</th><th>Guild</th><th>Business</th>
+        <th>Name</th><th>Campus</th><th>Seminar / Tutor</th><th>Guild</th><th>Business</th>
         <th class="C">Weeks Submitted</th><th class="C">Actions</th>
       </tr></thead>
-      <tbody id="studentTbody"><tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">No students added yet</td></tr></tbody>
+      <tbody id="studentTbody"><tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No students added yet</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -685,6 +685,10 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
         <div class="form-group" style="flex:1 1 160px">
           <label>Role</label>
           <input type="text" id="ttTitle" placeholder="e.g. Seminar Leader">
+        </div>
+        <div class="form-group" style="flex:1 1 120px">
+          <label>Login PIN</label>
+          <input type="text" id="ttPin" placeholder="e.g. TA0701" style="text-transform:uppercase">
         </div>
         <button class="btn btn-primary" onclick="addTeachingTeamMember()" style="flex-shrink:0">+ Add Member</button>
       </div>
@@ -2042,14 +2046,16 @@ function renderStudents() {
                       (!guildF || s.guildId === guildF));
 
   const tbody = document.getElementById('studentTbody');
-  if (!students.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">No students match filters</td></tr>'; return; }
+  if (!students.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No students match filters</td></tr>'; return; }
 
   tbody.innerHTML = students.map(([sid, s]) => {
     const guildName = s.guildId && appData.guilds[s.guildId] ? appData.guilds[s.guildId].name : '<span style="color:#94a3b8">Unassigned</span>';
     const subsCount = appData.submissions[sid] ? Object.keys(appData.submissions[sid]).length : 0;
+    const seminarTutor = [s.seminarGroup ? 'Group ' + s.seminarGroup : '', s.tutor || ''].filter(Boolean).join(' · ') || '—';
     return `<tr>
       <td style="font-weight:700">${s.name}</td>
       <td>${s.campus || '—'}</td>
+      <td style="font-size:11px">${seminarTutor}</td>
       <td>${guildName}</td>
       <td>${s.business || '<span style="color:#94a3b8">Not chosen</span>'}${typeof companyConflictBadgeHTML === 'function' ? companyConflictBadgeHTML(sid) : ''}</td>
       <td class="C">${subsCount}/12</td>
@@ -2943,10 +2949,28 @@ function renderTeachingTeamSelector() {
   }
   el.innerHTML = members.sort((a,b) => a[1].name.localeCompare(b[1].name)).map(([id, m]) => `
     <button class="btn btn-ghost" style="width:100%;text-align:left;justify-content:flex-start;padding:12px 16px;border:1.5px solid #e2e8f0;margin-bottom:6px"
-            onclick="selectLecturerIdentity('${id}','${m.name.replace(/'/g,"\\'")}','${(m.campus||'').replace(/'/g,"\\'")}','${(m.title||'').replace(/'/g,"\\'")}')">
+            onclick="promptLecturerPin('${id}','${m.name.replace(/'/g,"\\'")}','${(m.campus||'').replace(/'/g,"\\'")}','${(m.title||'').replace(/'/g,"\\'")}')">
       <div style="font-weight:700;font-size:13px;color:#1B3A6B">${m.name}</div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">${[m.title, m.campus].filter(Boolean).join(' · ')}</div>
     </button>`).join('');
+}
+
+// Require the member's own login PIN (set by the Module Leader in Blackboard Setup)
+// before granting Lecturer access — prevents anyone from picking any name off the list.
+function promptLecturerPin(id, name, campus, title) {
+  const member = allTeachingTeam[id];
+  const stored = member && member.pin;
+  if (!stored) {
+    toast('No PIN set for ' + name + ' — ask the Module Leader to add one in Blackboard Setup', 'err');
+    return;
+  }
+  const input = prompt('Enter your login PIN, ' + name + ':');
+  if (input === null) return;
+  if (input.trim().toUpperCase() !== stored.toUpperCase()) {
+    toast('Incorrect PIN', 'err');
+    return;
+  }
+  selectLecturerIdentity(id, name, campus, title);
 }
 
 function showLecturerIdentityScreen() {
@@ -2979,12 +3003,13 @@ function renderTeachingTeamAdmin() {
     return;
   }
   el.innerHTML = `<div class="tw" style="margin-top:8px"><table><thead><tr>
-    <th>Name</th><th>Campus</th><th>Role</th><th>Added</th><th class="C">Remove</th>
+    <th>Name</th><th>Campus</th><th>Role</th><th>PIN</th><th>Added</th><th class="C">Remove</th>
   </tr></thead><tbody>${
     members.sort((a,b) => a[1].name.localeCompare(b[1].name)).map(([id, m]) => `<tr>
       <td style="font-weight:700">${m.name}</td>
       <td>${m.campus || '—'}</td>
       <td>${m.title || '—'}</td>
+      <td style="font-family:monospace;font-weight:700">${m.pin || '<span style="color:#B91C1C">not set</span>'}</td>
       <td style="font-size:10px;color:#94a3b8">${m.addedAt ? new Date(m.addedAt).toLocaleDateString() : '—'}</td>
       <td class="C"><button class="btn btn-danger btn-sm" onclick="removeTeachingTeamMember('${id}')">✕</button></td>
     </tr>`).join('')
@@ -2995,12 +3020,15 @@ async function addTeachingTeamMember() {
   const name   = document.getElementById('ttName').value.trim();
   const campus = document.getElementById('ttCampus').value.trim();
   const title  = document.getElementById('ttTitle').value.trim();
+  const pin    = document.getElementById('ttPin').value.trim().toUpperCase();
   if (!name) { toast('Enter a name first', 'err'); return; }
+  if (!pin) { toast('Enter a login PIN first (e.g. initials + 0701)', 'err'); return; }
   const id = db.ref('studio/__teachingTeam').push().key;
-  await db.ref('studio/__teachingTeam/' + id).set({ name, campus, title, addedAt: Date.now() });
+  await db.ref('studio/__teachingTeam/' + id).set({ name, campus, title, pin, addedAt: Date.now() });
   document.getElementById('ttName').value = '';
   document.getElementById('ttCampus').value = '';
   document.getElementById('ttTitle').value = '';
+  document.getElementById('ttPin').value = '';
   toast(name + ' added to teaching team', 'ok');
 }
 
