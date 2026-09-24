@@ -11,7 +11,10 @@ function editorIdentity() {
 }
 
 async function logDeadlineChange(field, oldValue, newValue, reason) {
-  if (oldValue === newValue) return;
+  // Treat "never set" (undefined) and "left blank" ('') as the same state —
+  // otherwise every publish logs a spurious "(not set) -> (cleared)" entry
+  // for every field the editor didn't touch.
+  if ((oldValue || '') === (newValue || '')) return;
   const history = appData.config.deadlineHistory || [];
   history.push({ ts: Date.now(), editor: editorIdentity(), field, oldValue: oldValue || '(not set)', newValue: newValue || '(cleared)', reason: reason || '' });
   await sRef('config/deadlineHistory').set(history);
@@ -82,6 +85,16 @@ async function publishDeadlines() {
     cw1Deadline: cw1Sub, cw1MarkDeadline: cw1Mark, cw2Deadline: cw2Sub, cw2MarkDeadline: cw2Mark,
     questDates, peerReviewDates
   });
+
+  // The Cohorts tab reads cw1Sub/cw1Mark/cw2Sub/cw2Mark from studio/__cohorts/{id}
+  // (older, separate storage) rather than this config — without this, a
+  // deadline published here silently never appears there, looking like the
+  // save didn't take.
+  if (COHORT_ID !== 'default') {
+    await db.ref('studio/__cohorts/' + COHORT_ID).update({
+      cw1Sub: cw1Sub || null, cw1Mark: cw1Mark || null, cw2Sub: cw2Sub || null, cw2Mark: cw2Mark || null
+    });
+  }
   toast('Deadlines published — student calendars will refresh', 'ok');
   renderDeadlines();
 }
