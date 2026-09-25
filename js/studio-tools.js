@@ -181,7 +181,7 @@ function renderListTool(gid, key, columns, rows, extraNote) {
   return `
     ${extraNote || ''}
     <table style="margin-bottom:8px"><thead><tr>${head}</tr></thead><tbody>${body || `<tr><td colspan="${columns.length+1}" style="text-align:center;color:#94a3b8;padding:10px">No entries yet</td></tr>`}</tbody></table>
-    <button class="btn btn-ghost btn-sm" onclick="addListRow('${gid}','${key}',${JSON.stringify(columns.map(c=>c.key))})">+ Add Row</button>`;
+    <button class="btn btn-ghost btn-sm" onclick='addListRow("${gid}","${key}",${JSON.stringify(columns.map(c=>c.key))})'>+ Add Row</button>`;
 }
 
 async function addListRow(gid, key, columnKeysJSON) {
