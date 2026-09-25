@@ -151,6 +151,41 @@ function drawLineChart(canvas, values, splitIndex, opts) {
   if (opts.title) { ctx.fillStyle = '#1e293b'; ctx.font = 'bold 11px Arial'; ctx.textAlign = 'left'; ctx.fillText(opts.title, m.left, 14); }
 }
 
+// Diverging red(-1)–white(0)–blue(+1) colour scale for a correlation matrix.
+function correlationColour(v) {
+  const t = Math.max(-1, Math.min(1, v));
+  if (t >= 0) { const g = Math.round(255 * (1 - t)); return `rgb(${g},${g},255)`; }
+  const g = Math.round(255 * (1 + t));
+  return `rgb(255,${g},${g})`;
+}
+
+function drawHeatmap(canvas, labels, matrix, opts) {
+  opts = opts || {};
+  const ctx = setupCanvas(canvas), w = canvas.width, h = canvas.height;
+  const m = { top: 26, right: 10, bottom: 10, left: Math.max(60, ...labels.map(l => l.length * 5)) };
+  const n = labels.length;
+  const size = Math.min((w - m.left - m.right) / n, (h - m.top - m.bottom) / n);
+  labels.forEach((label, i) => {
+    ctx.fillStyle = '#1e293b'; ctx.font = '9px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(label.slice(0, 12), m.left - 4, m.top + i * size + size / 2 + 3);
+    ctx.save(); ctx.translate(m.left + i * size + size / 2, m.top - 4); ctx.rotate(-Math.PI / 4);
+    ctx.textAlign = 'right'; ctx.fillText(label.slice(0, 12), 0, 0); ctx.restore();
+  });
+  matrix.forEach((row, i) => {
+    row.forEach((v, j) => {
+      const x = m.left + j * size, y = m.top + i * size;
+      ctx.fillStyle = correlationColour(v);
+      ctx.fillRect(x, y, size, size);
+      ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y, size, size);
+      ctx.fillStyle = Math.abs(v) > 0.6 ? '#fff' : '#1e293b';
+      ctx.font = '9px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(v.toFixed(2), x + size / 2, y + size / 2 + 3);
+    });
+  });
+  if (opts.title) { ctx.fillStyle = '#1e293b'; ctx.font = 'bold 11px Arial'; ctx.textAlign = 'left'; ctx.fillText(opts.title, 4, 12); }
+}
+
 function exportHeader(gid) {
   const g = appData.guilds[gid] || {};
   const c = g.company || {};
@@ -587,6 +622,19 @@ function stumpPredict(stump, classes, value) {
   return (value > stump.threshold) !== stump.flip ? classes[1] : classes[0];
 }
 
+// Correlation across every numeric column in the cleaned rows — the basis
+// for the heatmap/correlation matrix, independent of which two columns
+// (colA/colB) the student picked for the detailed scatter view.
+function correlationMatrix(headers, rows) {
+  const numericCols = headers.filter((h, i) => rows.every(r => r[i] !== '' && !isNaN(+r[i])));
+  const idxByCol = {};
+  numericCols.forEach(c => { idxByCol[c] = headers.indexOf(c); });
+  const colValues = {};
+  numericCols.forEach(c => { colValues[c] = rows.map(r => +r[idxByCol[c]]); });
+  const matrix = numericCols.map(a => numericCols.map(b => a === b ? 1 : pearsonCorrelation(colValues[a], colValues[b])));
+  return { columns: numericCols, matrix };
+}
+
 function runDescriptiveTask(headers, rows, colA, colB) {
   const ai = headers.indexOf(colA), bi = headers.indexOf(colB);
   const xs = rows.map(r=>+r[ai]), ys = rows.map(r=>+r[bi]);
@@ -595,8 +643,10 @@ function runDescriptiveTask(headers, rows, colA, colB) {
   const direction = r > 0 ? 'positive' : r < 0 ? 'negative' : 'no';
   return { colA, colB, n: rows.length, correlation: r, strength, direction,
     points: xs.map((x,i)=>({x, y: ys[i]})),
+    xValues: xs, yValues: ys,
     colAStats: { mean: +(xs.reduce((a,b)=>a+b,0)/xs.length).toFixed(2), min: Math.min(...xs), max: Math.max(...xs) },
-    colBStats: { mean: +(ys.reduce((a,b)=>a+b,0)/ys.length).toFixed(2), min: Math.min(...ys), max: Math.max(...ys) } };
+    colBStats: { mean: +(ys.reduce((a,b)=>a+b,0)/ys.length).toFixed(2), min: Math.min(...ys), max: Math.max(...ys) },
+    matrix: correlationMatrix(headers, rows) };
 }
 
 function runForecastingTask(headers, rows, valueCol, periods) {
@@ -741,6 +791,11 @@ function downloadModelRun(gid, rid) {
   if (run.type === 'Descriptive') {
     rows = [['Metric','Value'],['Column A', r.colA],['Column B', r.colB],['Correlation (r)', r.correlation],
       ['Strength', r.strength],['Direction', r.direction],['Rows used', r.n]];
+    if (r.matrix && r.matrix.columns.length > 1) {
+      rows.push([]);
+      rows.push(['Correlation matrix', ...r.matrix.columns]);
+      r.matrix.columns.forEach((col, i) => rows.push([col, ...r.matrix.matrix[i].map(v => v.toFixed(2))]));
+    }
   } else if (run.type === 'Forecasting') {
     rows = [['Period','Value']];
     r.historical.forEach((v,i)=>rows.push(['Historical '+(i+1), v]));
@@ -766,10 +821,19 @@ function renderModelRunResult(run, rid) {
   const chartFile = n => `${run.name.replace(/\s+/g,'_')}_${n}.png`;
 
   if (run.type === 'Descriptive') {
+    const histAId = chartId + '-histA', histBId = chartId + '-histB', heatId = chartId + '-heat';
     queueChart(chartId, canvas => drawScatterChart(canvas, r.points, { xLabel: r.colA, yLabel: r.colB, title: `${r.colA} vs ${r.colB}` }));
+    if (r.xValues) queueChart(histAId, canvas => { const b = binNumeric(r.xValues); drawBarChart(canvas, b.labels, b.counts, { title: `Distribution of ${r.colA}`, color: '#2563EB' }); });
+    if (r.yValues) queueChart(histBId, canvas => { const b = binNumeric(r.yValues); drawBarChart(canvas, b.labels, b.counts, { title: `Distribution of ${r.colB}`, color: '#7C3AED' }); });
+    if (r.matrix && r.matrix.columns.length > 1) queueChart(heatId, canvas => drawHeatmap(canvas, r.matrix.columns, r.matrix.matrix, { title: 'Correlation matrix' }));
     return meta + `<span style="font-size:11px">Correlation between <strong>${r.colA}</strong> and <strong>${r.colB}</strong>: <strong>${r.correlation}</strong> (${r.strength} ${r.direction})</span>
       <div style="font-size:10px;color:#64748b;margin-top:4px">${r.colA}: mean ${r.colAStats.mean} (min ${r.colAStats.min}, max ${r.colAStats.max}) · ${r.colB}: mean ${r.colBStats.mean} (min ${r.colBStats.min}, max ${r.colBStats.max})</div>
-      <div style="margin-top:6px">${chartCanvasHTML(chartId, 300, 180)}${downloadChartButton(chartId, chartFile('scatter'))}</div>`;
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+        <div>${chartCanvasHTML(chartId, 280, 170)}${downloadChartButton(chartId, chartFile('scatter'))}</div>
+        ${r.xValues ? `<div>${chartCanvasHTML(histAId, 260, 170)}${downloadChartButton(histAId, chartFile('histogram_'+r.colA))}</div>` : ''}
+        ${r.yValues ? `<div>${chartCanvasHTML(histBId, 260, 170)}${downloadChartButton(histBId, chartFile('histogram_'+r.colB))}</div>` : ''}
+        ${r.matrix && r.matrix.columns.length > 1 ? `<div>${chartCanvasHTML(heatId, 260, 220)}${downloadChartButton(heatId, chartFile('correlation_matrix'))}</div>` : ''}
+      </div>`;
   }
   if (run.type === 'Forecasting') {
     queueChart(chartId, canvas => drawLineChart(canvas, [...r.historical, ...r.projections], r.historical.length, { title: r.valueCol + ' — historical vs projected' }));
