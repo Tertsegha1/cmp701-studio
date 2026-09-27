@@ -1485,6 +1485,7 @@ function subscribeToCohort(cohortId) {
     document.getElementById('liveBadge').textContent = '● Live';
     document.getElementById('liveBadge').className   = 'live-badge ok';
     refreshAll();
+    ensurePeerReviewRoundsGenerated(); // guild rosters changed — re-check for newly pairable campuses
   };
   db.ref(COHORT_PATH).on('value', _mainUnsub, () => {
     document.getElementById('liveBadge').textContent = '● Offline';
