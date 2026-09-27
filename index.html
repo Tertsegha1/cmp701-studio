@@ -2890,10 +2890,16 @@ async function submitArtefact() {
   let uploadedFiles = [];
   try {
     if (_artefactPendingFiles.length) {
-      uploadedFiles = await uploadArtefactFilesToStorage(gid, weekNum, _artefactPendingFiles);
+      const UPLOAD_TIMEOUT_MS = 25000;
+      uploadedFiles = await Promise.race([
+        uploadArtefactFilesToStorage(gid, weekNum, _artefactPendingFiles),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), UPLOAD_TIMEOUT_MS))
+      ]);
     }
   } catch (err) {
-    toast('Upload failed — check your connection and try again', 'err');
+    const timedOut = err && err.message === 'timeout';
+    toast(timedOut ? 'File upload isn\'t available right now — contact your module leader, or paste a link instead' : 'Upload failed — check your connection and try again', 'err');
+    document.getElementById('uploadProgress').style.display = 'none';
     if (btn) { btn.disabled = false; btn.textContent = 'Save Guild Submission'; }
     return;
   }
