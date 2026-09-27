@@ -393,13 +393,13 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
       <option value="">All Statuses</option>
       <option>Submitted</option><option>Pending</option><option>Reviewed</option>
     </select>
-    <input type="text" placeholder="Search student…" class="sb" id="subSearch" oninput="renderSubmissions()" style="padding:7px 12px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px;min-width:180px">
+    <input type="text" placeholder="Search guild…" class="sb" id="subSearch" oninput="renderSubmissions()" style="padding:7px 12px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px;min-width:180px">
     <button class="btn btn-ghost btn-sm" onclick="exportSubmissionsCSV()">↓ Export CSV</button>
   </div>
   <div class="card">
     <div class="card-hdr slate">Artefact Submissions</div>
     <div class="tw" id="submissionsTable">
-      <table><thead><tr><th>Student</th><th>Guild</th><th>Week</th><th>Artefact</th><th class="C">Status</th><th class="C">Submitted</th><th class="C">Actions</th></tr></thead>
+      <table><thead><tr><th>Guild</th><th>Files</th><th>Week</th><th>Artefact</th><th class="C">Status</th><th class="C">Last updated</th><th class="C">Actions</th></tr></thead>
       <tbody id="subTbody"><tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No submissions yet</td></tr></tbody>
       </table>
     </div>
@@ -756,15 +756,15 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
 <!-- PEER REVIEW (LEADER) -->
 <div class="pg" id="pg-peer-review">
   <div class="frow">
-    <button class="btn btn-primary" onclick="createPeerReviewRound()">+ New Review Round</button>
+    <button class="btn btn-primary" onclick="createPeerReviewRound()">↻ Reassign Current Week</button>
     <select class="fs" id="prWeekFilter" onchange="renderPeerReview()" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px;min-width:120px">
       <option value="">All Weeks</option>
     </select>
   </div>
-  <div class="alert alert-info" style="margin-bottom:12px">Peer review assigns each guild to review another guild's artefact. Rotate assignments each round so no guild reviews the same guild twice.</div>
+  <div class="alert alert-info" style="margin-bottom:12px">Peer review rounds are generated automatically for every milestone week (1,2,3,4,5,7,8,9,10,11) as soon as there are 2+ guilds on a campus — a guild only ever reviews another guild on its own campus. Use "Reassign Current Week" only if that week's rosters changed and you need to re-pair it.</div>
   <div class="card">
     <div class="card-hdr teal">Active Review Rounds</div>
-    <div class="card-body" id="peerReviewRounds"><p style="color:#94a3b8;font-size:12px">No review rounds yet. Click "+ New Review Round" to auto-assign guilds.</p></div>
+    <div class="card-body" id="peerReviewRounds"><p style="color:#94a3b8;font-size:12px">No review rounds yet — they'll appear automatically once 2+ guilds share a campus.</p></div>
   </div>
   <div class="card">
     <div class="card-hdr slate">Review Submissions</div>
@@ -867,6 +867,7 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
 
 <!-- STUDENT: Submit Artefact -->
 <div class="pg" id="pg-s-submit">
+  <div class="alert alert-info" style="margin-bottom:12px">One submission counts for your whole Guild — any member can submit or add files, and the week is marked complete automatically as soon as a file is uploaded. No manual marking.</div>
   <div class="card">
     <div class="card-hdr green">Submit Weekly Artefact</div>
     <div class="card-body">
@@ -874,41 +875,39 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
       <div class="form-row">
         <div class="form-group">
           <label>Week</label>
-          <select id="submitWeekSel" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px"></select>
+          <select id="submitWeekSel" onchange="loadGuildMilestoneForm()" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px"></select>
         </div>
         <div class="form-group" style="flex:3">
           <label>Artefact Title</label>
           <input type="text" id="submitTitle" placeholder="e.g. Business Snapshot — Netflix Digital Maturity Analysis">
         </div>
       </div>
+      <div id="submitStatusBanner"></div>
 
-      <!-- Link submission (primary — direct file upload is temporarily unavailable, see note below) -->
       <div class="form-group" style="margin-bottom:12px">
-        <label>Link to Your Artefact <span style="font-weight:400;color:#64748b">(OneDrive, Google Drive, SharePoint — set sharing to "anyone with the link can view")</span></label>
-        <input type="url" id="submitLink" placeholder="https://…">
-      </div>
-      <div class="alert" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;margin-bottom:12px">Direct file upload is temporarily unavailable. Please upload your file to OneDrive/Google Drive/SharePoint and paste the sharing link above instead.</div>
-
-      <!-- File upload (disabled — Firebase Storage isn't provisioned for this project yet) -->
-      <div class="form-group" style="margin-bottom:12px; display:none">
-        <label>Upload Your Artefact <span style="font-weight:400;color:#64748b">(PDF, PPTX, DOCX, images — max 50 MB)</span></label>
+        <label>Upload Your Guild's Artefact(s) <span style="font-weight:400;color:#64748b">(PDF, PPTX, DOCX, images — multiple files allowed, <span id="submitCapLabel">30 MB</span> total per week)</span></label>
         <div class="drop-zone" id="artefactDropZone"
              onclick="document.getElementById('artefactFileInput').click()"
              ondragover="event.preventDefault();this.classList.add('drag-over')"
              ondragleave="this.classList.remove('drag-over')"
              ondrop="handleArtefactDrop(event)">
-          <div id="artefactDropLabel" style="pointer-events:none">📁 Drop your file here or click to browse</div>
+          <div id="artefactDropLabel" style="pointer-events:none">📁 Drop files here or click to browse (you can add more than one)</div>
         </div>
-        <input type="file" id="artefactFileInput" style="display:none"
+        <input type="file" id="artefactFileInput" style="display:none" multiple
                accept=".pdf,.pptx,.ppt,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg,.gif,.mp4,.zip"
-               onchange="handleArtefactFileSelect(this.files[0])">
-        <!-- Upload progress -->
+               onchange="handleArtefactFilesSelect(this.files)">
+        <div id="artefactFileList" style="margin-top:8px"></div>
         <div id="uploadProgress" style="display:none;margin-top:8px">
           <div class="pbar-wrap" style="height:10px">
             <div class="pbar-fill" id="uploadProgressBar" style="width:0%;background:#15803D;transition:width .2s ease"></div>
           </div>
           <div id="uploadProgressText" style="font-size:10px;color:#64748b;margin-top:4px">Uploading…</div>
         </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Link <span style="font-weight:400;color:#64748b">(optional — a live prototype URL, or a folder link alongside your files)</span></label>
+        <input type="url" id="submitLink" placeholder="https://…">
       </div>
 
       <div class="form-group" style="margin-bottom:12px">
@@ -919,7 +918,7 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
         <label>Reflection <span style="font-weight:400;color:#64748b">(What did you learn? What would you do differently?)</span></label>
         <textarea id="submitReflection" rows="4" placeholder="Your honest reflection on this week's studio work…"></textarea>
       </div>
-      <button class="btn btn-primary" style="min-width:180px" id="submitBtn" onclick="submitArtefact()">Submit Artefact</button>
+      <button class="btn btn-primary" style="min-width:180px" id="submitBtn" onclick="submitArtefact()">Save Guild Submission</button>
     </div>
   </div>
 </div>
@@ -977,6 +976,19 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
   <div class="card">
     <div class="card-hdr blue">My Submission Timeline</div>
     <div class="card-body" id="sProgressTimeline"><p style="color:#94a3b8;font-size:12px">No submissions yet.</p></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr" style="background:linear-gradient(135deg,#B45309 0%,#92400E 100%)">🎓 Completion Certificate</div>
+    <div class="card-body" id="sCertificateBody"><p style="color:#94a3b8;font-size:12px">Select your name to check your certificate eligibility.</p></div>
+  </div>
+</div>
+
+<!-- Certificate view modal -->
+<div class="modal-overlay" id="certificateModal">
+  <div class="modal" style="max-width:640px">
+    <button class="modal-close" onclick="closeModal('certificateModal')">✕</button>
+    <h3>Your CMP701 Completion Certificate</h3>
+    <div id="certificateModalBody"></div>
   </div>
 </div>
 
@@ -1339,6 +1351,7 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script>
 // ─── Firebase ───────────────────────────────────────────────
@@ -1487,6 +1500,7 @@ function subscribeToCohort(cohortId) {
   _prUnsub = snap => {
     appData.peerReviews = snap.val() || {};
     renderPeerReview();
+    ensurePeerReviewRoundsGenerated();
     if (!isLeader) renderStudentPeerReview();
     const sel = document.getElementById('prWeekFilter');
     if (sel) {
@@ -2026,71 +2040,60 @@ function renderSubmissions() {
   const searchF = document.getElementById('subSearch').value.toLowerCase();
 
   const rows = [];
-  Object.entries(appData.students).forEach(([sid, s]) => {
-    const guildName = s.guildId && appData.guilds[s.guildId] ? appData.guilds[s.guildId].name : '—';
-    if (guildF && s.guildId !== guildF) return;
-    if (searchF && !s.name.toLowerCase().includes(searchF)) return;
+  Object.entries(appData.guilds).forEach(([gid, g]) => {
+    if (guildF && gid !== guildF) return;
+    if (searchF && !g.name.toLowerCase().includes(searchF)) return;
 
-    const weeks = appData.submissions[sid] || {};
-    const weekEntries = weekF ? [[`week-${weekF}`, weeks[`week-${weekF}`]]] : Object.entries(weeks);
-
-    weekEntries.forEach(([wk, sub]) => {
-      if (!sub && weekF) sub = null;
-      const status = sub ? 'Submitted' : 'Pending';
+    const weeks = weekF ? [+weekF] : MILESTONE_WEEKS;
+    weeks.forEach(w => {
+      const wk = 'week-' + w;
+      const m = g.milestones && g.milestones[wk];
+      const status = guildMilestoneStatus(gid, w) === 'complete' ? 'Submitted' : 'Pending';
       if (statusF && status !== statusF) return;
-      rows.push({ sid, name: s.name, guild: guildName, guildId: s.guildId, week: wk, sub, status });
+      rows.push({ gid, guild: g.name, week: wk, weekNum: w, m, status });
     });
-
-    // Show pending rows for all weeks if no week filter
-    if (!weekF) {
-      for (let w = 1; w <= 12; w++) {
-        const wk = 'week-' + w;
-        if (!weeks[wk] && (!statusF || statusF === 'Pending')) {
-          rows.push({ sid, name: s.name, guild: guildName, guildId: s.guildId, week: wk, sub: null, status: 'Pending' });
-        }
-      }
-    }
   });
 
   const tbody = document.getElementById('subTbody');
   if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">No submissions match filters</td></tr>'; return; }
 
-  tbody.innerHTML = rows.sort((a,b) => a.name.localeCompare(b.name) || a.week.localeCompare(b.week)).slice(0, 200).map(r => {
-    const graded = r.sub && r.sub.aiFeedback;
+  tbody.innerHTML = rows.sort((a,b) => a.guild.localeCompare(b.guild) || a.weekNum - b.weekNum).slice(0, 200).map(r => {
+    const graded = r.m && r.m.aiFeedback;
+    const fileCount = r.m && r.m.files ? Object.keys(r.m.files).length : 0;
     const statusBadge = graded ? 'b-teal' : r.status==='Submitted' ? 'b-green' : 'b-amber';
     const statusLabel = graded ? 'Graded' : r.status;
     return `<tr>
-      <td style="font-weight:700">${r.name}</td>
-      <td>${r.guild}</td>
-      <td><span class="b b-blue">Wk ${r.week.split('-')[1]}</span></td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.sub ? (r.sub.link ? `<a href="${r.sub.link}" target="_blank" style="color:#0D7377">${r.sub.title || 'View'}</a>` : r.sub.title || '—') : '<span style="color:#94a3b8">—</span>'}</td>
+      <td style="font-weight:700">${r.guild}</td>
+      <td>${fileCount} file${fileCount===1?'':'s'}</td>
+      <td><span class="b b-blue">Wk ${r.weekNum}</span></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.m ? (r.m.title || '—') : '<span style="color:#94a3b8">—</span>'}</td>
       <td class="C"><span class="b ${statusBadge}">${statusLabel}</span></td>
-      <td class="C" style="font-size:10px;color:#94a3b8">${r.sub && r.sub.submittedAt ? new Date(r.sub.submittedAt).toLocaleDateString() : '—'}</td>
+      <td class="C" style="font-size:10px;color:#94a3b8">${r.m && r.m.lastUpdatedAt ? new Date(r.m.lastUpdatedAt).toLocaleDateString() : '—'}</td>
       <td class="C" style="white-space:nowrap">
-        ${r.sub ? `<button class="btn btn-ghost btn-sm" onclick="viewSubmission('${r.sid}','${r.week}')">View</button>
-        <button class="btn btn-sm btn-purple" onclick="openGradePanel('${r.sid}','${r.week}')" style="margin-left:4px">${graded ? '✓ Re-grade' : 'Grade'}</button>` : ''}
+        ${r.m ? `<button class="btn btn-ghost btn-sm" onclick="viewSubmission('${r.gid}','${r.week}')">View</button>
+        <button class="btn btn-sm btn-purple" onclick="openGradePanel('${r.gid}','${r.week}')" style="margin-left:4px">${graded ? '✓ Re-grade' : 'Grade'}</button>` : ''}
       </td>
     </tr>`;
   }).join('');
 }
 
-function viewSubmission(sid, wk) {
-  const sub = appData.submissions[sid] && appData.submissions[sid][wk];
-  const student = appData.students[sid];
-  if (!sub) return;
-  alert(`${student ? student.name : sid} — ${wk}\n\nTitle: ${sub.title || '—'}\nLink: ${sub.link || '—'}\n\nDescription:\n${sub.description || '—'}\n\nReflection:\n${sub.reflection || '—'}\n\nSubmitted: ${sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : '—'}`);
+function viewSubmission(gid, wk) {
+  const m = appData.guilds[gid] && appData.guilds[gid].milestones && appData.guilds[gid].milestones[wk];
+  const guild = appData.guilds[gid];
+  if (!m) return;
+  const files = m.files ? Object.values(m.files).map(f => f.name).join(', ') : '—';
+  alert(`${guild ? guild.name : gid} — ${wk}\n\nTitle: ${m.title || '—'}\nFiles: ${files}\nLink: ${m.link || '—'}\n\nDescription:\n${m.description || '—'}\n\nReflection:\n${m.reflection || '—'}\n\nLast updated: ${m.lastUpdatedAt ? new Date(m.lastUpdatedAt).toLocaleString() : '—'} by ${m.lastUpdatedByName || '—'}`);
 }
 
 function exportSubmissionsCSV() {
-  const rows = [['Student', 'Guild', 'Week', 'Title', 'Link', 'Description', 'Status', 'Submitted']];
-  Object.entries(appData.students).forEach(([sid, s]) => {
-    const guildName = s.guildId && appData.guilds[s.guildId] ? appData.guilds[s.guildId].name : '';
-    const weeks = appData.submissions[sid] || {};
-    for (let w = 1; w <= 12; w++) {
+  const rows = [['Guild', 'Campus', 'Week', 'Title', 'Files', 'Link', 'Description', 'Status', 'Last updated']];
+  Object.entries(appData.guilds).forEach(([gid, g]) => {
+    MILESTONE_WEEKS.forEach(w => {
       const wk = 'week-' + w;
-      const sub = weeks[wk];
-      rows.push([s.name, guildName, 'Week ' + w, sub?.title||'', sub?.link||'', sub?.description||'', sub?'Submitted':'Pending', sub?.submittedAt ? new Date(sub.submittedAt).toLocaleDateString() : '']);
-    }
+      const m = g.milestones && g.milestones[wk];
+      const files = m && m.files ? Object.values(m.files).map(f => f.name).join('; ') : '';
+      rows.push([g.name, g.campus || '', 'Week ' + w, m?.title||'', files, m?.link||'', m?.description||'', guildMilestoneStatus(gid, w), m?.lastUpdatedAt ? new Date(m.lastUpdatedAt).toLocaleDateString() : '']);
+    });
   });
   downloadCSV(rows, 'cmp701-studio-submissions.csv');
 }
@@ -2111,7 +2114,7 @@ function renderStudents() {
 
   tbody.innerHTML = students.map(([sid, s]) => {
     const guildName = s.guildId && appData.guilds[s.guildId] ? appData.guilds[s.guildId].name : '<span style="color:#94a3b8">Unassigned</span>';
-    const subsCount = appData.submissions[sid] ? Object.keys(appData.submissions[sid]).length : 0;
+    const subsCount = s.guildId ? guildMilestoneCompletedCount(s.guildId) : 0;
     const seminarTutor = [s.seminarGroup ? 'Group ' + s.seminarGroup : '', s.tutor || ''].filter(Boolean).join(' · ') || '—';
     return `<tr>
       <td style="font-weight:700">${s.name}</td>
@@ -2119,7 +2122,7 @@ function renderStudents() {
       <td style="font-size:11px">${seminarTutor}</td>
       <td>${guildName}</td>
       <td>${s.business || '<span style="color:#94a3b8">Not chosen</span>'}${typeof companyConflictBadgeHTML === 'function' ? companyConflictBadgeHTML(sid) : ''}</td>
-      <td class="C">${subsCount}/12</td>
+      <td class="C">${subsCount}/${MILESTONE_WEEKS.length} (Guild)</td>
       <td class="C">
         <button class="btn btn-ghost btn-sm" onclick="editStudent('${sid}')">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteStudent('${sid}')">✕</button>
@@ -2195,38 +2198,95 @@ function saveMasterApiKey() {
   toast('API key saved — synced to Firebase for all sessions', 'ok');
 }
 
-// ─── Artefact file upload (student submission) ────────────────
-let _artefactFile = null;
+// ─── Artefact file upload (guild-scoped weekly submission) ────
+const MAX_SUBMISSION_MB = 30; // total across ALL files for one guild's one week
+let _artefactPendingFiles = []; // File objects picked but not yet uploaded
+
+function currentSubmitGuildId() {
+  const s = currentStudent && appData.students[currentStudent];
+  return s ? s.guildId : null;
+}
+
+function existingMilestoneFilesTotalSize(weekNum) {
+  const gid = currentSubmitGuildId();
+  if (!gid) return 0;
+  const m = appData.guilds[gid] && appData.guilds[gid].milestones && appData.guilds[gid].milestones['week-' + weekNum];
+  const files = (m && m.files) || {};
+  return Object.values(files).reduce((sum, f) => sum + (f.size || 0), 0);
+}
+
+function pendingFilesTotalSize() {
+  return _artefactPendingFiles.reduce((sum, f) => sum + f.size, 0);
+}
 
 function handleArtefactDrop(e) {
   e.preventDefault();
   document.getElementById('artefactDropZone').classList.remove('drag-over');
-  if (e.dataTransfer.files[0]) handleArtefactFileSelect(e.dataTransfer.files[0]);
+  if (e.dataTransfer.files.length) handleArtefactFilesSelect(e.dataTransfer.files);
 }
 
-function handleArtefactFileSelect(file) {
-  if (!file) return;
-  const maxMB = 50;
-  if (file.size > maxMB * 1024 * 1024) {
-    toast('File too large — max ' + maxMB + ' MB', 'err');
-    return;
+function handleArtefactFilesSelect(fileList) {
+  const weekNum = document.getElementById('submitWeekSel').value;
+  const capBytes = MAX_SUBMISSION_MB * 1024 * 1024;
+  let added = 0, rejected = 0;
+  Array.from(fileList).forEach(file => {
+    const runningTotal = existingMilestoneFilesTotalSize(weekNum) + pendingFilesTotalSize() + file.size;
+    if (runningTotal > capBytes) { rejected++; return; }
+    _artefactPendingFiles.push(file);
+    added++;
+  });
+  if (rejected) toast(`${rejected} file(s) skipped — would exceed the ${MAX_SUBMISSION_MB} MB total for this week`, 'err');
+  if (added) {
+    const titleEl = document.getElementById('submitTitle');
+    if (titleEl && !titleEl.value) titleEl.value = _artefactPendingFiles[0].name.replace(/\.[^/.]+$/, '');
   }
-  _artefactFile = file;
-  document.getElementById('artefactDropLabel').innerHTML =
-    `✅ <strong>${file.name}</strong> <span style="color:#64748b">(${formatFileSize(file.size)})</span> — <span style="color:#B91C1C;cursor:pointer;text-decoration:underline" onclick="clearArtefactFile()">Remove</span>`;
-  document.getElementById('artefactDropZone').style.borderColor = '#0D7377';
-  document.getElementById('artefactDropZone').style.background  = '#f0fdfa';
-  // Auto-fill title if empty
-  const titleEl = document.getElementById('submitTitle');
-  if (titleEl && !titleEl.value) titleEl.value = file.name.replace(/\.[^/.]+$/, '');
+  document.getElementById('artefactFileInput').value = '';
+  renderArtefactFileList();
 }
 
-function clearArtefactFile() {
-  _artefactFile = null;
-  document.getElementById('artefactFileInput').value = '';
-  document.getElementById('artefactDropLabel').textContent = '📁 Drop your file here or click to browse';
-  document.getElementById('artefactDropZone').style.borderColor = '';
-  document.getElementById('artefactDropZone').style.background  = '';
+function removePendingArtefactFile(idx) {
+  _artefactPendingFiles.splice(idx, 1);
+  renderArtefactFileList();
+}
+
+function renderArtefactFileList() {
+  const weekNum = document.getElementById('submitWeekSel').value;
+  const gid = currentSubmitGuildId();
+  const existing = (gid && appData.guilds[gid] && appData.guilds[gid].milestones && appData.guilds[gid].milestones['week-' + weekNum] && appData.guilds[gid].milestones['week-' + weekNum].files) || {};
+  const existingRows = Object.values(existing).map(f =>
+    `<div style="display:flex;align-items:center;gap:8px;font-size:11px;padding:4px 0;border-bottom:1px solid #f1f5f9">
+      <span>✅</span><a href="${f.url}" target="_blank" style="color:#0D7377;text-decoration:none">${f.name}</a>
+      <span style="color:#94a3b8">(${formatFileSize(f.size)} — uploaded by ${f.uploadedByName || 'a guild member'})</span>
+    </div>`).join('');
+  const pendingRows = _artefactPendingFiles.map((f, i) =>
+    `<div style="display:flex;align-items:center;gap:8px;font-size:11px;padding:4px 0;border-bottom:1px solid #f1f5f9">
+      <span>📎</span><strong>${f.name}</strong><span style="color:#94a3b8">(${formatFileSize(f.size)}, not yet uploaded)</span>
+      <span style="color:#B91C1C;cursor:pointer;text-decoration:underline;margin-left:auto" onclick="removePendingArtefactFile(${i})">Remove</span>
+    </div>`).join('');
+  const total = existingMilestoneFilesTotalSize(weekNum) + pendingFilesTotalSize();
+  document.getElementById('artefactFileList').innerHTML = (existingRows + pendingRows) ||
+    '<p style="font-size:11px;color:#94a3b8;margin:4px 0 0">No files yet this week.</p>';
+  document.getElementById('submitCapLabel').textContent =
+    `${formatFileSize(total)} of ${MAX_SUBMISSION_MB} MB used`;
+}
+
+function loadGuildMilestoneForm() {
+  const weekNum = document.getElementById('submitWeekSel').value;
+  const gid = currentSubmitGuildId();
+  _artefactPendingFiles = [];
+  document.getElementById('artefactDropLabel').textContent = '📁 Drop files here or click to browse (you can add more than one)';
+  const m = gid && appData.guilds[gid] && appData.guilds[gid].milestones && appData.guilds[gid].milestones['week-' + weekNum];
+  document.getElementById('submitTitle').value = (m && m.title) || '';
+  document.getElementById('submitLink').value = (m && m.link) || '';
+  document.getElementById('submitDescription').value = (m && m.description) || '';
+  document.getElementById('submitReflection').value = (m && m.reflection) || '';
+  const fileCount = m && m.files ? Object.keys(m.files).length : 0;
+  const status = !m ? 'not-attempted' : (fileCount > 0 ? 'complete' : 'incomplete');
+  const banner = { 'not-attempted': ['#f1f5f9', '#475569', 'Not attempted yet'], 'incomplete': ['#fef9c3', '#854d0e', 'Draft saved — add a file to mark this week complete'], 'complete': ['#dcfce7', '#15803D', '✓ Complete — automatically marked once a file was uploaded'] }[status];
+  document.getElementById('submitStatusBanner').innerHTML = gid
+    ? `<div class="alert" style="background:${banner[0]};color:${banner[1]};border:1px solid ${banner[0]};margin-bottom:12px">Week ${weekNum} for your Guild: <strong>${status.replace('-', ' ')}</strong>${m && m.lastUpdatedByName ? ' · last updated by ' + m.lastUpdatedByName : ''}</div>`
+    : `<div class="alert" style="background:#fee2e2;color:#B91C1C;border:1px solid #fca5a5;margin-bottom:12px">You're not in a Guild yet — ask your tutor to add you before submitting.</div>`;
+  renderArtefactFileList();
 }
 
 function formatFileSize(bytes) {
@@ -2235,35 +2295,33 @@ function formatFileSize(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
-async function uploadArtefactToStorage(studentId, weekNum) {
-  if (!_artefactFile) return null;
-  const file    = _artefactFile;
-  const safeName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const path    = `submissions/${COHORT_ID}/${studentId}/week-${weekNum}/${safeName}`;
-  const ref     = storage.ref(path);
-
+async function uploadArtefactFilesToStorage(gid, weekNum, files) {
+  const uploaded = [];
   const progressWrap = document.getElementById('uploadProgress');
   const progressBar  = document.getElementById('uploadProgressBar');
   const progressText = document.getElementById('uploadProgressText');
   progressWrap.style.display = 'block';
-  progressBar.style.width    = '0%';
-
-  return new Promise((resolve, reject) => {
-    const task = ref.put(file);
-    task.on('state_changed',
-      snap => {
-        const pct = Math.round(snap.bytesTransferred / snap.totalBytes * 100);
-        progressBar.style.width    = pct + '%';
-        progressText.textContent   = `Uploading… ${pct}%`;
-      },
-      err => { progressWrap.style.display = 'none'; reject(err); },
-      async () => {
-        progressWrap.style.display = 'none';
-        const url = await task.snapshot.ref.getDownloadURL();
-        resolve({ url, name: file.name, size: file.size, type: file.type });
-      }
-    );
-  });
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const safeName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `artefacts/${COHORT_ID}/${gid}/week-${weekNum}/${safeName}`;
+    const ref = storage.ref(path);
+    progressText.textContent = `Uploading ${i + 1} of ${files.length}: ${file.name}…`;
+    await new Promise((resolve, reject) => {
+      const task = ref.put(file);
+      task.on('state_changed',
+        snap => { progressBar.style.width = Math.round(snap.bytesTransferred / snap.totalBytes * 100) + '%'; },
+        reject,
+        async () => {
+          const url = await task.snapshot.ref.getDownloadURL();
+          uploaded.push({ url, name: file.name, size: file.size, type: file.type });
+          resolve();
+        }
+      );
+    });
+  }
+  progressWrap.style.display = 'none';
+  return uploaded;
 }
 
 // ─── AI Feedback file upload state ───────────────────────────
@@ -2543,46 +2601,47 @@ function copyAIOutput() {
 function clearAIOutput() { document.getElementById('aiOutput').textContent = 'AI assessment will appear here after you submit…'; document.getElementById('aiOutput').className = 'ai-output loading'; }
 
 async function saveAIFeedback() {
-  const sid = prompt('Enter student ID or name:');
-  if (!sid) return;
-  const match = Object.entries(appData.students).find(([,s]) => s.name.toLowerCase().includes(sid.toLowerCase()));
-  if (!match) { toast('Student not found', 'err'); return; }
+  const name = prompt('Enter Guild name:');
+  if (!name) return;
+  const match = Object.entries(appData.guilds).find(([,g]) => g.name.toLowerCase().includes(name.toLowerCase()));
+  if (!match) { toast('Guild not found', 'err'); return; }
   const wk = 'week-' + (appData.config.currentWeek || 1);
-  await sRef(`submissions/${match[0]}/${wk}/aiFeedback`).set(document.getElementById('aiOutput').textContent);
+  await sRef(`guilds/${match[0]}/milestones/${wk}/aiFeedback`).set(document.getElementById('aiOutput').textContent);
   toast('Feedback saved!', 'ok');
 }
 
 // ─── Inline Grade Panel ───────────────────────────────────────
-let _gpSid = null, _gpWk = null;
+let _gpGid = null, _gpWk = null;
 
-function openGradePanel(sid, wk) {
-  _gpSid = sid; _gpWk = wk;
-  const sub = appData.submissions[sid] && appData.submissions[sid][wk];
-  const student = appData.students[sid];
-  if (!sub || !student) return;
+function openGradePanel(gid, wk) {
+  _gpGid = gid; _gpWk = wk;
+  const m = appData.guilds[gid] && appData.guilds[gid].milestones && appData.guilds[gid].milestones[wk];
+  const guild = appData.guilds[gid];
+  if (!m || !guild) return;
 
   const weekNum = wk.split('-')[1];
-  document.getElementById('gpStudentLabel').textContent = student.name;
+  document.getElementById('gpStudentLabel').textContent = guild.name;
   document.getElementById('gpWeekLabel').textContent = 'Week ' + weekNum;
-  document.getElementById('gpTitle').textContent = sub.title || '—';
+  document.getElementById('gpTitle').textContent = m.title || '—';
 
   const linkRow = document.getElementById('gpLinkRow');
-  linkRow.innerHTML = sub.link ? `<a href="${sub.link}" target="_blank" style="color:#0D7377;font-size:11px">${sub.link}</a>` : '';
+  const fileLinks = m.files ? Object.values(m.files).map(f => `<a href="${f.url}" target="_blank" style="color:#0D7377;font-size:11px;margin-right:10px">📎 ${f.name}</a>`).join('') : '';
+  linkRow.innerHTML = fileLinks + (m.link ? `<a href="${m.link}" target="_blank" style="color:#0D7377;font-size:11px">${m.link}</a>` : '');
 
-  document.getElementById('gpDescription').textContent = sub.description || '—';
-  document.getElementById('gpReflection').textContent = sub.reflection || '—';
-  document.getElementById('gpBusiness').value = student.business || '';
+  document.getElementById('gpDescription').textContent = m.description || '—';
+  document.getElementById('gpReflection').textContent = m.reflection || '—';
+  document.getElementById('gpBusiness').value = (guild.company && guild.company.name) || '';
 
   // Pre-fill text from description + reflection
-  const combined = [sub.title, sub.description, sub.reflection].filter(Boolean).join('\n\n');
+  const combined = [m.title, m.description, m.reflection].filter(Boolean).join('\n\n');
   document.getElementById('gpText').value = combined;
 
   document.getElementById('gpTextLabel').textContent = 'Artefact Description & Reflection';
 
   // If feedback already saved, show it
   const out = document.getElementById('gpOutput');
-  if (sub.aiFeedback) {
-    out.textContent = sub.aiFeedback;
+  if (m.aiFeedback) {
+    out.textContent = m.aiFeedback;
     out.className = 'ai-output';
   } else {
     out.textContent = 'AI feedback will appear here…';
@@ -2597,7 +2656,7 @@ function openGradePanel(sid, wk) {
 
 function closeGradePanel() {
   document.getElementById('gradePanel').style.display = 'none';
-  _gpSid = null; _gpWk = null;
+  _gpGid = null; _gpWk = null;
 }
 
 function updateGPForm() {}
@@ -2626,11 +2685,11 @@ async function runInlineAI() {
 }
 
 async function saveInlineFeedback() {
-  if (!_gpSid || !_gpWk) return;
+  if (!_gpGid || !_gpWk) return;
   const text = document.getElementById('gpOutput').textContent;
   if (!text || text.includes('appear here')) { toast('Generate feedback first', 'err'); return; }
-  await sRef(`submissions/${_gpSid}/${_gpWk}/aiFeedback`).set(text);
-  document.getElementById('gpSaveAlert').innerHTML = '<div style="font-size:11px;color:#15803D;font-weight:700;margin-top:6px">✓ Feedback saved — student can see it in My Progress</div>';
+  await sRef(`guilds/${_gpGid}/milestones/${_gpWk}/aiFeedback`).set(text);
+  document.getElementById('gpSaveAlert').innerHTML = '<div style="font-size:11px;color:#15803D;font-weight:700;margin-top:6px">✓ Feedback saved — the Guild can see it in My Progress</div>';
   toast('Feedback saved!', 'ok');
   renderSubmissions();
 }
@@ -2701,6 +2760,8 @@ function refreshStudentViews() {
   renderStudentXP();
   renderGuildLeaderboard();
   populateSubmitWeeks();
+  loadGuildMilestoneForm();
+  if (typeof renderCertificateSection === 'function') renderCertificateSection();
   if (typeof renderIndividualWorkspace === 'function') renderIndividualWorkspace();
   if (typeof renderPrototypesPage === 'function') renderPrototypesPage();
 }
@@ -2790,11 +2851,26 @@ function renderStudentGuild() {
 function populateSubmitWeeks() {
   const sel = document.getElementById('submitWeekSel');
   sel.innerHTML = '';
-  for (let w = 1; w <= 12; w++) sel.innerHTML += `<option value="${w}" ${w == (appData.config.currentWeek||1) ? 'selected' : ''}>Week ${w}</option>`;
+  const cw = appData.config.currentWeek || 1;
+  const defaultWk = MILESTONE_WEEKS.includes(+cw) ? cw : MILESTONE_WEEKS[0];
+  MILESTONE_WEEKS.forEach(w => sel.innerHTML += `<option value="${w}" ${w == defaultWk ? 'selected' : ''}>Week ${w}</option>`);
+}
+
+// Guild milestone status: 'complete' once ANY file has been uploaded for that week —
+// no manual marking by tutors, per the framework's automation requirement.
+function guildMilestoneStatus(gid, weekNum) {
+  const m = appData.guilds[gid] && appData.guilds[gid].milestones && appData.guilds[gid].milestones['week-' + weekNum];
+  if (!m) return 'not-attempted';
+  return (m.files && Object.keys(m.files).length > 0) ? 'complete' : 'incomplete';
+}
+function guildMilestoneCompletedCount(gid) {
+  return MILESTONE_WEEKS.filter(w => guildMilestoneStatus(gid, w) === 'complete').length;
 }
 
 async function submitArtefact() {
   if (!currentStudent) { toast('Select your name first', 'err'); return; }
+  const gid = currentSubmitGuildId();
+  if (!gid) { toast('You are not in a Guild yet — ask your tutor to add you', 'err'); return; }
   const weekNum     = document.getElementById('submitWeekSel').value;
   const title       = document.getElementById('submitTitle').value.trim();
   const manualLink  = document.getElementById('submitLink').value.trim();
@@ -2802,83 +2878,78 @@ async function submitArtefact() {
   const reflection  = document.getElementById('submitReflection').value.trim();
 
   if (!title) { toast('Add an artefact title', 'err'); return; }
-  if (!_artefactFile && !manualLink) { toast('Upload a file or paste a link', 'err'); return; }
+  const hasExistingFiles = existingMilestoneFilesTotalSize(weekNum) > 0;
+  if (!_artefactPendingFiles.length && !hasExistingFiles && !manualLink) {
+    toast('Upload at least one file (or paste a link) to save this week', 'err'); return;
+  }
 
-  // Disable submit button during upload
   const btn = document.getElementById('submitBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
-  let fileURL = '', fileName = '', fileSize = 0;
+  let uploadedFiles = [];
   try {
-    if (_artefactFile) {
-      const uploaded = await uploadArtefactToStorage(currentStudent, weekNum);
-      fileURL  = uploaded.url;
-      fileName = uploaded.name;
-      fileSize = uploaded.size;
+    if (_artefactPendingFiles.length) {
+      uploadedFiles = await uploadArtefactFilesToStorage(gid, weekNum, _artefactPendingFiles);
     }
-  } catch(err) {
+  } catch (err) {
     toast('Upload failed — check your connection and try again', 'err');
-    if (btn) { btn.disabled = false; btn.textContent = 'Submit Artefact'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Guild Submission'; }
     return;
   }
 
-  const submission = {
-    title, description, reflection,
-    submittedAt: Date.now(),
-    status: 'Submitted',
-    link: fileURL || manualLink,
-  };
-  if (fileName) { submission.fileName = fileName; submission.fileSize = fileSize; }
-
+  const studentName = appData.students[currentStudent].name;
   const wk = 'week-' + weekNum;
-  await sRef(`submissions/${currentStudent}/${wk}`).set(submission);
+  const updates = {
+    title, description, reflection, link: manualLink,
+    lastUpdatedBy: currentStudent, lastUpdatedByName: studentName, lastUpdatedAt: Date.now()
+  };
+  await sRef(`guilds/${gid}/milestones/${wk}`).update(updates);
+  for (const f of uploadedFiles) {
+    const fid = sRef(`guilds/${gid}/milestones/${wk}/files`).push().key;
+    await sRef(`guilds/${gid}/milestones/${wk}/files/${fid}`).set({
+      ...f, uploadedBy: currentStudent, uploadedByName: studentName, uploadedAt: Date.now()
+    });
+  }
 
+  const nowComplete = uploadedFiles.length > 0 || hasExistingFiles;
   document.getElementById('submitAlert').innerHTML =
-    `<div class="alert alert-success">✓ Artefact submitted for Week ${weekNum}!${fileName ? ' File uploaded: ' + fileName + '.' : ''} Your module leader can now see your submission.</div>`;
-  document.getElementById('submitTitle').value = '';
-  document.getElementById('submitLink').value  = '';
-  document.getElementById('submitDescription').value = '';
-  document.getElementById('submitReflection').value  = '';
-  clearArtefactFile();
-  if (btn) { btn.disabled = false; btn.textContent = 'Submit Artefact'; }
-  toast('Artefact submitted!', 'ok');
+    `<div class="alert alert-success">✓ Saved for Week ${weekNum} on behalf of your Guild.${nowComplete ? ' Automatically marked complete.' : ' Add a file to mark this week complete.'}</div>`;
+  _artefactPendingFiles = [];
+  if (btn) { btn.disabled = false; btn.textContent = 'Save Guild Submission'; }
+  toast('Saved!', 'ok');
+  loadGuildMilestoneForm();
   renderStudentProgress();
   renderStudentXP();
   renderGuildLeaderboard();
+  if (typeof renderCertificateSection === 'function') renderCertificateSection();
 }
 
 function renderStudentProgress() {
   if (!currentStudent) return;
-  const subs = appData.submissions[currentStudent] || {};
-  const submitted = Object.keys(subs).length;
-  const currentWeek = parseInt(appData.config.currentWeek || computeCurrentWeek()) || 1;
-  const pct = currentWeek > 0 ? Math.round(submitted / currentWeek * 100) : 0;
+  const gid = currentSubmitGuildId();
+  const completed = gid ? guildMilestoneCompletedCount(gid) : 0;
+  const pct = MILESTONE_WEEKS.length ? Math.round(completed / MILESTONE_WEEKS.length * 100) : 0;
 
-  document.getElementById('spk-weeks').textContent = submitted;
+  document.getElementById('spk-weeks').textContent = completed;
   document.getElementById('spk-pct').textContent = pct + '%';
-  document.getElementById('spk-pending').textContent = Math.max(0, currentWeek - submitted);
+  document.getElementById('spk-pending').textContent = Math.max(0, MILESTONE_WEEKS.length - completed);
 
-  const timeline = [];
-  for (let w = 1; w <= currentWeek; w++) {
+  const timeline = MILESTONE_WEEKS.map(w => {
     const wk = 'week-' + w;
-    const sub = subs[wk];
+    const m = gid && appData.guilds[gid].milestones && appData.guilds[gid].milestones[wk];
+    const status = gid ? guildMilestoneStatus(gid, w) : 'not-attempted';
     const quest = appData.quests[wk];
-    const feedbackHtml = sub && sub.aiFeedback
-      ? `<div style="margin-top:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px">
-          <p style="font-size:10px;font-weight:700;color:#15803D;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Lecturer Feedback</p>
-          <pre style="font-size:11px;color:#1e293b;white-space:pre-wrap;font-family:Arial,sans-serif;margin:0">${sub.aiFeedback}</pre>
-        </div>` : '';
-    const fileLink = sub && sub.link
-      ? `<a href="${sub.link}" target="_blank" style="font-size:10px;color:#1D4ED8;text-decoration:none;margin-left:6px" title="${sub.fileName || 'View artefact'}">
-           ${sub.fileName ? '📎 ' + sub.fileName : '🔗 View artefact'}</a>` : '';
-    timeline.push(`<li>
-      <div class="tl-dot ${sub && sub.aiFeedback ? 'teal' : sub ? 'green' : 'amber'}"></div>
+    const fileLinks = (m && m.files ? Object.values(m.files) : []).map(f =>
+      `<a href="${f.url}" target="_blank" style="font-size:10px;color:#1D4ED8;text-decoration:none;margin-left:6px">📎 ${f.name}</a>`).join('');
+    const dotClass = status === 'complete' ? 'green' : status === 'incomplete' ? 'amber' : '';
+    return `<li>
+      <div class="tl-dot ${dotClass}"></div>
       <div class="tl-content">
         <div class="tl-title">Week ${w}${quest ? ': ' + quest.title : ''}</div>
-        ${sub ? `<div class="tl-sub">Submitted ${new Date(sub.submittedAt).toLocaleDateString()} — ${sub.title}${fileLink}</div>${feedbackHtml}` : '<div class="tl-sub" style="color:#B45309">Not yet submitted</div>'}
+        ${m ? `<div class="tl-sub">${status === 'complete' ? '✓ Complete' : 'Draft saved'} — ${m.title || ''} (by ${m.lastUpdatedByName || 'a guild member'})${fileLinks}</div>` : '<div class="tl-sub" style="color:#B45309">Not attempted</div>'}
       </div>
-    </li>`);
-  }
+    </li>`;
+  });
 
   document.getElementById('sProgressTimeline').innerHTML = `<ul class="timeline">${timeline.join('')}</ul>`;
 }
@@ -2942,8 +3013,8 @@ function populateWeekSelects() {
   const subWeekFilter = document.getElementById('subWeekFilter');
   for (let w = 1; w <= 12; w++) {
     questWeekFilter.innerHTML += `<option value="${w}">Week ${w}</option>`;
-    subWeekFilter.innerHTML += `<option value="${w}">Week ${w}</option>`;
   }
+  MILESTONE_WEEKS.forEach(w => subWeekFilter.innerHTML += `<option value="${w}">Week ${w}</option>`);
 }
 
 function updateWeekSelectors() {
@@ -3220,27 +3291,64 @@ async function deleteAnnouncement(id) {
 // ═══════════════════════════════════════════════════════════
 // PEER REVIEW
 // ═══════════════════════════════════════════════════════════
-async function createPeerReviewRound() {
+// Weeks students complete a Guild milestone (CW1/CW2 individual weeks 6 & 12 excluded).
+const MILESTONE_WEEKS = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11];
+
+// Guilds only ever review a guild sharing their own campus (Prototype/LunchPoint
+// showcases and tutor groups are organised by campus, so cross-campus review pairs
+// would review work from a group they never actually meet or present alongside).
+function campusAwareAssignments(guildEntries, week) {
+  const byCampus = {};
+  guildEntries.forEach(([gid, g]) => {
+    const c = g.campus || 'Unassigned';
+    (byCampus[c] = byCampus[c] || []).push([gid, g]);
+  });
+  const assignments = {};
+  Object.values(byCampus).forEach(list => {
+    if (list.length < 2) return; // no other guild on this campus to pair with
+    const rotOffset = (week - 1) % list.length;
+    list.forEach(([gid], i) => {
+      const reviewsIdx = (i + 1 + rotOffset) % list.length;
+      assignments[gid] = { reviewerGuildId: gid, targetGuildId: list[reviewsIdx][0], status: 'pending' };
+    });
+  });
+  return assignments;
+}
+
+async function createPeerReviewRound(weekOverride) {
   const guilds = Object.entries(appData.guilds);
   if (guilds.length < 2) { toast('Need at least 2 guilds to create a review round', 'err'); return; }
-  const week = appData.config.currentWeek || 1;
+  const week = weekOverride || appData.config.currentWeek || 1;
   const wk = 'week-' + week;
 
-  // Check if round already exists
-  if (appData.peerReviews && appData.peerReviews[wk]) {
+  if (!weekOverride && appData.peerReviews && appData.peerReviews[wk]) {
     if (!confirm(`A review round already exists for Week ${week}. Replace it?`)) return;
   }
 
-  // Rotate: guild[i] reviews guild[(i+1) % n]
-  const rotOffset = ((week - 1) % guilds.length);
-  const assignments = {};
-  guilds.forEach(([gid], i) => {
-    const reviewsIdx = (i + 1 + rotOffset) % guilds.length;
-    assignments[gid] = { reviewerGuildId: gid, targetGuildId: guilds[reviewsIdx][0], status: 'pending' };
-  });
-
+  const assignments = campusAwareAssignments(guilds, week);
+  if (!Object.keys(assignments).length) { toast('No campus has 2+ guilds yet — nothing to pair', 'err'); return; }
   await sRef('peerReviews/' + wk).set(assignments);
-  toast(`Review round created for Week ${week}!`, 'ok');
+  if (!weekOverride) toast(`Review round created for Week ${week} (paired within each campus)!`, 'ok');
+}
+
+// Auto-fills any milestone week that doesn't have a round yet, so the module leader
+// never has to remember to click "+ New Review Round" — every week's pairing exists
+// campus-aware and by itself as soon as there are guilds to pair. Safe to call on
+// every peerReviews snapshot: it's a no-op once every week is already populated.
+let _peerAutoGenBusy = false;
+async function ensurePeerReviewRoundsGenerated() {
+  if (!isLeader || _peerAutoGenBusy) return;
+  const guilds = Object.entries(appData.guilds || {});
+  if (guilds.length < 2) return;
+  const reviews = appData.peerReviews || {};
+  const missing = MILESTONE_WEEKS.filter(w => !reviews['week-' + w]);
+  if (!missing.length) return;
+  _peerAutoGenBusy = true;
+  try {
+    for (const w of missing) await createPeerReviewRound(w);
+  } finally {
+    _peerAutoGenBusy = false;
+  }
 }
 
 function renderPeerReview() {
@@ -3319,11 +3427,10 @@ function renderStudentPeerReview() {
   const tgName = targetGuild ? targetGuild.name : assignment.targetGuildId;
   if (guildInput) guildInput.value = tgName;
 
-  const tgMembers = targetGuild && targetGuild.members ? Object.values(targetGuild.members) : [];
-  const tgSubs = tgMembers.map(m => {
-    const sub = appData.submissions[m.id] && appData.submissions[m.id][wk];
-    return sub ? `<li style="font-size:11px;padding:4px 0;border-bottom:1px solid #f1f5f9"><strong>${m.name}</strong>: ${sub.title || 'Submitted'} ${sub.link ? `— <a href="${sub.link}" target="_blank" style="color:#0D7377">View</a>` : ''}</li>` : '';
-  }).filter(Boolean).join('');
+  const tgMilestone = targetGuild && targetGuild.milestones && targetGuild.milestones[wk];
+  const tgFiles = tgMilestone && tgMilestone.files
+    ? Object.values(tgMilestone.files).map(f => `<li style="font-size:11px;padding:4px 0;border-bottom:1px solid #f1f5f9">📎 <a href="${f.url}" target="_blank" style="color:#0D7377">${f.name}</a></li>`).join('')
+    : '';
 
   assignEl.innerHTML = `
     <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
@@ -3331,7 +3438,11 @@ function renderStudentPeerReview() {
       <div style="font-size:12px;color:#475569">Your guild is reviewing this guild's Week ${wk.split('-')[1]} artefact.</div>
       <span class="b ${assignment.status==='submitted'?'b-green':'b-amber'}" style="margin-left:auto">${assignment.status==='submitted'?'✓ Submitted':'Pending'}</span>
     </div>
-    ${tgSubs ? `<p style="font-size:11px;font-weight:700;color:#475569;margin-bottom:4px">Their submissions:</p><ul style="list-style:none">${tgSubs}</ul>` : '<p style="font-size:11px;color:#94a3b8">No submissions from this guild yet.</p>'}`;
+    ${tgMilestone ? `<p style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:4px">${tgMilestone.title || 'Untitled'}</p>
+      ${tgMilestone.description ? `<p style="font-size:11px;color:#475569;margin-bottom:6px">${tgMilestone.description}</p>` : ''}
+      ${tgFiles ? `<ul style="list-style:none">${tgFiles}</ul>` : ''}
+      ${tgMilestone.link ? `<a href="${tgMilestone.link}" target="_blank" style="font-size:11px;color:#0D7377">🔗 ${tgMilestone.link}</a>` : ''}`
+      : '<p style="font-size:11px;color:#94a3b8">No submission from this guild yet.</p>'}`;
 }
 
 async function submitPeerFeedback() {
@@ -3768,9 +3879,12 @@ const LEVELS = [
 ];
 
 // Count how many weeks this student has a submission record
+// A student's "submission count" is their Guild's shared milestone completion
+// count — one submission represents the whole Guild, so every member shares it.
 function countStudentSubmissions(studentId) {
-  const subs = appData.submissions[studentId] || {};
-  return Object.values(subs).filter(s => s && s.submittedAt).length;
+  const student = appData.students[studentId];
+  if (!student || !student.guildId) return 0;
+  return guildMilestoneCompletedCount(student.guildId);
 }
 
 // Count how many weeks the student's guild submitted a peer review
@@ -3785,12 +3899,13 @@ function countGuildPeerReviews(guildId) {
   return count;
 }
 
-// Consecutive submission streak from Week 1 (stops at first gap)
+// Consecutive Guild milestone streak from the first milestone week (stops at first gap)
 function getSubmissionStreak(studentId) {
-  const subs = appData.submissions[studentId] || {};
+  const student = appData.students[studentId];
+  if (!student || !student.guildId) return 0;
   let streak = 0;
-  for (let w = 1; w <= 12; w++) {
-    if (subs['week-' + w] && subs['week-' + w].submittedAt) streak++;
+  for (const w of MILESTONE_WEEKS) {
+    if (guildMilestoneStatus(student.guildId, w) === 'complete') streak++;
     else break;
   }
   return streak;
@@ -3799,12 +3914,14 @@ function getSubmissionStreak(studentId) {
 // Compute badges for a student — returns array of {id, icon, label, desc, bonus}
 function computeStudentBadges(studentId, submCount, prCount) {
   const badges = [];
-  if (submCount >= 1)  badges.push({ id:'first',  icon:'🚀', label:'First Launch',    desc:'Submitted your first artefact',           bonus:25  });
-  if (submCount >= 6)  badges.push({ id:'half',   icon:'⭐', label:'Halfway There',   desc:'Submitted artefacts for 6 weeks',         bonus:30  });
-  if (submCount >= 12) badges.push({ id:'master', icon:'🏅', label:'Quest Master',     desc:'Completed all 12 weekly quests',          bonus:100 });
+  const total = MILESTONE_WEEKS.length;
+  if (submCount >= 1)     badges.push({ id:'first',  icon:'🚀', label:'First Launch',    desc:"Your Guild submitted its first artefact",          bonus:25  });
+  if (submCount >= Math.ceil(total/2))
+                          badges.push({ id:'half',   icon:'⭐', label:'Halfway There',   desc:`Guild completed ${Math.ceil(total/2)}+ milestone weeks`, bonus:30  });
+  if (submCount >= total) badges.push({ id:'master', icon:'🏅', label:'Quest Master',     desc:`Completed all ${total} milestone weeks — certificate eligible`, bonus:100 });
   if (getSubmissionStreak(studentId) >= 3)
-                       badges.push({ id:'streak', icon:'🔥', label:'On a Roll',        desc:'3+ consecutive weekly submissions',       bonus:50  });
-  if (prCount >= 5)    badges.push({ id:'peer',   icon:'🤝', label:'Peer Champion',    desc:'Guild completed 5+ peer reviews',         bonus:50  });
+                          badges.push({ id:'streak', icon:'🔥', label:'On a Roll',        desc:'3+ consecutive milestone weeks',       bonus:50  });
+  if (prCount >= 5)       badges.push({ id:'peer',   icon:'🤝', label:'Peer Champion',    desc:'Guild completed 5+ peer reviews',         bonus:50  });
   return badges;
 }
 
@@ -4032,5 +4149,6 @@ function renderGamificationDashboard() {
 <script src="js/prototype.js"></script>
 <script src="js/deadlines.js"></script>
 <script src="js/progress.js"></script>
+<script src="js/certificate.js"></script>
 </body>
 </html>

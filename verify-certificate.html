@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verify Certificate — CMP701 Digital Transformation Studio</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f8fafc;
+    margin: 0;
+    padding: 24px 16px;
+    color: #1e293b;
+  }
+  .wrap { max-width: 520px; margin: 40px auto; }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    padding: 32px;
+    text-align: center;
+  }
+  .icon { font-size: 48px; margin-bottom: 8px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: #64748b; font-size: 13px; margin-bottom: 20px; }
+  .result-ok { border: 2px solid #15803D; }
+  .result-bad { border: 2px solid #B91C1C; }
+  .field { text-align: left; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+  .field b { color: #475569; display: inline-block; min-width: 130px; }
+  .badge-ok { color: #15803D; font-weight: 700; }
+  .badge-bad { color: #B91C1C; font-weight: 700; }
+  input[type=text] { width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 6px; font-size: 13px; margin-bottom: 10px; }
+  button { background: #1B3A6B; color: #fff; border: none; border-radius: 6px; padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  button:hover { background: #14294f; }
+  footer { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="card">
+    <div class="icon">🎓</div>
+    <h1>Certificate Verification</h1>
+    <div class="sub">CMP701 Digital Transformation Studio — Ulster University QAHE</div>
+    <div id="content">Loading…</div>
+  </div>
+  <footer>This page performs a read-only lookup against the issuing system. No login required.</footer>
+</div>
+
+<script>
+  // Plain REST read against the Realtime Database's public studio/__certificates
+  // node — no Firebase SDK needed for a read-only lookup, and no login involved.
+  const DB_BASE = 'https://cmp701markingtracker-default-rtdb.firebaseio.com';
+
+  function esc(s) {
+    return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
+  }
+
+  function getCertIdFromUrl() {
+    return new URLSearchParams(location.search).get('id');
+  }
+
+  async function verify(id) {
+    const card = document.getElementById('card');
+    const content = document.getElementById('content');
+    if (!id) {
+      content.innerHTML = `
+        <p style="font-size:13px;color:#475569;margin-bottom:14px">Enter the Certificate ID printed under the QR code.</p>
+        <input type="text" id="idInput" placeholder="e.g. CMP701-AB12CD34">
+        <br><button onclick="verify(document.getElementById('idInput').value.trim())">Verify</button>`;
+      return;
+    }
+    content.innerHTML = 'Checking…';
+    try {
+      const res = await fetch(`${DB_BASE}/studio/__certificates/${encodeURIComponent(id)}.json`);
+      const data = await res.json();
+      if (!data) {
+        card.classList.add('result-bad');
+        content.innerHTML = `
+          <p class="badge-bad">✕ Not found</p>
+          <p style="font-size:13px;color:#475569">This certificate ID could not be verified. Double-check it was copied correctly, or contact the module leader.</p>`;
+        return;
+      }
+      card.classList.add('result-ok');
+      const issued = data.issuedAt ? new Date(data.issuedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+      content.innerHTML = `
+        <p class="badge-ok">✓ Genuine certificate</p>
+        <div class="field"><b>Name</b> ${esc(data.studentName)}</div>
+        <div class="field"><b>Guild</b> ${esc(data.guildName)}</div>
+        <div class="field"><b>Campus</b> ${esc(data.campus)}</div>
+        <div class="field"><b>Module</b> ${esc(data.module)}</div>
+        <div class="field"><b>Cohort</b> ${esc(data.cohortName)}</div>
+        <div class="field"><b>Milestones</b> ${esc(data.milestonesCompleted)}/${esc(data.milestonesCompleted)} complete</div>
+        <div class="field"><b>Issued</b> ${issued}</div>
+        <div class="field" style="border-bottom:none"><b>Certificate ID</b> <span style="font-family:monospace">${esc(id)}</span></div>`;
+    } catch (e) {
+      content.innerHTML = `<p class="badge-bad">Could not reach the verification service — try again shortly.</p>`;
+    }
+  }
+
+  verify(getCertIdFromUrl());
+</script>
+</body>
+</html>

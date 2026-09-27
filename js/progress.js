@@ -61,6 +61,22 @@ function renderProgressDashboard() {
 
   const opts = (arr, current) => arr.map(v => `<option value="${v}" ${v===current?'selected':''}>${v}</option>`).join('');
 
+  const milestoneCell = (gid, w) => {
+    const status = guildMilestoneStatus(gid, w);
+    const cell = { 'complete': ['#15803D', '✓'], 'incomplete': ['#B45309', '●'], 'not-attempted': ['#cbd5e1', '—'] }[status];
+    return `<td class="C" title="Week ${w}: ${status.replace('-', ' ')}" style="color:${cell[0]};font-weight:700">${cell[1]}</td>`;
+  };
+  const milestoneRows = guilds.map(([gid, g]) => {
+    const count = guildMilestoneCompletedCount(gid);
+    const eligible = count >= MILESTONE_WEEKS.length;
+    return `<tr>
+      <td style="font-weight:700">${g.name}</td>
+      ${MILESTONE_WEEKS.map(w => milestoneCell(gid, w)).join('')}
+      <td class="C" style="font-weight:700">${count}/${MILESTONE_WEEKS.length}</td>
+      <td class="C">${eligible ? '<span class="b b-green">🎓 eligible</span>' : '<span class="b b-slate">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
   body.innerHTML = `
     <div class="frow" style="margin-bottom:10px">
       <select id="progCampusFilter" onchange="renderProgressDashboard()" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px">
@@ -69,6 +85,12 @@ function renderProgressDashboard() {
       <select id="progGroupFilter" onchange="renderProgressDashboard()" style="padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px">
         <option value="" ${!groupFilter?'selected':''}>All Seminar Groups</option>${opts(groups, groupFilter)}
       </select>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-hdr blue">Weekly Milestone Tracker <span style="font-weight:400;font-size:11px">— automatic, marked complete once a Guild uploads a file</span></div>
+      <div class="card-body" style="padding:0"><div class="tw"><table><thead><tr>
+        <th>Guild</th>${MILESTONE_WEEKS.map(w => `<th class="C">Wk ${w}</th>`).join('')}<th class="C">Total</th><th class="C">Certificate</th>
+      </tr></thead><tbody>${milestoneRows || `<tr><td colspan="${MILESTONE_WEEKS.length + 3}" style="text-align:center;color:#94a3b8;padding:16px">No Guilds match these filters</td></tr>`}</tbody></table></div></div>
     </div>
     <div class="tw"><table><thead><tr>
       <th>Guild</th><th>Campus / Group</th><th class="C">Company</th>
