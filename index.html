@@ -371,7 +371,7 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
 
 <!-- QUEST MANAGER -->
 <div class="pg" id="pg-quests">
-  <div class="alert alert-info" style="margin-bottom:12px">Draft a quest brief any time before its week — it publishes itself automatically the moment that week becomes current, no manual push needed. Publish/Unpublish here are still available for early release or last-minute edits.</div>
+  <div class="alert alert-info" style="margin-bottom:12px">Draft a quest any time before its week — once it has a title AND a brief, it publishes itself automatically the moment that week becomes current, no manual push needed. A title-only placeholder stays in Draft until you add the brief. Publish/Unpublish here are still available for early release or last-minute edits.</div>
   <div class="frow">
     <button class="btn btn-primary" onclick="openQuestModal()">+ New Quest Brief</button>
     <button class="btn btn-secondary" onclick="generateWeeklyQuest()">⚡ AI-Generate Quest</button>
@@ -475,7 +475,7 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
             <label>Business Chosen</label>
             <input type="text" id="aiBusinessName" placeholder="e.g. Netflix">
           </div>
-          <div class="form-group" style="margin-bottom:12px" id="aiWeekGroup" style="display:none">
+          <div class="form-group" id="aiWeekGroup" style="margin-bottom:12px">
             <label>Studio Week</label>
             <select id="aiWeekNum">
               <option value="1">Week 1</option><option value="2">Week 2</option><option value="3">Week 3</option>
@@ -1429,7 +1429,7 @@ async function preloadApiKey() {
 let userRole = 'leader'; // 'leader' | 'lecturer' | 'student'
 let isLeader = true;     // true for leader only
 let isLecturer = false;  // true for lecturer (operational, no admin)
-let appData = { guilds:{}, students:{}, quests:{}, submissions:{}, config:{}, announcements:{}, peerReviews:{} };
+let appData = { guilds:{}, students:{}, quests:{}, config:{}, announcements:{}, peerReviews:{} };
 let currentStudent = null;
 let csvImportBuffer = [];
 
@@ -1512,7 +1512,6 @@ function subscribeToCohort(cohortId) {
     appData.guilds      = raw.guilds      || {};
     appData.students    = raw.students    || {};
     appData.quests      = raw.quests      || {};
-    appData.submissions = raw.submissions || {};
     appData.config      = raw.config      || {};
     checkLeaderCodeGate();
 
@@ -2085,7 +2084,10 @@ async function ensureQuestsAutoPublished() {
   for (let w = 1; w <= cw; w++) {
     const wk = 'week-' + w;
     const q = appData.quests[wk];
-    if (q && q.title && q.title.trim() && q.status !== 'published' && !q.autoPublished) toPublish.push(wk);
+    // Require a real brief, not just a title — otherwise a quest a leader
+    // is still drafting (title typed, brief not yet written) could go live
+    // to students with nothing in it the moment its week starts.
+    if (q && q.title && q.title.trim() && q.brief && q.brief.trim() && q.status !== 'published' && !q.autoPublished) toPublish.push(wk);
   }
   if (!toPublish.length) return;
   _questAutoPublishBusy = true;
@@ -4455,13 +4457,13 @@ function renderGamificationDashboard() {
      reach real users' browsers for up to 4 hours even after index.html
      itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
      that touches any of these files. -->
-<script>const SCRIPT_V = '20260930f';</script>
-<script src="js/company.js?v=20260930f"></script>
-<script src="js/individual-workspace.js?v=20260930f"></script>
-<script src="js/studio-tools.js?v=20260930f"></script>
-<script src="js/prototype.js?v=20260930f"></script>
-<script src="js/deadlines.js?v=20260930f"></script>
-<script src="js/progress.js?v=20260930f"></script>
-<script src="js/certificate.js?v=20260930f"></script>
+<script>const SCRIPT_V = '20260930g';</script>
+<script src="js/company.js?v=20260930g"></script>
+<script src="js/individual-workspace.js?v=20260930g"></script>
+<script src="js/studio-tools.js?v=20260930g"></script>
+<script src="js/prototype.js?v=20260930g"></script>
+<script src="js/deadlines.js?v=20260930g"></script>
+<script src="js/progress.js?v=20260930g"></script>
+<script src="js/certificate.js?v=20260930g"></script>
 </body>
 </html>
