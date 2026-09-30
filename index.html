@@ -4350,13 +4350,20 @@ function renderGamificationDashboard() {
 </script>
 
 <!-- Framework-alignment modules: company/guild rules, individual workspace,
-     Section 5 artefact tools, prototype builder + LunchPoint, deadline editor -->
-<script src="js/company.js"></script>
-<script src="js/individual-workspace.js"></script>
-<script src="js/studio-tools.js"></script>
-<script src="js/prototype.js"></script>
-<script src="js/deadlines.js"></script>
-<script src="js/progress.js"></script>
-<script src="js/certificate.js"></script>
+     Section 5 artefact tools, prototype builder + LunchPoint, deadline editor.
+     The ?v= query on each is a cache-buster: the custom domain sits behind
+     Cloudflare, which caches these JS files for 4 hours (Cache-Control:
+     max-age=14400) — without a version bump, a deploy can silently not
+     reach real users' browsers for up to 4 hours even after index.html
+     itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
+     that touches any of these files. -->
+<script>const SCRIPT_V = '20260930b';</script>
+<script src="js/company.js?v=20260930b"></script>
+<script src="js/individual-workspace.js?v=20260930b"></script>
+<script src="js/studio-tools.js?v=20260930b"></script>
+<script src="js/prototype.js?v=20260930b"></script>
+<script src="js/deadlines.js?v=20260930b"></script>
+<script src="js/progress.js?v=20260930b"></script>
+<script src="js/certificate.js?v=20260930b"></script>
 </body>
 </html>
