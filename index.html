@@ -4260,12 +4260,17 @@ function getLevelProgress(xp) {
 }
 
 // Compute total XP for a guild (sum of all members)
+// A Guild's XP is ONE shared value, not a sum across its members — every
+// member's computeStudentXP() already resolves to the same number (it's
+// entirely derived from the Guild's own milestone/peer-review/streak data),
+// so summing it per member previously multiplied a Guild's leaderboard score
+// by its own headcount. Reading any one member's value is equivalent and
+// correct; a Guild with no members yet has no XP.
 function computeGuildXP(guildId) {
-  let total = 0;
-  Object.entries(appData.students || {}).forEach(([sid, s]) => {
-    if (s.guildId === guildId) total += computeStudentXP(sid);
-  });
-  return total;
+  const guild = appData.guilds[guildId];
+  if (!guild || !guild.members) return 0;
+  const anyMember = Object.keys(guild.members)[0];
+  return anyMember ? computeStudentXP(anyMember) : 0;
 }
 
 // Get sorted guild leaderboard [{guildId, guild, xp, rank}]
@@ -4406,24 +4411,31 @@ function renderGamificationDashboard() {
     return;
   }
 
-  // Aggregate stats — students are never individually ranked here: CW1/CW2 are
-  // graded per student but Studio participation is graded and shown per Guild.
+  // Aggregate stats — summed per Guild, not per student: students are never
+  // individually ranked here (CW1/CW2 are graded per student, but Studio
+  // participation is graded and shown per Guild), and every member of a
+  // Guild shares the same XP/badge set, so counting per student would
+  // multiply each Guild's real total by its own headcount.
+  const guildIds = Object.keys(appData.guilds || {});
   let totalXP = 0, totalBadges = 0;
-  Object.entries(appData.students || {}).forEach(([sid, s]) => {
-    totalXP += computeStudentXP(sid);
-    const submCount = countStudentSubmissions(sid);
-    const prCount   = countGuildPeerReviews(s.guildId);
-    totalBadges += computeStudentBadges(sid, submCount, prCount).length;
+  guildIds.forEach(gid => {
+    const guild = appData.guilds[gid];
+    const anyMember = guild.members ? Object.keys(guild.members)[0] : null;
+    if (!anyMember) return;
+    totalXP += computeStudentXP(anyMember);
+    const onTimeCount = countOnTimeSubmissions(anyMember);
+    const prCount = countGuildPeerReviews(gid);
+    totalBadges += computeStudentBadges(anyMember, onTimeCount, prCount).length;
   });
 
   const topGuild    = lb[0];
-  const avgXP       = totalStudents ? Math.round(totalXP / totalStudents) : 0;
+  const avgXP       = guildIds.length ? Math.round(totalXP / guildIds.length) : 0;
 
   // KPI strip
   const kpis = `
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
       <div class="kpi pu" style="flex:1 1 110px"><div class="v">${totalXP}</div><div class="l">Total XP Earned</div></div>
-      <div class="kpi bl" style="flex:1 1 110px"><div class="v">${avgXP}</div><div class="l">Avg XP / Student</div></div>
+      <div class="kpi bl" style="flex:1 1 110px"><div class="v">${avgXP}</div><div class="l">Avg XP / Guild</div></div>
       <div class="kpi gr" style="flex:1 1 110px"><div class="v">${totalBadges}</div><div class="l">Badges Awarded</div></div>
       <div class="kpi am" style="flex:1 1 110px"><div class="v">${topGuild ? topGuild.guild.name : '—'}</div><div class="l">Top Guild</div></div>
     </div>`;
@@ -4457,13 +4469,13 @@ function renderGamificationDashboard() {
      reach real users' browsers for up to 4 hours even after index.html
      itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
      that touches any of these files. -->
-<script>const SCRIPT_V = '20260930g';</script>
-<script src="js/company.js?v=20260930g"></script>
-<script src="js/individual-workspace.js?v=20260930g"></script>
-<script src="js/studio-tools.js?v=20260930g"></script>
-<script src="js/prototype.js?v=20260930g"></script>
-<script src="js/deadlines.js?v=20260930g"></script>
-<script src="js/progress.js?v=20260930g"></script>
-<script src="js/certificate.js?v=20260930g"></script>
+<script>const SCRIPT_V = '20260930h';</script>
+<script src="js/company.js?v=20260930h"></script>
+<script src="js/individual-workspace.js?v=20260930h"></script>
+<script src="js/studio-tools.js?v=20260930h"></script>
+<script src="js/prototype.js?v=20260930h"></script>
+<script src="js/deadlines.js?v=20260930h"></script>
+<script src="js/progress.js?v=20260930h"></script>
+<script src="js/certificate.js?v=20260930h"></script>
 </body>
 </html>
