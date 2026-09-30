@@ -4169,13 +4169,18 @@ function countOnTimeSubmissions(studentId) {
 }
 
 // Count how many weeks the student's guild submitted a peer review
+// Counts weeks the Guild actually SUBMITTED peer review feedback — not just
+// weeks it was assigned one. Assignments now auto-generate for every
+// milestone week regardless of participation (see ensurePeerReviewRoundsGenerated),
+// so counting mere existence would award "Peer Champion" and its XP to every
+// Guild automatically without them ever giving feedback.
 function countGuildPeerReviews(guildId) {
   if (!guildId) return 0;
   const guild = appData.guilds[guildId];
   if (!guild) return 0;
   let count = 0;
   Object.values(appData.peerReviews || {}).forEach(weekPRs => {
-    if (weekPRs && weekPRs[guildId]) count++;
+    if (weekPRs && weekPRs[guildId] && weekPRs[guildId].status === 'submitted') count++;
   });
   return count;
 }
@@ -4448,13 +4453,13 @@ function renderGamificationDashboard() {
      reach real users' browsers for up to 4 hours even after index.html
      itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
      that touches any of these files. -->
-<script>const SCRIPT_V = '20260930d';</script>
-<script src="js/company.js?v=20260930d"></script>
-<script src="js/individual-workspace.js?v=20260930d"></script>
-<script src="js/studio-tools.js?v=20260930d"></script>
-<script src="js/prototype.js?v=20260930d"></script>
-<script src="js/deadlines.js?v=20260930d"></script>
-<script src="js/progress.js?v=20260930d"></script>
-<script src="js/certificate.js?v=20260930d"></script>
+<script>const SCRIPT_V = '20260930e';</script>
+<script src="js/company.js?v=20260930e"></script>
+<script src="js/individual-workspace.js?v=20260930e"></script>
+<script src="js/studio-tools.js?v=20260930e"></script>
+<script src="js/prototype.js?v=20260930e"></script>
+<script src="js/deadlines.js?v=20260930e"></script>
+<script src="js/progress.js?v=20260930e"></script>
+<script src="js/certificate.js?v=20260930e"></script>
 </body>
 </html>
