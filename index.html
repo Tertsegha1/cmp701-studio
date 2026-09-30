@@ -2919,11 +2919,22 @@ async function submitArtefact() {
   }
 
   const nowComplete = uploadedFiles.length > 0 || hasExistingFiles;
-  document.getElementById('submitAlert').innerHTML =
-    `<div class="alert alert-success">✓ Saved for Week ${weekNum} on behalf of your Guild.${nowComplete ? ' Automatically marked complete.' : ' Add a file to mark this week complete.'}</div>`;
+  const savedAt = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const guildName = appData.guilds[gid].name;
+  const fileConfirmList = uploadedFiles.length
+    ? `<ul style="margin:8px 0 0;padding-left:20px;font-size:11px;color:#166534">${uploadedFiles.map(f => `<li>✅ ${f.name} (${formatFileSize(f.size)}) uploaded successfully</li>`).join('')}</ul>`
+    : '';
+  document.getElementById('submitAlert').innerHTML = `
+    <div class="alert alert-success" style="border:2px solid #15803D;font-size:13px;padding:14px">
+      <div style="font-size:15px;font-weight:800">${nowComplete ? '✓ Submitted — Week ' + weekNum + ' is now COMPLETE' : '✓ Draft saved for Week ' + weekNum}</div>
+      <div style="margin-top:2px">On behalf of <strong>${guildName}</strong>.${nowComplete ? '' : ' Add a file to mark this week complete.'}</div>
+      ${fileConfirmList}
+      <div style="font-size:10px;color:#64748b;margin-top:8px">Saved ${savedAt} by ${studentName}</div>
+    </div>`;
+  document.getElementById('submitAlert').scrollIntoView({ behavior: 'smooth', block: 'center' });
   _artefactPendingFiles = [];
   if (btn) { btn.disabled = false; btn.textContent = 'Save Guild Submission'; }
-  toast('Saved!', 'ok');
+  toast(nowComplete ? `✓ Week ${weekNum} marked complete!` : 'Draft saved', 'ok');
   loadGuildMilestoneForm();
   renderStudentProgress();
   renderStudentXP();
