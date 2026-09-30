@@ -3078,12 +3078,16 @@ function guildMilestoneOnTimeCompletedCount(gid) {
   }).length;
 }
 
-// Weeks that are due (current week or earlier) but still not complete for a
-// Guild — what students get flagged about. Never used to block anything.
+// Weeks whose OWN deadline has actually passed but are still not complete
+// for a Guild — what students get flagged about. The current week isn't
+// "missed" just for being current; it's only missed once its own Sunday
+// deadline (or an extension) has gone by. Never used to block anything.
 function missedMilestoneWeeks(gid) {
-  const cw = parseInt(appData.config.currentWeek || computeCurrentWeek()) || 0;
-  if (!cw) return [];
-  return MILESTONE_WEEKS.filter(w => w <= cw && guildMilestoneStatus(gid, w) !== 'complete');
+  return MILESTONE_WEEKS.filter(w => {
+    if (guildMilestoneStatus(gid, w) === 'complete') return false;
+    const deadline = questDeadlineForWeek(w);
+    return deadline && deadline.getTime() < Date.now();
+  });
 }
 
 async function submitArtefact() {
@@ -3180,12 +3184,12 @@ function renderStudentProgress() {
   document.getElementById('spk-pct').textContent = pct + '%';
   document.getElementById('spk-pending').textContent = Math.max(0, MILESTONE_WEEKS.length - completed);
 
-  const cw = parseInt(appData.config.currentWeek || computeCurrentWeek()) || 0;
   const timeline = MILESTONE_WEEKS.map(w => {
     const wk = 'week-' + w;
     const m = gid && appData.guilds[gid].milestones && appData.guilds[gid].milestones[wk];
     const status = gid ? guildMilestoneStatus(gid, w) : 'not-attempted';
-    const isPastDue = w <= cw;
+    const wDeadline = questDeadlineForWeek(w);
+    const isPastDue = !!wDeadline && wDeadline.getTime() < Date.now();
     const quest = appData.quests[wk];
     const fileLinks = (m && m.files ? Object.values(m.files) : []).map(f =>
       `<a href="${f.url}" target="_blank" style="font-size:10px;color:#1D4ED8;text-decoration:none;margin-left:6px">📎 ${f.name}</a>`).join('');
@@ -4444,13 +4448,13 @@ function renderGamificationDashboard() {
      reach real users' browsers for up to 4 hours even after index.html
      itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
      that touches any of these files. -->
-<script>const SCRIPT_V = '20260930c';</script>
-<script src="js/company.js?v=20260930c"></script>
-<script src="js/individual-workspace.js?v=20260930c"></script>
-<script src="js/studio-tools.js?v=20260930c"></script>
-<script src="js/prototype.js?v=20260930c"></script>
-<script src="js/deadlines.js?v=20260930c"></script>
-<script src="js/progress.js?v=20260930c"></script>
-<script src="js/certificate.js?v=20260930c"></script>
+<script>const SCRIPT_V = '20260930d';</script>
+<script src="js/company.js?v=20260930d"></script>
+<script src="js/individual-workspace.js?v=20260930d"></script>
+<script src="js/studio-tools.js?v=20260930d"></script>
+<script src="js/prototype.js?v=20260930d"></script>
+<script src="js/deadlines.js?v=20260930d"></script>
+<script src="js/progress.js?v=20260930d"></script>
+<script src="js/certificate.js?v=20260930d"></script>
 </body>
 </html>

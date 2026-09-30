@@ -63,9 +63,13 @@ function renderProgressDashboard() {
 
   const milestoneCell = (gid, w) => {
     const status = guildMilestoneStatus(gid, w);
-    const cell = { 'complete': ['#15803D', '✓'], 'incomplete': ['#B45309', '●'], 'not-attempted': ['#cbd5e1', '—'] }[status];
+    const wDeadline = questDeadlineForWeek(w);
+    const missed = status !== 'complete' && !!wDeadline && wDeadline.getTime() < Date.now();
+    const key = missed ? 'missed' : status;
+    const cell = { 'complete': ['#15803D', '✓'], 'incomplete': ['#B45309', '●'], 'missed': ['#B91C1C', '⚠'], 'not-attempted': ['#cbd5e1', '—'] }[key];
     const clickable = status !== 'not-attempted';
-    return `<td class="C" title="Week ${w}: ${status.replace('-', ' ')}${clickable ? ' — click to view' : ''}" style="color:${cell[0]};font-weight:700${clickable ? ';cursor:pointer' : ''}" ${clickable ? `onclick="viewSubmission('${gid}','week-${w}')"` : ''}>${cell[1]}</td>`;
+    const label = missed ? 'missed deadline — not yet done' : status.replace('-', ' ');
+    return `<td class="C" title="Week ${w}: ${label}${clickable ? ' — click to view' : ''}" style="color:${cell[0]};font-weight:700${clickable ? ';cursor:pointer' : ''}" ${clickable ? `onclick="viewSubmission('${gid}','week-${w}')"` : ''}>${cell[1]}</td>`;
   };
   const milestoneRows = guilds.map(([gid, g]) => {
     const count = guildMilestoneCompletedCount(gid);
