@@ -296,8 +296,8 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
     <div class="kpi"><div class="v" id="kpi-guilds">—</div><div class="l">Guilds</div></div>
     <div class="kpi bl"><div class="v" id="kpi-students">—</div><div class="l">Students</div></div>
     <div class="kpi tl"><div class="v" id="kpi-week">—</div><div class="l">Current Week</div></div>
-    <div class="kpi gr"><div class="v" id="kpi-subs">—</div><div class="l">Submissions This Week</div></div>
-    <div class="kpi am"><div class="v" id="kpi-pending">—</div><div class="l">Pending Artefacts</div></div>
+    <div class="kpi gr"><div class="v" id="kpi-subs">—</div><div class="l">Guilds Submitted This Week</div></div>
+    <div class="kpi am"><div class="v" id="kpi-pending">—</div><div class="l">Guilds Pending</div></div>
     <div class="kpi pu"><div class="v" id="kpi-quests">—</div><div class="l">Quests Published</div></div>
   </div>
 
@@ -1720,7 +1720,6 @@ function updateDashboard() {
   const gCount = Object.keys(appData.guilds).length;
   const sCount = Object.keys(appData.students).length;
   const currentWeek = appData.config.currentWeek || computeCurrentWeek();
-  const allSubs = appData.submissions;
 
   const warnEl = document.getElementById('dashSetupWarning');
   if (warnEl) {
@@ -1739,11 +1738,14 @@ function updateDashboard() {
       : '';
   }
 
-  // Count submissions this week
+  // Count Guild submissions this week — submissions are Guild-scoped (one
+  // per Guild, not per student), and only milestone weeks (1-5,7-11) ever
+  // have a quest deadline; weeks 6/12 are individual CW1/CW2 via Blackboard.
+  const isMilestoneWeek = typeof MILESTONE_WEEKS !== 'undefined' && MILESTONE_WEEKS.includes(+currentWeek);
   let weekSubs = 0, pendingCount = 0;
-  Object.keys(appData.students).forEach(sid => {
-    const hasSub = allSubs[sid] && allSubs[sid]['week-' + currentWeek];
-    if (hasSub) weekSubs++; else pendingCount++;
+  Object.keys(appData.guilds).forEach(gid => {
+    if (isMilestoneWeek && guildMilestoneStatus(gid, currentWeek) === 'complete') weekSubs++;
+    else pendingCount++;
   });
 
   const publishedQuests = Object.values(appData.quests).filter(q => q.status === 'published').length;
@@ -1751,39 +1753,37 @@ function updateDashboard() {
   document.getElementById('kpi-guilds').textContent = gCount;
   document.getElementById('kpi-students').textContent = sCount;
   document.getElementById('kpi-week').textContent = currentWeek;
-  document.getElementById('kpi-subs').textContent = weekSubs;
-  document.getElementById('kpi-pending').textContent = pendingCount;
+  document.getElementById('kpi-subs').textContent = isMilestoneWeek ? weekSubs : '—';
+  document.getElementById('kpi-pending').textContent = isMilestoneWeek ? pendingCount : '—';
   document.getElementById('kpi-quests').textContent = publishedQuests;
 
   // Weekly submission progress bar
-  const pct = sCount > 0 ? Math.round(weekSubs / sCount * 100) : 0;
-  document.getElementById('dashSubmissionProgress').innerHTML = `
-    <p style="font-size:12px;color:#475569;margin-bottom:8px">Week ${currentWeek}: ${weekSubs} of ${sCount} students submitted</p>
+  const pct = gCount > 0 ? Math.round(weekSubs / gCount * 100) : 0;
+  document.getElementById('dashSubmissionProgress').innerHTML = !isMilestoneWeek
+    ? `<p style="font-size:12px;color:#94a3b8">Week ${currentWeek} is an individual CW1/CW2 week — no Guild milestone is due.</p>`
+    : `<p style="font-size:12px;color:#475569;margin-bottom:8px">Week ${currentWeek}: ${weekSubs} of ${gCount} Guilds submitted</p>
     <div class="pbar-wrap"><div class="pbar-fill" style="width:${pct}%;background:${pct>=80?'#15803D':pct>=50?'#B45309':'#B91C1C'}"></div></div>
     <p style="font-size:11px;color:#94a3b8;margin-top:6px">${pct}% completion</p>
   `;
 
-  // Guild status
+  // Guild status — a Guild's weekly milestone is all-or-nothing (one shared
+  // submission), so each bar is either full or empty, not a member fraction.
   const gRows = Object.entries(appData.guilds).map(([gid, g]) => {
-    const members = g.members ? Object.values(g.members) : [];
-    const submitted = members.filter(m => allSubs[m.id] && allSubs[m.id]['week-' + currentWeek]).length;
-    const total = members.length;
-    const p = total > 0 ? Math.round(submitted / total * 100) : 0;
+    const complete = isMilestoneWeek && guildMilestoneStatus(gid, currentWeek) === 'complete';
+    const p = complete ? 100 : 0;
     return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <span style="font-size:11px;font-weight:700;min-width:110px;color:#1B3A6B">${g.name}</span>
-      <div class="pbar-wrap" style="flex:1"><div class="pbar-fill" style="width:${p}%;background:${p>=80?'#15803D':p>=50?'#B45309':'#B91C1C'}"></div></div>
-      <span style="font-size:11px;color:#475569;min-width:55px">${submitted}/${total}</span>
+      <div class="pbar-wrap" style="flex:1"><div class="pbar-fill" style="width:${p}%;background:${complete?'#15803D':'#cbd5e1'}"></div></div>
+      <span style="font-size:11px;color:#475569;min-width:70px">${isMilestoneWeek ? (complete ? 'Submitted' : 'Pending') : 'N/A'}</span>
     </div>`;
   }).join('');
   document.getElementById('dashGuildStatus').innerHTML = gRows || '<p style="color:#94a3b8;font-size:12px">No guilds yet</p>';
 
-  // Recent activity
+  // Recent activity — pulled from Guild milestone records across all weeks
   const activities = [];
-  Object.entries(appData.submissions).forEach(([sid, weeks]) => {
-    const student = appData.students[sid];
-    const sName = student ? student.name : sid;
-    Object.entries(weeks).forEach(([wk, sub]) => {
-      if (sub.submittedAt) activities.push({ name: sName, week: wk, time: sub.submittedAt, title: sub.title || 'Artefact' });
+  Object.entries(appData.guilds).forEach(([gid, g]) => {
+    Object.entries(g.milestones || {}).forEach(([wk, m]) => {
+      if (m.lastUpdatedAt) activities.push({ name: g.name, week: wk, time: m.lastUpdatedAt, title: m.title || 'Artefact', by: m.lastUpdatedByName || '' });
     });
   });
   activities.sort((a, b) => b.time - a.time);
@@ -1791,7 +1791,7 @@ function updateDashboard() {
     <div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #f1f5f9;align-items:center">
       <span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap">${a.week.replace('week-', 'Wk ')}</span>
       <span style="font-size:12px;font-weight:700;color:#1B3A6B">${a.name}</span>
-      <span style="font-size:11px;color:#475569;flex:1">${a.title}</span>
+      <span style="font-size:11px;color:#475569;flex:1">${a.title}${a.by ? ' — ' + a.by : ''}</span>
       <span style="font-size:10px;color:#94a3b8">${new Date(a.time).toLocaleDateString()}</span>
     </div>`).join('');
   document.getElementById('dashActivity').innerHTML = recentHTML || '<p style="color:#94a3b8;font-size:12px">No recent activity</p>';
@@ -1817,7 +1817,9 @@ function renderGuilds() {
       const role = g.currentRoles && g.currentRoles[m.id] ? g.currentRoles[m.id] : ROLES[i % ROLES.length];
       const initials = m.name.split(' ').map(p => p[0]).join('').substring(0,2).toUpperCase();
       const currentWeek = appData.config.currentWeek || 1;
-      const hasSub = appData.submissions[m.id] && appData.submissions[m.id]['week-' + currentWeek];
+      // Submission is shared by the whole Guild now, not per student — every
+      // member shows the same status for the current week.
+      const hasSub = guildMilestoneStatus(gid, currentWeek) === 'complete';
       return `<li>
         <div class="member-avatar">${initials}</div>
         <span style="flex:1">${m.name}</span>
@@ -2290,10 +2292,10 @@ function editStudent(sid) {
 }
 
 function exportStudentsCSV() {
-  const rows = [['Name', 'Campus', 'Guild', 'Business', 'Weeks Submitted']];
+  const rows = [['Name', 'Campus', 'Guild', 'Business', 'Guild Weeks Completed']];
   Object.entries(appData.students).forEach(([sid, s]) => {
     const guild = s.guildId && appData.guilds[s.guildId] ? appData.guilds[s.guildId].name : '';
-    const subs = appData.submissions[sid] ? Object.keys(appData.submissions[sid]).length : 0;
+    const subs = countStudentSubmissions(sid);
     rows.push([s.name, s.campus || '', guild, s.business || '', subs]);
   });
   downloadCSV(rows, 'cmp701-students.csv');
@@ -4453,13 +4455,13 @@ function renderGamificationDashboard() {
      reach real users' browsers for up to 4 hours even after index.html
      itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
      that touches any of these files. -->
-<script>const SCRIPT_V = '20260930e';</script>
-<script src="js/company.js?v=20260930e"></script>
-<script src="js/individual-workspace.js?v=20260930e"></script>
-<script src="js/studio-tools.js?v=20260930e"></script>
-<script src="js/prototype.js?v=20260930e"></script>
-<script src="js/deadlines.js?v=20260930e"></script>
-<script src="js/progress.js?v=20260930e"></script>
-<script src="js/certificate.js?v=20260930e"></script>
+<script>const SCRIPT_V = '20260930f';</script>
+<script src="js/company.js?v=20260930f"></script>
+<script src="js/individual-workspace.js?v=20260930f"></script>
+<script src="js/studio-tools.js?v=20260930f"></script>
+<script src="js/prototype.js?v=20260930f"></script>
+<script src="js/deadlines.js?v=20260930f"></script>
+<script src="js/progress.js?v=20260930f"></script>
+<script src="js/certificate.js?v=20260930f"></script>
 </body>
 </html>
