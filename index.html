@@ -370,6 +370,7 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
 
 <!-- QUEST MANAGER -->
 <div class="pg" id="pg-quests">
+  <div class="alert alert-info" style="margin-bottom:12px">Draft a quest brief any time before its week — it publishes itself automatically the moment that week becomes current, no manual push needed. Publish/Unpublish here are still available for early release or last-minute edits.</div>
   <div class="frow">
     <button class="btn btn-primary" onclick="openQuestModal()">+ New Quest Brief</button>
     <button class="btn btn-secondary" onclick="generateWeeklyQuest()">⚡ AI-Generate Quest</button>
@@ -1486,6 +1487,7 @@ function subscribeToCohort(cohortId) {
     document.getElementById('liveBadge').className   = 'live-badge ok';
     refreshAll();
     ensurePeerReviewRoundsGenerated(); // guild rosters changed — re-check for newly pairable campuses
+    ensureQuestsAutoPublished(); // current week (or quest content) changed — publish anything now due
   };
   db.ref(COHORT_PATH).on('value', _mainUnsub, () => {
     document.getElementById('liveBadge').textContent = '● Offline';
@@ -1917,7 +1919,9 @@ function renderQuests() {
     const weekNum = wk.split('-')[1];
     const delivs = (q.deliverables || '').split('\n').filter(Boolean);
     const statusClass = q.status === 'published' ? 'published' : 'draft';
-    const statusBadge = q.status === 'published' ? '<span class="b b-green">Published</span>' : '<span class="b b-amber">Draft</span>';
+    const statusBadge = q.status === 'published'
+      ? `<span class="b b-green">Published${q.autoPublished ? ' · Auto' : ''}</span>`
+      : '<span class="b b-amber">Draft</span>';
 
     return `<div class="quest-card ${statusClass}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
@@ -1966,14 +1970,44 @@ async function saveQuest() {
   if (!title) { toast('Quest title is required', 'err'); return; }
 
   const wk = 'week-' + weekNum;
-  await sRef('quests/' + wk).set({ title, brief, deliverables, status, updatedAt: Date.now() });
+  // update(), not set() — preserves autoPublished/autoPublishedAt metadata
+  // across edits so a re-saved quest doesn't look "never auto-published".
+  await sRef('quests/' + wk).update({ title, brief, deliverables, status, updatedAt: Date.now() });
   closeModal('questModal');
   toast('Quest saved!', 'ok');
 }
 
 async function publishQuest(wk) {
-  await sRef('quests/' + wk + '/status').set('published');
+  await sRef('quests/' + wk).update({ status: 'published' });
   toast('Quest published!', 'ok');
+}
+
+// Auto-publishes any quest, up to and including the current week, that has
+// real content (a title) and hasn't been published yet — so a quest drafted
+// in advance goes live on its own once that week starts, no manual click
+// needed. Guarded by `autoPublished` so it never fights a leader who
+// deliberately unpublishes an already-auto-published quest to edit it live:
+// once the automation has published a given week once, it leaves it alone.
+let _questAutoPublishBusy = false;
+async function ensureQuestsAutoPublished() {
+  if (!isLeader || _questAutoPublishBusy) return;
+  const cw = parseInt(appData.config.currentWeek || computeCurrentWeek());
+  if (!cw || isNaN(cw)) return;
+  const toPublish = [];
+  for (let w = 1; w <= cw; w++) {
+    const wk = 'week-' + w;
+    const q = appData.quests[wk];
+    if (q && q.title && q.title.trim() && q.status !== 'published' && !q.autoPublished) toPublish.push(wk);
+  }
+  if (!toPublish.length) return;
+  _questAutoPublishBusy = true;
+  try {
+    for (const wk of toPublish) {
+      await sRef('quests/' + wk).update({ status: 'published', autoPublished: true, autoPublishedAt: Date.now() });
+    }
+  } finally {
+    _questAutoPublishBusy = false;
+  }
 }
 
 async function unpublishQuest(wk) {
