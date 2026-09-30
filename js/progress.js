@@ -47,7 +47,7 @@ function renderProgressDashboard() {
     const protoBadge = proto === 'approved' ? '<span class="b b-green">approved</span>' : proto === 'requested' ? '<span class="b b-amber">awaiting</span>' : '<span class="b b-slate">not started</span>';
     const frozen = g.prototype && g.prototype.frozenVersionId ? '<span class="b b-green">🔒 frozen</span>' : '<span class="b b-slate">—</span>';
     const companyBadge = !g.company ? '<span class="b b-slate">not set</span>' : g.company.status === 'approved' ? '<span class="b b-green">approved</span>' : '<span class="b b-amber">pending</span>';
-    return `<tr${gap ? ' style="background:#fef2f2"' : ''}>
+    return `<tr style="cursor:pointer;${gap ? 'background:#fef2f2' : ''}" onclick="goToStudioToolsForGuild('${gid}')" title="Open ${g.name}'s Studio Tools">
       <td style="font-weight:700">${g.name}</td>
       <td style="font-size:11px">${g.campus || '—'}${g.seminarGroup ? ' Group ' + g.seminarGroup : ''}</td>
       <td class="C">${companyBadge}</td>
@@ -64,13 +64,14 @@ function renderProgressDashboard() {
   const milestoneCell = (gid, w) => {
     const status = guildMilestoneStatus(gid, w);
     const cell = { 'complete': ['#15803D', '✓'], 'incomplete': ['#B45309', '●'], 'not-attempted': ['#cbd5e1', '—'] }[status];
-    return `<td class="C" title="Week ${w}: ${status.replace('-', ' ')}" style="color:${cell[0]};font-weight:700">${cell[1]}</td>`;
+    const clickable = status !== 'not-attempted';
+    return `<td class="C" title="Week ${w}: ${status.replace('-', ' ')}${clickable ? ' — click to view' : ''}" style="color:${cell[0]};font-weight:700${clickable ? ';cursor:pointer' : ''}" ${clickable ? `onclick="viewSubmission('${gid}','week-${w}')"` : ''}>${cell[1]}</td>`;
   };
   const milestoneRows = guilds.map(([gid, g]) => {
     const count = guildMilestoneCompletedCount(gid);
     const eligible = count >= MILESTONE_WEEKS.length;
     return `<tr>
-      <td style="font-weight:700">${g.name}</td>
+      <td style="font-weight:700;cursor:pointer" onclick="goToStudioToolsForGuild('${gid}')" title="Open ${g.name}'s Studio Tools">${g.name}</td>
       ${MILESTONE_WEEKS.map(w => milestoneCell(gid, w)).join('')}
       <td class="C" style="font-weight:700">${count}/${MILESTONE_WEEKS.length}</td>
       <td class="C">${eligible ? '<span class="b b-green">🎓 eligible</span>' : '<span class="b b-slate">—</span>'}</td>

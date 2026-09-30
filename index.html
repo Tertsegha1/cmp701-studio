@@ -1162,6 +1162,24 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
   </div>
 </div>
 
+<!-- Individual company declaration detail (view-only) -->
+<div class="modal-overlay" id="studentCompanyModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('studentCompanyModal')">✕</button>
+    <h3 id="studentCompanyModalTitle"></h3>
+    <div id="studentCompanyModalBody"></div>
+  </div>
+</div>
+
+<!-- Peer review full feedback (view-only) -->
+<div class="modal-overlay" id="peerReviewFeedbackModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('peerReviewFeedbackModal')">✕</button>
+    <h3 id="prFeedbackTitle"></h3>
+    <div id="prFeedbackBody"></div>
+  </div>
+</div>
+
 <!-- Quest Modal -->
 <div class="modal-overlay" id="questModal">
   <div class="modal">
@@ -2983,16 +3001,19 @@ function renderStudentGuild() {
         <span class="b b-blue">${guild.campus}</span>
       </div>
     </div>
-    <table style="font-size:12px;width:100%"><thead><tr><th>Member</th><th>Role</th><th class="C">This Week</th></tr></thead><tbody>
+    <table style="font-size:12px;width:100%"><thead><tr><th>Member</th><th>Role</th><th class="C">This Week (Guild-wide)</th></tr></thead><tbody>
     ${members.map((m, i) => {
       const role = guild.currentRoles && guild.currentRoles[m.id] ? guild.currentRoles[m.id] : ROLES[i % ROLES.length];
-      const wk = 'week-' + (appData.config.currentWeek || 1);
-      const hasSub = appData.submissions[m.id] && appData.submissions[m.id][wk];
+      const weekNum = appData.config.currentWeek || 1;
+      const wk = 'week-' + weekNum;
+      // Submission is shared by the whole Guild now (one submission per Guild,
+      // not per student) — every member shows the same status.
+      const complete = guildMilestoneStatus(gid, weekNum) === 'complete';
       const isMe = m.id === currentStudent;
-      return `<tr ${isMe ? 'style="background:#eff6ff"' : ''}>
+      return `<tr style="cursor:pointer;${isMe ? 'background:#eff6ff' : ''}" onclick="viewSubmission('${gid}','${wk}')" title="View this week's Guild submission">
         <td style="font-weight:${isMe?'800':'400'}">${m.name}${isMe?' (you)':''}</td>
         <td>${role}</td>
-        <td class="C"><span class="b ${hasSub?'b-green':'b-amber'}">${hasSub?'✓ Submitted':'Pending'}</span></td>
+        <td class="C"><span class="b ${complete?'b-green':'b-amber'}">${complete?'✓ Submitted':'Pending'}</span></td>
       </tr>`;
     }).join('')}
     </tbody></table>`;
@@ -3557,12 +3578,13 @@ function renderPeerReview() {
     assignments.forEach(a => {
       const rg = appData.guilds[a.reviewerGuildId];
       const tg = appData.guilds[a.targetGuildId];
-      rows.push(`<tr>
+      const clickable = a.status === 'submitted';
+      rows.push(`<tr ${clickable ? `style="cursor:pointer" onclick="viewPeerReviewFeedback('${wk}','${a.reviewerGuildId}')" title="View full feedback"` : ''}>
         <td style="font-weight:700">${rg ? rg.name : a.reviewerGuildId}</td>
         <td>${tg ? tg.name : a.targetGuildId}</td>
         <td><span class="b b-blue">Wk ${weekNum}</span></td>
         <td class="C"><span class="b ${a.status==='submitted'?'b-green':'b-amber'}">${a.status==='submitted'?'Submitted':'Pending'}</span></td>
-        <td style="font-size:11px;color:#475569;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.strengths || '—'}</td>
+        <td style="font-size:11px;color:#475569;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.strengths ? a.strengths + ' →' : '—'}</td>
       </tr>`);
     });
   });
@@ -3575,6 +3597,21 @@ async function deletePeerReviewRound(wk) {
   if (!confirm('Delete this review round?')) return;
   await sRef('peerReviews/' + wk).remove();
   toast('Round deleted');
+}
+
+function viewPeerReviewFeedback(wk, reviewerGuildId) {
+  const a = appData.peerReviews[wk] && appData.peerReviews[wk][reviewerGuildId];
+  if (!a) return;
+  const rg = appData.guilds[a.reviewerGuildId], tg = appData.guilds[a.targetGuildId];
+  const reviewer = a.submittedBy && appData.students[a.submittedBy] ? appData.students[a.submittedBy].name : 'a Guild member';
+  document.getElementById('prFeedbackTitle').textContent = `${rg ? rg.name : a.reviewerGuildId} → ${tg ? tg.name : a.targetGuildId} (Week ${wk.split('-')[1]})`;
+  document.getElementById('prFeedbackBody').innerHTML = `
+    <p style="font-size:11px;color:#64748b;margin-bottom:10px">Submitted by ${reviewer}${a.submittedAt ? ' · ' + new Date(a.submittedAt).toLocaleString() : ''} · Rating: <strong>${a.rating || '—'}/5</strong></p>
+    <p style="font-size:11px;font-weight:700;color:#15803D;text-transform:uppercase;margin-bottom:4px">Strengths</p>
+    <p style="font-size:13px;color:#334155;white-space:pre-wrap;margin-bottom:14px">${a.strengths || '—'}</p>
+    <p style="font-size:11px;font-weight:700;color:#B45309;text-transform:uppercase;margin-bottom:4px">Areas for Improvement</p>
+    <p style="font-size:13px;color:#334155;white-space:pre-wrap">${a.improvements || '—'}</p>`;
+  openModal('peerReviewFeedbackModal');
 }
 
 function renderStudentPeerReview() {

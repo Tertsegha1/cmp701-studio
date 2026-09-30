@@ -104,6 +104,20 @@ async function approveGuildCompany(gid) {
 }
 
 // ─── Individual company declaration (student self-service) ─────────
+function viewStudentCompanyDeclaration(sid) {
+  const s = appData.students[sid];
+  if (!s) return;
+  const detail = s.individualCompanyDetail || {};
+  const conflict = studentCompanyConflict(sid);
+  document.getElementById('studentCompanyModalTitle').textContent = `${s.name}'s Individual Company (CW1/CW2)`;
+  document.getElementById('studentCompanyModalBody').innerHTML = `
+    <p style="font-size:13px;font-weight:700;color:#1B3A6B;margin-bottom:6px">${s.business || 'Not chosen yet'}</p>
+    ${detail.rationale ? `<p style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:4px">Rationale</p><p style="font-size:13px;color:#334155;white-space:pre-wrap;margin-bottom:10px">${detail.rationale}</p>` : ''}
+    ${detail.declaredAt ? `<p style="font-size:10px;color:#94a3b8">Declared ${new Date(detail.declaredAt).toLocaleString()}</p>` : ''}
+    ${conflict ? `<div class="alert" style="background:#fee2e2;color:#B91C1C;margin-top:10px">⚠ Same as ${conflict.guildName}'s Guild practice company (${conflict.companyName}) — must be changed before submission.</div>` : ''}`;
+  openModal('studentCompanyModal');
+}
+
 async function declareIndividualCompany(sid, name, rationale) {
   const student = appData.students[sid];
   if (!student) return { ok: false, msg: 'Select your name first.' };
@@ -147,7 +161,7 @@ function renderCompanies() {
   const studentRows = Object.entries(appData.students || {}).map(([sid, s]) => {
     const conflict = studentCompanyConflict(sid);
     const guildName = s.guildId && appData.guilds[s.guildId] ? appData.guilds[s.guildId].name : '—';
-    return `<tr${conflict ? ' style="background:#fef2f2"' : ''}>
+    return `<tr${conflict ? ' style="background:#fef2f2;cursor:pointer"' : s.business ? ' style="cursor:pointer"' : ''}${s.business ? ` onclick="viewStudentCompanyDeclaration('${sid}')" title="View declaration detail"` : ''}>
       <td style="font-weight:700">${s.name}</td>
       <td>${guildName}</td>
       <td>${s.business || '<span style="color:#94a3b8">Not chosen</span>'}</td>
