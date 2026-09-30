@@ -53,9 +53,12 @@ function renderCertificateSection() {
     return;
   }
   if (!eligible) {
+    const missed = missedMilestoneWeeks(gid);
     body.innerHTML = `
       <div class="pbar-wrap" style="height:12px;margin-bottom:8px"><div class="pbar-fill" style="width:${Math.round(count/total*100)}%;background:#B45309"></div></div>
-      <p style="font-size:12px;color:#475569">Your Guild has completed <strong>${count}/${total}</strong> milestone weeks. Complete all ${total} to unlock your certificate.</p>`;
+      <p style="font-size:12px;color:#475569">Your Guild has completed <strong>${count}/${total}</strong> milestone weeks. Complete all ${total} by the end of Week 12 to unlock your certificate.</p>
+      ${missed.length ? `<p style="font-size:11px;color:#B91C1C;margin-top:4px">⚠ Missing: ${missed.map(w => 'Week ' + w).join(', ')} — you can still submit ${missed.length===1?'it':'them'} any time, it'll still count here.</p>` : ''}
+      <p style="font-size:10px;color:#94a3b8;margin-top:6px">Late submissions always still count toward this — you only miss out on the on-time XP/badge rewards, never the certificate.</p>`;
     return;
   }
 

@@ -170,6 +170,7 @@ textarea{resize:vertical;min-height:80px}
 .tl-dot.amber{background:#B45309}
 .tl-dot.slate{background:#94a3b8}
 .tl-dot.teal{background:#0D7377}
+.tl-dot.red{background:#B91C1C}
 /* Gamification */
 .xp-bar-wrap{background:#e2e8f0;border-radius:8px;height:12px;overflow:hidden;margin:6px 0}
 .xp-bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,#7C3AED,#0D7377);transition:width .6s ease}
@@ -821,6 +822,7 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
 
 <!-- STUDENT: This Week's Quest -->
 <div class="pg" id="pg-s-quest">
+  <div id="missedTasksBanner" style="display:none"></div>
   <div class="quest-hero" id="questHero">
     <h2 id="questHeroTitle">Loading this week's quest…</h2>
     <div id="questDeadlineBadge" style="display:none;margin:8px 0"></div>
@@ -2873,6 +2875,7 @@ function setStudentIdentity() {
 
 // ─── Student Views ────────────────────────────────────────────
 function refreshStudentViews() {
+  renderMissedTasksBanner();
   renderStudentQuest();
   renderStudentGuild();
   renderStudentProgress();
@@ -2883,6 +2886,26 @@ function refreshStudentViews() {
   if (typeof renderCertificateSection === 'function') renderCertificateSection();
   if (typeof renderIndividualWorkspace === 'function') renderIndividualWorkspace();
   if (typeof renderPrototypesPage === 'function') renderPrototypesPage();
+}
+
+// Flags a student about their Guild's incomplete milestone weeks — purely
+// informational, never blocks anything. Late work is always still welcome
+// and still counts fully toward the certificate; this banner just makes
+// sure no one forgets a week exists to go back and finish.
+function renderMissedTasksBanner() {
+  const el = document.getElementById('missedTasksBanner');
+  if (!el) return;
+  const gid = currentSubmitGuildId ? currentSubmitGuildId() : null;
+  if (!gid) { el.style.display = 'none'; return; }
+  const missed = missedMilestoneWeeks(gid);
+  if (!missed.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="alert" style="background:#fee2e2;color:#B91C1C;border:2px solid #fca5a5;margin-bottom:12px">
+      <strong>⚠ Your Guild has ${missed.length} incomplete task${missed.length===1?'':'s'}: ${missed.map(w => 'Week ' + w).join(', ')}.</strong>
+      You can still go back and complete ${missed.length===1?'it':'them'} any time — it still counts fully toward your certificate. You just won't earn on-time XP/badge rewards for ${missed.length===1?'a week submitted':'weeks submitted'} after its deadline.
+      <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="showTab('s-submit', document.querySelector('#studentTabs [onclick*=\\'s-submit\\']'))">Complete now →</button>
+    </div>`;
 }
 
 function renderStudentQuest() {
@@ -3042,6 +3065,27 @@ function guildMilestoneCompletedCount(gid) {
   return MILESTONE_WEEKS.filter(w => guildMilestoneStatus(gid, w) === 'complete').length;
 }
 
+// Formative-learning rule: a late submission still counts as complete (never
+// blocked, never excluded from certificate eligibility) — it just doesn't
+// earn the on-time XP/badge rewards. completedOnTime is recorded once, the
+// moment a week FIRST becomes complete (see submitArtefact); missing the
+// field (data from before this existed) is treated as on-time, not
+// retroactively penalised.
+function guildMilestoneOnTimeCompletedCount(gid) {
+  return MILESTONE_WEEKS.filter(w => {
+    const m = appData.guilds[gid] && appData.guilds[gid].milestones && appData.guilds[gid].milestones['week-' + w];
+    return m && m.files && Object.keys(m.files).length > 0 && m.completedOnTime !== false;
+  }).length;
+}
+
+// Weeks that are due (current week or earlier) but still not complete for a
+// Guild — what students get flagged about. Never used to block anything.
+function missedMilestoneWeeks(gid) {
+  const cw = parseInt(appData.config.currentWeek || computeCurrentWeek()) || 0;
+  if (!cw) return [];
+  return MILESTONE_WEEKS.filter(w => w <= cw && guildMilestoneStatus(gid, w) !== 'complete');
+}
+
 async function submitArtefact() {
   if (!currentStudent) { toast('Select your name first', 'err'); return; }
   const gid = currentSubmitGuildId();
@@ -3084,6 +3128,15 @@ async function submitArtefact() {
     title, description, reflection, link: manualLink,
     lastUpdatedBy: currentStudent, lastUpdatedByName: studentName, lastUpdatedAt: Date.now()
   };
+  // Record on-time/late ONCE, the moment this week first becomes complete —
+  // late work is still accepted and still counts toward the certificate, it
+  // just never earns the on-time XP/badge reward, so this must never be
+  // recomputed or overwritten by a later edit to the same week.
+  if (!hasExistingFiles && uploadedFiles.length > 0) {
+    const deadline = questDeadlineForWeek(+weekNum);
+    updates.completedOnTime = !deadline || Date.now() <= deadline.getTime();
+    updates.firstCompletedAt = Date.now();
+  }
   await sRef(`guilds/${gid}/milestones/${wk}`).update(updates);
   for (const f of uploadedFiles) {
     const fid = sRef(`guilds/${gid}/milestones/${wk}/files`).push().key;
@@ -3113,6 +3166,7 @@ async function submitArtefact() {
   renderStudentProgress();
   renderStudentXP();
   renderGuildLeaderboard();
+  renderMissedTasksBanner();
   if (typeof renderCertificateSection === 'function') renderCertificateSection();
 }
 
@@ -3126,19 +3180,25 @@ function renderStudentProgress() {
   document.getElementById('spk-pct').textContent = pct + '%';
   document.getElementById('spk-pending').textContent = Math.max(0, MILESTONE_WEEKS.length - completed);
 
+  const cw = parseInt(appData.config.currentWeek || computeCurrentWeek()) || 0;
   const timeline = MILESTONE_WEEKS.map(w => {
     const wk = 'week-' + w;
     const m = gid && appData.guilds[gid].milestones && appData.guilds[gid].milestones[wk];
     const status = gid ? guildMilestoneStatus(gid, w) : 'not-attempted';
+    const isPastDue = w <= cw;
     const quest = appData.quests[wk];
     const fileLinks = (m && m.files ? Object.values(m.files) : []).map(f =>
       `<a href="${f.url}" target="_blank" style="font-size:10px;color:#1D4ED8;text-decoration:none;margin-left:6px">📎 ${f.name}</a>`).join('');
-    const dotClass = status === 'complete' ? 'green' : status === 'incomplete' ? 'amber' : '';
+    const missed = status !== 'complete' && isPastDue;
+    const dotClass = status === 'complete' ? 'green' : missed ? 'red' : status === 'incomplete' ? 'amber' : '';
+    const lateTag = status === 'complete' && m.completedOnTime === false
+      ? ' <span class="b b-amber" style="font-size:9px">Late — no XP</span>' : '';
+    const missedTag = missed ? ' <span class="b b-red" style="font-size:9px">⚠ Not yet done</span>' : '';
     return `<li>
       <div class="tl-dot ${dotClass}"></div>
       <div class="tl-content">
-        <div class="tl-title">Week ${w}${quest ? ': ' + quest.title : ''}</div>
-        ${m ? `<div class="tl-sub">${status === 'complete' ? '✓ Complete' : 'Draft saved'} — ${m.title || ''} (by ${m.lastUpdatedByName || 'a guild member'})${fileLinks}</div>` : '<div class="tl-sub" style="color:#B45309">Not attempted</div>'}
+        <div class="tl-title">Week ${w}${quest ? ': ' + quest.title : ''}${lateTag}${missedTag}</div>
+        ${m ? `<div class="tl-sub">${status === 'complete' ? '✓ Complete' : 'Draft saved'} — ${m.title || ''} (by ${m.lastUpdatedByName || 'a guild member'})${fileLinks}</div>` : `<div class="tl-sub" style="color:${missed?'#B91C1C':'#B45309'}">${missed ? 'Not attempted — you can still submit it any time' : 'Not attempted'}</div>`}
       </div>
     </li>`;
   });
@@ -4095,6 +4155,15 @@ function countStudentSubmissions(studentId) {
   return guildMilestoneCompletedCount(student.guildId);
 }
 
+// Formative rule: a late submission still counts toward completion and the
+// certificate (above), but XP/badges — the "rewards" — only come from
+// completing on time. This is the count those rewards are based on.
+function countOnTimeSubmissions(studentId) {
+  const student = appData.students[studentId];
+  if (!student || !student.guildId) return 0;
+  return guildMilestoneOnTimeCompletedCount(student.guildId);
+}
+
 // Count how many weeks the student's guild submitted a peer review
 function countGuildPeerReviews(guildId) {
   if (!guildId) return 0;
@@ -4107,42 +4176,56 @@ function countGuildPeerReviews(guildId) {
   return count;
 }
 
-// Consecutive Guild milestone streak from the first milestone week (stops at first gap)
+// Consecutive ON-TIME Guild milestone streak from the first milestone week
+// (stops at first gap or late week) — a streak is a reward for punctuality,
+// not just completion, so a late week breaks it even though it still counts
+// toward the certificate.
 function getSubmissionStreak(studentId) {
   const student = appData.students[studentId];
   if (!student || !student.guildId) return 0;
+  const gid = student.guildId;
   let streak = 0;
   for (const w of MILESTONE_WEEKS) {
-    if (guildMilestoneStatus(student.guildId, w) === 'complete') streak++;
+    const m = appData.guilds[gid].milestones && appData.guilds[gid].milestones['week-' + w];
+    const onTime = m && m.files && Object.keys(m.files).length > 0 && m.completedOnTime !== false;
+    if (onTime) streak++;
     else break;
   }
   return streak;
 }
 
-// Compute badges for a student — returns array of {id, icon, label, desc, bonus}
+// Compute badges for a student — returns array of {id, icon, label, desc, bonus}.
+// submCount here is the ON-TIME count: badges are rewards, and per the
+// module's formative-learning rule, late work keeps its place toward the
+// certificate but never earns a reward. onTimeTotal separately reports raw
+// completion so "Quest Master" can still explain the certificate connection.
 function computeStudentBadges(studentId, submCount, prCount) {
   const badges = [];
   const total = MILESTONE_WEEKS.length;
-  if (submCount >= 1)     badges.push({ id:'first',  icon:'🚀', label:'First Launch',    desc:"Your Guild submitted its first artefact",          bonus:25  });
+  if (submCount >= 1)     badges.push({ id:'first',  icon:'🚀', label:'First Launch',    desc:"Your Guild submitted its first artefact on time",          bonus:25  });
   if (submCount >= Math.ceil(total/2))
-                          badges.push({ id:'half',   icon:'⭐', label:'Halfway There',   desc:`Guild completed ${Math.ceil(total/2)}+ milestone weeks`, bonus:30  });
-  if (submCount >= total) badges.push({ id:'master', icon:'🏅', label:'Quest Master',     desc:`Completed all ${total} milestone weeks — certificate eligible`, bonus:100 });
+                          badges.push({ id:'half',   icon:'⭐', label:'Halfway There',   desc:`Guild completed ${Math.ceil(total/2)}+ milestone weeks on time`, bonus:30  });
+  if (submCount >= total) badges.push({ id:'master', icon:'🏅', label:'Quest Master',     desc:`Completed all ${total} milestone weeks on time`, bonus:100 });
   if (getSubmissionStreak(studentId) >= 3)
-                          badges.push({ id:'streak', icon:'🔥', label:'On a Roll',        desc:'3+ consecutive milestone weeks',       bonus:50  });
+                          badges.push({ id:'streak', icon:'🔥', label:'On a Roll',        desc:'3+ consecutive on-time milestone weeks',       bonus:50  });
   if (prCount >= 5)       badges.push({ id:'peer',   icon:'🤝', label:'Peer Champion',    desc:'Guild completed 5+ peer reviews',         bonus:50  });
   return badges;
 }
 
-// Compute total XP for a student
+// Compute total XP for a student. XP and badges are the module's "rewards" —
+// they're only earned from ON-TIME completions. Late work still counts fully
+// toward the Guild's certificate eligibility (see countStudentSubmissions /
+// guildMilestoneCompletedCount) — nothing here blocks or excludes it, it
+// simply doesn't pay out XP.
 function computeStudentXP(studentId) {
   const student = appData.students[studentId];
   if (!student) return 0;
-  const submCount = countStudentSubmissions(studentId);
+  const onTimeCount = countOnTimeSubmissions(studentId);
   const guildId   = student.guildId || null;
   const prCount   = countGuildPeerReviews(guildId);
-  const badges    = computeStudentBadges(studentId, submCount, prCount);
+  const badges    = computeStudentBadges(studentId, onTimeCount, prCount);
   const bonusXP   = badges.reduce((sum, b) => sum + b.bonus, 0);
-  return submCount * XP_SUBMIT + prCount * XP_PEER + bonusXP;
+  return onTimeCount * XP_SUBMIT + prCount * XP_PEER + bonusXP;
 }
 
 // Get level object for an XP value
@@ -4191,11 +4274,13 @@ function renderStudentXP() {
   }
 
   const student    = appData.students[currentStudent];
-  const submCount  = countStudentSubmissions(currentStudent);
+  const rawCount   = countStudentSubmissions(currentStudent);   // toward the certificate — late work counts
+  const onTimeCount = countOnTimeSubmissions(currentStudent);   // toward XP/badges — late work doesn't
   const guildId    = student.guildId || null;
   const prCount    = countGuildPeerReviews(guildId);
-  const badges     = computeStudentBadges(currentStudent, submCount, prCount);
-  const xp         = submCount * XP_SUBMIT + prCount * XP_PEER + badges.reduce((s, b) => s + b.bonus, 0);
+  const badges     = computeStudentBadges(currentStudent, onTimeCount, prCount);
+  const xp         = onTimeCount * XP_SUBMIT + prCount * XP_PEER + badges.reduce((s, b) => s + b.bonus, 0);
+  const lateCount  = rawCount - onTimeCount;
   const level      = getLevel(xp);
   const progress   = getLevelProgress(xp);
 
@@ -4250,11 +4335,13 @@ function renderStudentXP() {
       <div>${allBadgesHTML}</div>
     </div>
 
+    ${lateCount > 0 ? `<div class="alert" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;margin-top:12px;font-size:11px">⚠ ${lateCount} of your Guild's ${rawCount} completed week${rawCount===1?'':'s'} ${lateCount===1?'was':'were'} submitted after its deadline — it still counts fully toward your certificate, but earned no XP. Submitting on time from now on keeps future rewards.</div>` : ''}
     <div style="margin-top:12px;background:#f8fafc;border-radius:6px;padding:10px;font-size:10px;color:#64748b">
       <strong>How XP is earned:</strong>
-      🎯 Artefact submitted = +${XP_SUBMIT} XP &nbsp;·&nbsp;
+      🎯 Artefact submitted <u>on time</u> = +${XP_SUBMIT} XP &nbsp;·&nbsp;
       🤝 Guild peer review = +${XP_PEER} XP per week &nbsp;·&nbsp;
       🏅 Badges give bonus XP
+      <div style="margin-top:4px">Submitting late never blocks you and always still counts toward your certificate — it just doesn't earn XP for that week.</div>
     </div>`;
 }
 
@@ -4357,13 +4444,13 @@ function renderGamificationDashboard() {
      reach real users' browsers for up to 4 hours even after index.html
      itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
      that touches any of these files. -->
-<script>const SCRIPT_V = '20260930b';</script>
-<script src="js/company.js?v=20260930b"></script>
-<script src="js/individual-workspace.js?v=20260930b"></script>
-<script src="js/studio-tools.js?v=20260930b"></script>
-<script src="js/prototype.js?v=20260930b"></script>
-<script src="js/deadlines.js?v=20260930b"></script>
-<script src="js/progress.js?v=20260930b"></script>
-<script src="js/certificate.js?v=20260930b"></script>
+<script>const SCRIPT_V = '20260930c';</script>
+<script src="js/company.js?v=20260930c"></script>
+<script src="js/individual-workspace.js?v=20260930c"></script>
+<script src="js/studio-tools.js?v=20260930c"></script>
+<script src="js/prototype.js?v=20260930c"></script>
+<script src="js/deadlines.js?v=20260930c"></script>
+<script src="js/progress.js?v=20260930c"></script>
+<script src="js/certificate.js?v=20260930c"></script>
 </body>
 </html>
