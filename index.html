@@ -1420,9 +1420,12 @@ async function preloadApiKey() {
       if (_apiKey) safeStore.setItem('cmp701_ai_key', _apiKey);
     } catch(e) {}
   }
-  // Populate the key field for the leader if present
+  // Populate the key MANAGEMENT field for the leader only — _apiKey itself
+  // stays set for every role (AI Feedback needs it for students/lecturers
+  // too), but the raw key should not sit visible in the DOM for a role that
+  // has no reason to see/manage it.
   const f = document.getElementById('masterApiKey');
-  if (f && _apiKey) f.value = _apiKey;
+  if (f && _apiKey && isLeader) f.value = _apiKey;
 }
 
 // ─── State ──────────────────────────────────────────────────
@@ -1602,6 +1605,21 @@ function setRole(role) {
   isLeader   = role === 'leader';
   isLecturer = role === 'lecturer';
   document.getElementById('roleSelector').value = role;
+
+  // This dropdown is a Module Leader "preview other roles" tool — it must
+  // not silently inherit a real Lecturer's saved identity or a stale
+  // Student selection from this browser. Previewing Lecturer re-asks for an
+  // identity every time (matches how a real Lecturer's own ?role=lecturer
+  // link behaves on first load); leaving Lecturer/Student clears identity
+  // so a later student-only/lecturer-only write can't attribute to it.
+  if (typeof _lecturerProgressCampusDefaulted !== 'undefined') _lecturerProgressCampusDefaulted = false;
+  if (role === 'lecturer') {
+    currentLecturer = null;
+    showLecturerIdentityScreen();
+  } else {
+    currentLecturer = null;
+  }
+  if (role !== 'student') currentStudent = null;
   applyRole();
 }
 
@@ -1871,6 +1889,7 @@ function openGuildModal(gid) {
 function editGuild(gid) { openGuildModal(gid); }
 
 async function saveGuild() {
+  if (!isLeader) return;
   const name = document.getElementById('guildName').value.trim();
   const campus = document.getElementById('guildCampus').value;
   const seminarGroup = document.getElementById('guildSeminarGroup').value.trim();
@@ -1885,6 +1904,7 @@ async function saveGuild() {
 }
 
 async function deleteGuild(gid) {
+  if (!isLeader) return;
   if (!confirm('Delete this guild?')) return;
   await sRef('guilds/' + gid).remove();
   toast('Guild deleted');
@@ -1928,6 +1948,7 @@ function openAddToGuildModal(gid) {
 }
 
 async function addStudentToGuild(sid, gid) {
+  if (!isLeader) return false;
   const student = appData.students[sid];
   const guild = appData.guilds[gid];
   if (!student || !guild) return false;
@@ -2049,6 +2070,7 @@ function openQuestModal(wk) {
 function editQuest(wk) { openQuestModal(wk); }
 
 async function saveQuest() {
+  if (!isLeader) return;
   const weekNum = document.getElementById('questWeek').value;
   const title = document.getElementById('questTitle').value.trim();
   const brief = document.getElementById('questBrief').value.trim();
@@ -2065,6 +2087,7 @@ async function saveQuest() {
 }
 
 async function publishQuest(wk) {
+  if (!isLeader) return;
   await sRef('quests/' + wk).update({ status: 'published' });
   toast('Quest published!', 'ok');
 }
@@ -2101,11 +2124,13 @@ async function ensureQuestsAutoPublished() {
 }
 
 async function unpublishQuest(wk) {
+  if (!isLeader) return;
   await sRef('quests/' + wk + '/status').set('draft');
   toast('Quest unpublished');
 }
 
 async function deleteQuest(wk) {
+  if (!isLeader) return;
   if (!confirm('Delete this quest?')) return;
   await sRef('quests/' + wk).remove();
   toast('Quest deleted');
@@ -2280,6 +2305,7 @@ async function addStudent() {
 }
 
 async function deleteStudent(sid) {
+  if (!isLeader) return;
   const s = appData.students[sid];
   if (!confirm(`Remove ${s ? s.name : 'this student'}?`)) return;
   await sRef('students/' + sid).remove();
@@ -2315,6 +2341,7 @@ function updateAIForm() {
 
 function getStoredApiKey() { return _apiKey; }
 function saveMasterApiKey() {
+  if (!isLeader) return;
   const key = document.getElementById('masterApiKey').value.trim();
   if (!key) { toast('Enter a key first', 'err'); return; }
   _apiKey = key;
@@ -2839,6 +2866,7 @@ function loadConfig() {
 }
 
 async function saveConfig() {
+  if (!isLeader) return;
   const cw1 = document.getElementById('cfgCW1Deadline').value || '2026-03-13';
   const cw2 = document.getElementById('cfgCW2Deadline').value || '2026-05-06';
   const config = {
@@ -3095,7 +3123,12 @@ function missedMilestoneWeeks(gid) {
 }
 
 async function submitArtefact() {
-  if (!currentStudent) { toast('Select your name first', 'err'); return; }
+  // Guard on role, not just a truthy currentStudent — refreshAll() silently
+  // restores a saved student id from this browser's storage regardless of
+  // the active role, so a Leader/Lecturer session could otherwise write a
+  // submission attributed to a stale/wrong student.
+  if (isLeader || isLecturer) { toast('Switch to Student role to submit an artefact', 'err'); return; }
+  if (!currentStudent || !appData.students[currentStudent]) { toast('Select your name first', 'err'); return; }
   const gid = currentSubmitGuildId();
   if (!gid) { toast('You are not in a Guild yet — ask your tutor to add you', 'err'); return; }
   const weekNum     = document.getElementById('submitWeekSel').value;
@@ -3382,6 +3415,7 @@ function clearLecturerIdentity() {
   currentLecturer = null;
   safeStore.removeItem('cmp701_lecturer');
   document.getElementById('lecturerNameBadge').style.display = 'none';
+  if (typeof _lecturerProgressCampusDefaulted !== 'undefined') _lecturerProgressCampusDefaulted = false;
   renderTeachingTeamSelector();
   showLecturerIdentityScreen();
 }
@@ -3389,6 +3423,11 @@ function clearLecturerIdentity() {
 function renderTeachingTeamAdmin() {
   const el = document.getElementById('teachingTeamAdminList');
   if (!el) return;
+  // Leader-only: this table includes every tutor's plaintext login PIN.
+  // loadTeachingTeam() calls this on every snapshot regardless of which tab
+  // is visually shown, so without this check the PINs would sit in the DOM
+  // (readable via view-source/devtools) for a Lecturer or Student session too.
+  if (!isLeader) { el.innerHTML = ''; return; }
   const members = Object.entries(allTeachingTeam);
   if (!members.length) {
     el.innerHTML = '<p style="color:#94a3b8;font-size:12px;padding:8px 0">No team members yet.</p>';
@@ -3409,6 +3448,7 @@ function renderTeachingTeamAdmin() {
 }
 
 async function addTeachingTeamMember() {
+  if (!isLeader) return;
   const name   = document.getElementById('ttName').value.trim();
   const campus = document.getElementById('ttCampus').value.trim();
   const title  = document.getElementById('ttTitle').value.trim();
@@ -3425,12 +3465,14 @@ async function addTeachingTeamMember() {
 }
 
 async function removeTeachingTeamMember(id) {
+  if (!isLeader) return;
   if (!confirm('Remove this team member?')) return;
   await db.ref('studio/__teachingTeam/' + id).remove();
   toast('Removed', 'ok');
 }
 
 async function clearTeachingTeam() {
+  if (!isLeader) return;
   if (!confirm('Remove all teaching team members? Do this at the start of a new semester before adding the new team.')) return;
   await db.ref('studio/__teachingTeam').remove();
   toast('Teaching team cleared — ready for new semester', 'ok');
@@ -3722,6 +3764,7 @@ function renderStudentPeerReview() {
 }
 
 async function submitPeerFeedback() {
+  if (isLeader || isLecturer) { toast('Switch to Student role to submit peer review feedback', 'err'); return; }
   if (!currentStudent || !appData.students[currentStudent]) { toast('Select your name first', 'err'); return; }
   const s = appData.students[currentStudent];
   const gid = s.guildId;
@@ -3961,6 +4004,7 @@ function openCohortModal(cohortId) {
 }
 
 async function saveCohort() {
+  if (!isLeader) return;
   const name = document.getElementById('cohortName').value.trim();
   if (!name) { toast('Cohort name is required', 'err'); return; }
 
@@ -4055,12 +4099,14 @@ function renderCohortGrid() {
 }
 
 async function archiveCohort(cohortId) {
+  if (!isLeader) return;
   if (!confirm('Archive this cohort? It will be hidden from the selector but data is preserved.')) return;
   await db.ref('studio/__cohorts/' + cohortId + '/status').set('archived');
   toast('Cohort archived');
 }
 
 async function deleteCohort(cohortId) {
+  if (!isLeader) return;
   if (!confirm('Permanently delete this cohort and ALL its data? This cannot be undone.')) return;
   await db.ref('studio/__cohorts/' + cohortId).remove();
   await db.ref('studio/c_' + cohortId).remove();
@@ -4469,13 +4515,13 @@ function renderGamificationDashboard() {
      reach real users' browsers for up to 4 hours even after index.html
      itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
      that touches any of these files. -->
-<script>const SCRIPT_V = '20260930h';</script>
-<script src="js/company.js?v=20260930h"></script>
-<script src="js/individual-workspace.js?v=20260930h"></script>
-<script src="js/studio-tools.js?v=20260930h"></script>
-<script src="js/prototype.js?v=20260930h"></script>
-<script src="js/deadlines.js?v=20260930h"></script>
-<script src="js/progress.js?v=20260930h"></script>
-<script src="js/certificate.js?v=20260930h"></script>
+<script>const SCRIPT_V = '20260930i';</script>
+<script src="js/company.js?v=20260930i"></script>
+<script src="js/individual-workspace.js?v=20260930i"></script>
+<script src="js/studio-tools.js?v=20260930i"></script>
+<script src="js/prototype.js?v=20260930i"></script>
+<script src="js/deadlines.js?v=20260930i"></script>
+<script src="js/progress.js?v=20260930i"></script>
+<script src="js/certificate.js?v=20260930i"></script>
 </body>
 </html>

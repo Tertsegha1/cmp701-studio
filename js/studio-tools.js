@@ -1114,10 +1114,21 @@ function populateStudioToolGuildPicker() {
   if (!isLeader && !isLecturer) { picker.style.display = 'none'; return; }
   picker.style.display = 'block';
   const guilds = Object.entries(appData.guilds || {});
-  const options = guilds.map(([gid, g]) => {
-    const selected = gid === viewingGuildId ? 'selected' : '';
-    return '<option value="' + gid + '" ' + selected + '>' + g.name + '</option>';
-  }).join('');
-  sel.innerHTML = '<option value="">— Select a Guild —</option>' + options;
+  const opt = ([gid, g]) => `<option value="${gid}" ${gid === viewingGuildId ? 'selected' : ''}>${g.name}</option>`;
+
+  // A Lecturer only has one campus, but every Guild is still reachable here
+  // (a tutor sometimes covers for a colleague) — their own campus's Guilds
+  // are just grouped first so they don't have to hunt for them in a
+  // 19-Guild cohort-wide list.
+  if (isLecturer && currentLecturer && currentLecturer.campus) {
+    const mine = guilds.filter(([,g]) => g.campus === currentLecturer.campus);
+    const others = guilds.filter(([,g]) => g.campus !== currentLecturer.campus);
+    sel.innerHTML = '<option value="">— Select a Guild —</option>'
+      + (mine.length ? `<optgroup label="${currentLecturer.campus} (your campus)">${mine.map(opt).join('')}</optgroup>` : '')
+      + (others.length ? `<optgroup label="Other campuses">${others.map(opt).join('')}</optgroup>` : '');
+    return;
+  }
+
+  sel.innerHTML = '<option value="">— Select a Guild —</option>' + guilds.map(opt).join('');
 }
 

@@ -11,6 +11,7 @@ const APPROVED_COMPANIES = [
 ];
 
 async function submitIndividualCompanyForm() {
+  if (isLeader || isLecturer) { toast('Switch to Student role to declare an individual company', 'err'); return; }
   const sel = document.getElementById('indivCompanySelect').value;
   const other = document.getElementById('indivCompanyOther').value.trim();
   const rationale = document.getElementById('indivCompanyRationale').value.trim();

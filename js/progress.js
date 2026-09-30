@@ -21,14 +21,25 @@ function toolCompletion(art) {
   };
 }
 
+// Defaults a Lecturer's Progress view to their own campus exactly once per
+// identity (not every re-render, so deliberately picking "All Campuses"
+// afterward sticks) — the module runs 3 tutors each responsible for one
+// campus, and this view previously showed the whole cohort to everyone.
+let _lecturerProgressCampusDefaulted = false;
+
 function renderProgressDashboard() {
   const body = document.getElementById('progressBody');
   if (!body) return;
 
   const campusSel = document.getElementById('progCampusFilter');
   const groupSel = document.getElementById('progGroupFilter');
-  const campusFilter = campusSel ? campusSel.value : '';
+  let campusFilter = campusSel ? campusSel.value : '';
   const groupFilter = groupSel ? groupSel.value : '';
+
+  if (isLecturer && currentLecturer && currentLecturer.campus && !_lecturerProgressCampusDefaulted) {
+    campusFilter = currentLecturer.campus;
+    _lecturerProgressCampusDefaulted = true;
+  }
 
   const allGuilds = Object.entries(appData.guilds || {});
   const campuses = [...new Set(allGuilds.map(([,g]) => g.campus).filter(Boolean))].sort();
