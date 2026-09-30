@@ -823,14 +823,18 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
 <div class="pg" id="pg-s-quest">
   <div class="quest-hero" id="questHero">
     <h2 id="questHeroTitle">Loading this week's quest…</h2>
-    <p id="questHeroBrief" style="margin-top:8px">Please wait while we load the quest brief.</p>
+    <div id="questDeadlineBadge" style="display:none;margin:8px 0"></div>
+    <p id="questHeroBrief" style="margin-top:8px;white-space:pre-wrap"></p>
+  </div>
+  <div class="card" id="questToolsCard" style="display:none;border:1.5px solid #0D7377">
+    <div class="card-body" id="questToolsBody" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"></div>
   </div>
   <div class="card" id="questDeliverables" style="display:none">
     <div class="card-hdr teal">This Week's Deliverables</div>
     <div class="card-body">
-      <ul class="deliverables" id="questDeliverablesList" style="margin-left:16px"></ul>
+      <ol class="deliverables" id="questDeliverablesList" style="margin-left:16px;line-height:1.7"></ol>
       <div class="divider"></div>
-      <p style="font-size:11px;color:#64748b">Submit your artefact in the <strong>Submit Artefact</strong> tab. The deadline is end of the studio session.</p>
+      <p id="questSubmitNote" style="font-size:11px;color:#64748b">Submit your artefact (one submission per Guild) in the <strong>Submit Artefact</strong> tab.</p>
     </div>
   </div>
   <div class="card" id="prevQuestCard" style="display:none">
@@ -1634,6 +1638,34 @@ function computeCurrentWeek() {
   return Math.min(Math.max(diff, 1), 12);
 }
 
+// Every weekly Quest is due the Sunday that closes its own 7-day block,
+// 11:59pm — computed from the semester start date rather than set by hand,
+// so it's automatically correct for every week without re-entering it.
+function questDeadlineForWeek(weekNum) {
+  const start = appData.config.semesterStart;
+  if (!start) return null;
+  const deadline = new Date(start);
+  deadline.setDate(deadline.getDate() + weekNum * 7 - 1); // last day of that week's 7-day block
+  deadline.setHours(23, 59, 0, 0);
+  return deadline;
+}
+
+function formatQuestDeadline(date) {
+  if (!date) return null;
+  return date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + ' at 11:59pm';
+}
+
+// { label, urgency: 'ok'|'soon'|'overdue' } for badge colouring
+function questDeadlineStatus(date) {
+  if (!date) return null;
+  const now = Date.now();
+  const msLeft = date.getTime() - now;
+  const daysLeft = Math.ceil(msLeft / 86400000);
+  if (msLeft < 0) return { label: 'Deadline passed', urgency: 'overdue' };
+  if (daysLeft <= 1) return { label: 'Due today/tomorrow', urgency: 'soon' };
+  return { label: `${daysLeft} days left`, urgency: 'ok' };
+}
+
 // ─── Dashboard ───────────────────────────────────────────────
 function updateDashboard() {
   const gCount = Object.keys(appData.guilds).length;
@@ -1923,12 +1955,15 @@ function renderQuests() {
       ? `<span class="b b-green">Published${q.autoPublished ? ' · Auto' : ''}</span>`
       : '<span class="b b-amber">Draft</span>';
 
+    const deadline = questDeadlineForWeek(+weekNum);
+
     return `<div class="quest-card ${statusClass}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <span style="font-size:10px;font-weight:700;color:#0D7377;text-transform:uppercase">Week ${weekNum}</span>
         ${statusBadge}
       </div>
       <div class="quest-title">${q.title || 'Untitled Quest'}</div>
+      ${deadline ? `<div style="font-size:11px;color:#B45309;font-weight:700;margin-bottom:6px">⏰ Due ${formatQuestDeadline(deadline)}</div>` : ''}
       <div class="quest-brief">${q.brief || ''}</div>
       ${delivs.length ? `<ul class="deliverables">${delivs.map(d => `<li>${d}</li>`).join('')}</ul>` : ''}
       <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
@@ -2805,19 +2840,52 @@ function renderStudentQuest() {
   const currentWeek = appData.config.currentWeek || computeCurrentWeek();
   const quest = appData.quests['week-' + currentWeek];
   const hero = document.getElementById('questHero');
+  const deadline = questDeadlineForWeek(currentWeek);
+  const deadlineBadge = document.getElementById('questDeadlineBadge');
+  const toolsCard = document.getElementById('questToolsCard');
 
   if (quest && quest.status === 'published') {
     document.getElementById('questHeroTitle').textContent = `Week ${currentWeek}: ${quest.title}`;
     document.getElementById('questHeroBrief').textContent = quest.brief || '';
-    const delivs = (quest.deliverables || '').split('\n').filter(Boolean);
+
+    if (deadline) {
+      const ds = questDeadlineStatus(deadline);
+      const colours = { ok: ['#dcfce7', '#15803D'], soon: ['#fef9c3', '#854d0e'], overdue: ['#fee2e2', '#B91C1C'] }[ds.urgency];
+      deadlineBadge.style.display = 'inline-block';
+      deadlineBadge.innerHTML = `<span style="background:${colours[0]};color:${colours[1]};font-weight:700;font-size:12px;padding:6px 12px;border-radius:20px">⏰ Submit by ${formatQuestDeadline(deadline)} — ${ds.label}</span>`;
+    } else {
+      deadlineBadge.style.display = 'none';
+    }
+
+    // Deliverables text often ends with a "Studio Tools to use: ..." line —
+    // pull it out into its own callout so it doesn't get lost in the list.
+    const rawDelivs = (quest.deliverables || '').split('\n').filter(Boolean);
+    const toolsLine = rawDelivs.find(d => /^studio tools to use/i.test(d.trim()));
+    const delivs = rawDelivs.filter(d => d !== toolsLine);
+
+    if (toolsLine) {
+      toolsCard.style.display = 'block';
+      document.getElementById('questToolsBody').innerHTML = `
+        <span style="font-size:20px">🛠</span>
+        <span style="font-size:12px;color:#0D7377"><strong>${toolsLine.replace(/^studio tools to use:?\s*/i, '')}</strong></span>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="showTab('studio-tools', document.querySelector('#studentTabs [onclick*=\\'studio-tools\\']'))">Open Studio Tools →</button>`;
+    } else {
+      toolsCard.style.display = 'none';
+    }
+
     if (delivs.length) {
       document.getElementById('questDeliverables').style.display = 'block';
-      document.getElementById('questDeliverablesList').innerHTML = delivs.map(d => `<li style="margin-bottom:6px">${d}</li>`).join('');
+      document.getElementById('questDeliverablesList').innerHTML = delivs.map(d => `<li style="margin-bottom:8px">${d}</li>`).join('');
+      document.getElementById('questSubmitNote').innerHTML = deadline
+        ? `Submit your artefact (one submission per Guild) in the <strong>Submit Artefact</strong> tab — due <strong>${formatQuestDeadline(deadline)}</strong>.`
+        : 'Submit your artefact (one submission per Guild) in the <strong>Submit Artefact</strong> tab.';
     }
   } else {
     document.getElementById('questHeroTitle').textContent = `Week ${currentWeek} — Studio Session`;
     document.getElementById('questHeroBrief').textContent = 'No quest brief has been published yet for this week. Check back soon or ask your module leader.';
     document.getElementById('questDeliverables').style.display = 'none';
+    toolsCard.style.display = 'none';
+    deadlineBadge.style.display = 'none';
   }
 
   // Previous quests
