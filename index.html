@@ -843,6 +843,15 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
   </div>
 </div>
 
+<!-- Previous quest detail modal -->
+<div class="modal-overlay" id="questHistoryModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('questHistoryModal')">✕</button>
+    <h3 id="questHistoryTitle"></h3>
+    <div id="questHistoryBody"></div>
+  </div>
+</div>
+
 <!-- STUDENT: My Guild -->
 <div class="pg" id="pg-s-guild">
   <div class="card" id="myGuildCard">
@@ -2918,11 +2927,31 @@ function renderStudentQuest() {
   if (prev.length) {
     document.getElementById('prevQuestCard').style.display = 'block';
     document.getElementById('prevQuestList').innerHTML = prev.map(([wk, q]) =>
-      `<div style="padding:8px 0;border-bottom:1px solid #f1f5f9">
+      `<div style="padding:8px 0;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;cursor:pointer" onclick="viewPreviousQuest('${wk}')" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
         <span class="b b-slate">Wk ${wk.split('-')[1]}</span>
         <span style="font-size:12px;font-weight:700;color:#1B3A6B;margin-left:8px">${q.title}</span>
+        <span style="margin-left:auto;color:#94a3b8;font-size:12px">View →</span>
       </div>`).join('');
   }
+}
+
+function viewPreviousQuest(wk) {
+  const q = appData.quests[wk];
+  if (!q) return;
+  const weekNum = parseInt(wk.split('-')[1]);
+  const deadline = questDeadlineForWeek(weekNum);
+
+  const rawDelivs = (q.deliverables || '').split('\n').filter(Boolean);
+  const toolsLine = rawDelivs.find(d => /^studio tools to use/i.test(d.trim()));
+  const delivs = rawDelivs.filter(d => d !== toolsLine);
+
+  document.getElementById('questHistoryTitle').textContent = `Week ${weekNum}: ${q.title || 'Untitled Quest'}`;
+  document.getElementById('questHistoryBody').innerHTML = `
+    ${deadline ? `<div style="margin-bottom:10px"><span style="background:#f1f5f9;color:#475569;font-weight:700;font-size:12px;padding:6px 12px;border-radius:20px">⏰ Was due ${formatQuestDeadline(deadline)}</span></div>` : ''}
+    <p style="font-size:13px;color:#334155;white-space:pre-wrap;line-height:1.6">${q.brief || ''}</p>
+    ${toolsLine ? `<div style="margin-top:12px;padding:10px;border:1.5px solid #0D7377;border-radius:8px;font-size:12px;color:#0D7377"><strong>🛠 ${toolsLine.replace(/^studio tools to use:?\s*/i, '')}</strong></div>` : ''}
+    ${delivs.length ? `<div style="margin-top:14px"><p style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:6px">Deliverables</p><ol style="margin-left:16px;line-height:1.7;font-size:13px">${delivs.map(d => `<li style="margin-bottom:6px">${d}</li>`).join('')}</ol></div>` : ''}`;
+  openModal('questHistoryModal');
 }
 
 function renderStudentGuild() {
