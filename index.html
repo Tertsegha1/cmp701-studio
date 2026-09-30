@@ -1641,13 +1641,33 @@ function computeCurrentWeek() {
 // Every weekly Quest is due the Sunday that closes its own 7-day block,
 // 11:59pm — computed from the semester start date rather than set by hand,
 // so it's automatically correct for every week without re-entering it.
+// A specific week can still be extended via questDeadlineOverrides (e.g. an
+// outage meant students couldn't submit on time) without changing the rule
+// for every other week.
 function questDeadlineForWeek(weekNum) {
+  const override = appData.config.questDeadlineOverrides && appData.config.questDeadlineOverrides['week-' + weekNum];
+  if (override) return new Date(override);
   const start = appData.config.semesterStart;
   if (!start) return null;
   const deadline = new Date(start);
   deadline.setDate(deadline.getDate() + weekNum * 7 - 1); // last day of that week's 7-day block
   deadline.setHours(23, 59, 0, 0);
   return deadline;
+}
+
+async function extendQuestDeadline(wk) {
+  const weekNum = parseInt(wk.split('-')[1]);
+  const current = questDeadlineForWeek(weekNum);
+  const input = prompt(`New deadline date for ${wk} (YYYY-MM-DD — submissions due 11:59pm that day). Leave blank to reset to the default Sunday deadline.`, current ? current.toISOString().slice(0, 10) : '');
+  if (input === null) return;
+  if (!input.trim()) {
+    await sRef('config/questDeadlineOverrides/' + wk).remove();
+    toast('Deadline reset to the default Sunday for ' + wk, 'ok');
+    return;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.trim())) { toast('Use YYYY-MM-DD format', 'err'); return; }
+  await sRef('config/questDeadlineOverrides/' + wk).set(input.trim() + 'T23:59');
+  toast('Deadline updated for ' + wk, 'ok');
 }
 
 function formatQuestDeadline(date) {
@@ -1956,6 +1976,7 @@ function renderQuests() {
       : '<span class="b b-amber">Draft</span>';
 
     const deadline = questDeadlineForWeek(+weekNum);
+    const isExtended = !!(appData.config.questDeadlineOverrides && appData.config.questDeadlineOverrides[wk]);
 
     return `<div class="quest-card ${statusClass}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
@@ -1963,12 +1984,13 @@ function renderQuests() {
         ${statusBadge}
       </div>
       <div class="quest-title">${q.title || 'Untitled Quest'}</div>
-      ${deadline ? `<div style="font-size:11px;color:#B45309;font-weight:700;margin-bottom:6px">⏰ Due ${formatQuestDeadline(deadline)}</div>` : ''}
+      ${deadline ? `<div style="font-size:11px;color:#B45309;font-weight:700;margin-bottom:6px">⏰ Due ${formatQuestDeadline(deadline)}${isExtended ? ' <span class="b b-blue" style="font-size:9px">Extended</span>' : ''}</div>` : ''}
       <div class="quest-brief">${q.brief || ''}</div>
       ${delivs.length ? `<ul class="deliverables">${delivs.map(d => `<li>${d}</li>`).join('')}</ul>` : ''}
       <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="editQuest('${wk}')">Edit</button>
         ${q.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="publishQuest('${wk}')">Publish</button>` : `<button class="btn btn-ghost btn-sm" onclick="unpublishQuest('${wk}')">Unpublish</button>`}
+        <button class="btn btn-ghost btn-sm" onclick="extendQuestDeadline('${wk}')">⏰ ${isExtended ? 'Change' : 'Extend'} Deadline</button>
         <button class="btn btn-danger btn-sm" onclick="deleteQuest('${wk}')">Delete</button>
       </div>
     </div>`;
