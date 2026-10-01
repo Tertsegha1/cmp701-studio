@@ -3606,7 +3606,10 @@ function campusAwareAssignments(guildEntries, week) {
   const assignments = {};
   Object.values(byCampus).forEach(list => {
     if (list.length < 2) return; // no other guild on this campus to pair with
-    const rotOffset = (week - 1) % list.length;
+    // Rotate over (n-1) positions, not n: a shift of exactly n (mod n = 0) would
+    // assign a guild to review itself, which (week - 1) % list.length hits whenever
+    // the campus's guild count divides the week number.
+    const rotOffset = (week - 1) % (list.length - 1);
     list.forEach(([gid], i) => {
       const reviewsIdx = (i + 1 + rotOffset) % list.length;
       assignments[gid] = { reviewerGuildId: gid, targetGuildId: list[reviewsIdx][0], status: 'pending' };
