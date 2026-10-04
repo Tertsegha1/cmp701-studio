@@ -678,6 +678,7 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
         <button class="btn btn-primary" onclick="saveMasterApiKey()">Save Key</button>
       </div>
       <small style="color:#64748b;font-size:10px;margin-top:4px;display:block">Saved to browser storage and synced to Firebase — works across all sessions including Blackboard iframes.</small>
+      <div id="aiKeyStatus" style="font-size:12px;margin-top:8px"></div>
 
       <div class="divider"></div>
 
@@ -1424,6 +1425,7 @@ async function preloadApiKey() {
   // has no reason to see/manage it.
   const f = document.getElementById('masterApiKey');
   if (f && _apiKey && isLeader) f.value = _apiKey;
+  if (typeof refreshAiKeyStatus === 'function') refreshAiKeyStatus();
 }
 
 // ─── State ──────────────────────────────────────────────────
@@ -2206,13 +2208,7 @@ DELIVERABLES:
 - [deliverable 3]`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-calls': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 500, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await res.json();
-    const text = data.content[0].text;
+    const text = await callClaude(apiKey, prompt, 500);
     const titleMatch = text.match(/TITLE:\s*(.+)/);
     const briefMatch = text.match(/BRIEF:\s*([\s\S]+?)(?=DELIVERABLES:|$)/);
     const delivMatch = text.match(/DELIVERABLES:([\s\S]+)/);
@@ -2384,14 +2380,34 @@ function updateAIForm() {
 }
 
 function getStoredApiKey() { return _apiKey; }
-function saveMasterApiKey() {
+async function saveMasterApiKey() {
   if (!isLeader) return;
   const key = document.getElementById('masterApiKey').value.trim();
   if (!key) { toast('Enter a key first', 'err'); return; }
   _apiKey = key;
   safeStore.setItem('cmp701_ai_key', key);
-  db.ref('studio/__config/aiKey').set(key); // also save to Firebase so all sessions/iframes can read it
-  toast('API key saved — synced to Firebase for all sessions', 'ok');
+  try {
+    await db.ref('studio/__config/aiKey').set(key); // also save to Firebase so all sessions/iframes can read it
+    toast('API key saved — AI feedback is now on for students and tutors', 'ok');
+  } catch (e) {
+    toast('Saved in this browser only — could not sync to Firebase: ' + e.message, 'err');
+  }
+  refreshAiKeyStatus();
+}
+
+// Leader-only: AI feedback for students/tutors depends on the key being in the
+// shared store, not just in the leader's own browser — show which it is.
+async function refreshAiKeyStatus() {
+  const el = document.getElementById('aiKeyStatus');
+  if (!el || !isLeader) return;
+  try {
+    const shared = !!(await db.ref('studio/__config/aiKey').get()).val();
+    el.innerHTML = shared
+      ? '<span style="color:#15803D;font-weight:700">● AI feedback is ON for students and tutors.</span>'
+      : `<span style="color:#B91C1C;font-weight:700">● AI feedback is OFF for students and tutors</span> — no key is stored for them${_apiKey ? '. Your own browser has one: click <strong>Save Key</strong> above to switch it on for everyone.' : '. Paste your key above and click <strong>Save Key</strong>.'}`;
+  } catch (e) {
+    el.textContent = 'Could not check the AI key status.';
+  }
 }
 
 // ─── Artefact file upload (guild-scoped weekly submission) ────
@@ -2608,22 +2624,11 @@ async function callClaudeWithFile(apiKey, prompt, file, maxTokens) {
     ? { type: 'image',    source: { type: 'base64', media_type: file.mediaType, data: file.data } }
     : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: file.data } };
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-calls': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: maxTokens,
-      messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }]
-    })
+  return anthropicRequest(apiKey, {
+    model: AI_MODEL,
+    max_tokens: maxTokens,
+    messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }]
   });
-  if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || res.statusText); }
-  return (await res.json()).content[0].text;
 }
 
 async function runAIAssessment() {
@@ -2664,7 +2669,12 @@ async function runAIAssessment() {
 
 async function runStudentAI() {
   const apiKey = getStoredApiKey();
-  if (!apiKey) { toast('AI feedback is not available right now', 'err'); return; }
+  if (!apiKey) {
+    const o = document.getElementById('sAiOutput');
+    if (o) { o.textContent = 'AI feedback is not switched on yet. Please let your tutor or Module Leader know.'; o.className = 'ai-output'; }
+    toast('AI feedback is not switched on yet — please tell your tutor', 'err');
+    return;
+  }
   const type = document.getElementById('sAiType').value;
   const business = document.getElementById('sAiBusiness').value.trim() || 'my chosen business';
   const text = document.getElementById('sAiText').value.trim();
@@ -2770,24 +2780,41 @@ Provide 3 strengths and 3 specific improvements. Keep feedback concise (under 30
 ${aiSection}`;
 }
 
-async function callClaude(apiKey, prompt, maxTokens) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-calls': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
-  if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || res.statusText); }
-  const data = await res.json();
+const AI_MODEL = 'claude-sonnet-4-6';
+
+// One place for every Anthropic call, so each failure reaches the user as a
+// specific, actionable message instead of "Failed to fetch" or a crash on an
+// empty reply.
+async function anthropicRequest(apiKey, body) {
+  if (!apiKey) throw new Error('AI feedback is not switched on yet — the Module Leader needs to save the AI key in Blackboard Setup.');
+  let res;
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-calls': 'true'
+      },
+      body: JSON.stringify(body)
+    });
+  } catch (e) {
+    throw new Error('Could not reach the AI service. Check your internet connection, or whether a network filter is blocking api.anthropic.com, then try again.');
+  }
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* non-JSON error body */ }
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) throw new Error('The AI service rejected the key — ask the Module Leader to re-enter it in Blackboard Setup.');
+    if (res.status === 429) throw new Error('The AI service is busy, or its usage limit has been reached — try again shortly.');
+    throw new Error((data && data.error && data.error.message) || res.statusText || ('AI service error ' + res.status));
+  }
+  if (!data || !data.content || !data.content[0] || typeof data.content[0].text !== 'string') throw new Error('The AI service returned an empty reply — try again.');
   return data.content[0].text;
+}
+
+async function callClaude(apiKey, prompt, maxTokens) {
+  return anthropicRequest(apiKey, { model: AI_MODEL, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] });
 }
 
 function copyAIOutput() {
@@ -2939,21 +2966,26 @@ async function saveConfig() {
 }
 
 // ─── Student Identity ─────────────────────────────────────────
+// A "real" student session is someone who opened the student link
+// (?role=student). A Module Leader previewing the Student view from the role
+// dropdown is not one, and must never inherit a student remembered in this
+// browser (or leave their own preview pick behind for a real student here).
+function isRealStudentSession() {
+  return new URLSearchParams(location.search).get('role') === 'student' && !isLeader && !isLecturer;
+}
+
 function updateStudentIdentityDropdown() {
   const sel = document.getElementById('studentIdentitySelect');
-  const saved = safeStore.getItem('cmp701_student_id');
+  const saved = isRealStudentSession() ? safeStore.getItem('cmp701_student_id') : null;
   sel.innerHTML = '<option value="">— Select your name —</option>' +
     Object.entries(appData.students).sort(([,a],[,b]) => a.name.localeCompare(b.name))
       .map(([sid, s]) => `<option value="${sid}" ${sid===saved?'selected':''}>${s.name} (${s.campus || ''})</option>`).join('');
-  // Only restore a remembered student for an actual student session — staff
-  // views must never silently act as, or display, a student picked earlier
-  // in the same browser.
-  if (!isLeader && !isLecturer && saved && appData.students[saved]) { currentStudent = saved; refreshStudentViews(); }
+  if (saved && appData.students[saved]) { currentStudent = saved; refreshStudentViews(); }
 }
 
 function setStudentIdentity() {
   currentStudent = document.getElementById('studentIdentitySelect').value;
-  if (currentStudent) safeStore.setItem('cmp701_student_id', currentStudent);
+  if (currentStudent && isRealStudentSession()) safeStore.setItem('cmp701_student_id', currentStudent);
   refreshStudentViews();
 }
 
@@ -4570,13 +4602,13 @@ function renderGamificationDashboard() {
      reach real users' browsers for up to 4 hours even after index.html
      itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
      that touches any of these files. -->
-<script>const SCRIPT_V = '20261004a';</script>
-<script src="js/company.js?v=20261004a"></script>
-<script src="js/individual-workspace.js?v=20261004a"></script>
-<script src="js/studio-tools.js?v=20261004a"></script>
-<script src="js/prototype.js?v=20261004a"></script>
-<script src="js/deadlines.js?v=20261004a"></script>
-<script src="js/progress.js?v=20261004a"></script>
-<script src="js/certificate.js?v=20261004a"></script>
+<script>const SCRIPT_V = '20261004b';</script>
+<script src="js/company.js?v=20261004b"></script>
+<script src="js/individual-workspace.js?v=20261004b"></script>
+<script src="js/studio-tools.js?v=20261004b"></script>
+<script src="js/prototype.js?v=20261004b"></script>
+<script src="js/deadlines.js?v=20261004b"></script>
+<script src="js/progress.js?v=20261004b"></script>
+<script src="js/certificate.js?v=20261004b"></script>
 </body>
 </html>
