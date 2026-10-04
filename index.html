@@ -2084,10 +2084,22 @@ async function saveQuest() {
   toast('Quest saved!', 'ok');
 }
 
+// Reports every failure instead of returning silently, and reads the value
+// back so "Quest published!" is only shown once the database really has it.
 async function publishQuest(wk) {
-  if (!isLeader) return;
-  await sRef('quests/' + wk).update({ status: 'published' });
-  toast('Quest published!', 'ok');
+  if (!isLeader) { toast('Switch to Module Leader view to publish quests', 'err'); return; }
+  try {
+    await sRef('quests/' + wk + '/status').set('published');
+    const saved = (await sRef('quests/' + wk + '/status').get()).val();
+    if (saved !== 'published') throw new Error('the change did not save');
+    const weekNum = parseInt(wk.split('-')[1]);
+    const cw = parseInt(appData.config.currentWeek || computeCurrentWeek());
+    toast(cw && weekNum > cw
+      ? `Week ${weekNum} quest published — students will see it once the current week is set to ${weekNum}`
+      : 'Quest published!', 'ok');
+  } catch (e) {
+    toast('Could not publish this quest: ' + (e && e.message ? e.message : 'unknown error') + '. Check your connection and try again.', 'err');
+  }
 }
 
 // Auto-publishes any quest, up to and including the current week, that has
@@ -2122,9 +2134,13 @@ async function ensureQuestsAutoPublished() {
 }
 
 async function unpublishQuest(wk) {
-  if (!isLeader) return;
-  await sRef('quests/' + wk + '/status').set('draft');
-  toast('Quest unpublished');
+  if (!isLeader) { toast('Switch to Module Leader view to unpublish quests', 'err'); return; }
+  try {
+    await sRef('quests/' + wk + '/status').set('draft');
+    toast('Quest unpublished');
+  } catch (e) {
+    toast('Could not unpublish this quest: ' + (e && e.message ? e.message : 'unknown error'), 'err');
+  }
 }
 
 async function deleteQuest(wk) {
