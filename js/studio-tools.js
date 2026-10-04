@@ -1063,7 +1063,12 @@ function renderStudioToolPanel() {
   const panel = document.getElementById('studioToolPanel');
   if (!panel) return;
   const gid = myGuildId();
-  if (!gid) { panel.innerHTML = '<p style="color:#94a3b8;font-size:12px">Join a Guild first (see My Guild tab).</p>'; return; }
+  if (!gid) {
+    panel.innerHTML = (isLeader || isLecturer)
+      ? '<p style="color:#94a3b8;font-size:12px">Select a Guild above to view its Studio Tools.</p>'
+      : '<p style="color:#94a3b8;font-size:12px">Join a Guild first (see My Guild tab).</p>';
+    return;
+  }
   const renderer = TOOL_RENDERERS[currentTool];
   panel.innerHTML = renderer ? renderer(gid) : '<p>Tool not found.</p>';
   drawPendingCharts();
@@ -1102,8 +1107,10 @@ computeStudentBadges = function(studentId, submCount, prCount) {
 // Staff Guild picker for the shared Studio Tools tab
 let viewingGuildId = null;
 const _origMyGuildId = myGuildId;
+// Staff see only the Guild they explicitly picked — never a Guild inherited
+// from a student name remembered in this browser from an earlier session.
 myGuildId = function() {
-  if ((isLeader || isLecturer) && viewingGuildId) return viewingGuildId;
+  if (isLeader || isLecturer) return viewingGuildId;
   return _origMyGuildId();
 };
 

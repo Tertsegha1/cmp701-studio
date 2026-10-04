@@ -2945,7 +2945,10 @@ function updateStudentIdentityDropdown() {
   sel.innerHTML = '<option value="">— Select your name —</option>' +
     Object.entries(appData.students).sort(([,a],[,b]) => a.name.localeCompare(b.name))
       .map(([sid, s]) => `<option value="${sid}" ${sid===saved?'selected':''}>${s.name} (${s.campus || ''})</option>`).join('');
-  if (saved && appData.students[saved]) { currentStudent = saved; refreshStudentViews(); }
+  // Only restore a remembered student for an actual student session — staff
+  // views must never silently act as, or display, a student picked earlier
+  // in the same browser.
+  if (!isLeader && !isLecturer && saved && appData.students[saved]) { currentStudent = saved; refreshStudentViews(); }
 }
 
 function setStudentIdentity() {
@@ -4567,13 +4570,13 @@ function renderGamificationDashboard() {
      reach real users' browsers for up to 4 hours even after index.html
      itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
      that touches any of these files. -->
-<script>const SCRIPT_V = '20260930j';</script>
-<script src="js/company.js?v=20260930j"></script>
-<script src="js/individual-workspace.js?v=20260930j"></script>
-<script src="js/studio-tools.js?v=20260930j"></script>
-<script src="js/prototype.js?v=20260930j"></script>
-<script src="js/deadlines.js?v=20260930j"></script>
-<script src="js/progress.js?v=20260930j"></script>
-<script src="js/certificate.js?v=20260930j"></script>
+<script>const SCRIPT_V = '20261004a';</script>
+<script src="js/company.js?v=20261004a"></script>
+<script src="js/individual-workspace.js?v=20261004a"></script>
+<script src="js/studio-tools.js?v=20261004a"></script>
+<script src="js/prototype.js?v=20261004a"></script>
+<script src="js/deadlines.js?v=20261004a"></script>
+<script src="js/progress.js?v=20261004a"></script>
+<script src="js/certificate.js?v=20261004a"></script>
 </body>
 </html>
