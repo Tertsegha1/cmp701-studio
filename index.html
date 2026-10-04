@@ -715,7 +715,7 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
     <div class="card-body">
       <div class="form-row">
         <div class="form-group">
-          <label>Current Week</label>
+          <label>Current Week <span id="cfgWeekHint" style="font-weight:400;font-size:10px;color:#64748b"></span></label>
           <input type="number" id="cfgWeek" min="1" max="12" placeholder="1–12">
         </div>
         <div class="form-group">
@@ -1514,6 +1514,7 @@ function subscribeToCohort(cohortId) {
     appData.students    = raw.students    || {};
     appData.quests      = raw.quests      || {};
     appData.config      = raw.config      || {};
+    applyAutoCurrentWeek();
     checkLeaderCodeGate();
 
     document.getElementById('liveBadge').textContent = '● Live';
@@ -1678,9 +1679,38 @@ function setCurrentWeekBadge() {
 function computeCurrentWeek() {
   const start = appData.config.semesterStart;
   if (!start) return '—';
-  const diff = Math.floor((Date.now() - new Date(start)) / (7 * 86400000)) + 1;
+  // Week 1 starts at local midnight on the semester start date, so the week
+  // rolls over at midnight (not at 1am during BST, as parsing it as UTC would).
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(start));
+  const startMs = m ? new Date(+m[1], +m[2] - 1, +m[3]).getTime() : new Date(start).getTime();
+  if (isNaN(startMs)) return '—';
+  const days = Math.floor((Date.now() - startMs) / 86400000);
+  const diff = Math.floor(days / 7) + 1;
   return Math.min(Math.max(diff, 1), 12);
 }
+
+// The current week follows the semester start date automatically whenever a
+// start date is set (manual entry is only used when there isn't one), so a
+// new week's quest, deadline and peer-review round switch over by themselves.
+// Overrides the in-memory value only; the Module Leader's session also writes
+// it back so legacy pages (bb.html / admin.html) that read it stay in step.
+function applyAutoCurrentWeek() {
+  const auto = computeCurrentWeek();
+  if (typeof auto !== 'number') return false;
+  const stored = appData.config.currentWeek;
+  appData.config.currentWeek = auto;
+  if (isLeader && stored !== auto) sRef('config/currentWeek').set(auto).catch(() => {});
+  return stored !== auto;
+}
+
+// Keeps a tab left open across midnight on Monday in step.
+setInterval(() => {
+  if (!appData.config || !appData.config.semesterStart) return;
+  if (applyAutoCurrentWeek()) {
+    refreshAll();
+    if (typeof ensureQuestsAutoPublished === 'function') ensureQuestsAutoPublished();
+  }
+}, 5 * 60 * 1000);
 
 // Every weekly Quest is due the Sunday that closes its own 7-day block,
 // 11:59pm — computed from the semester start date rather than set by hand,
@@ -2872,6 +2902,11 @@ function loadConfig() {
   const c = { ...cohortMeta, ...appData.config };
   if (c.currentWeek)   document.getElementById('cfgWeek').value          = c.currentWeek;
   if (c.semesterStart) document.getElementById('cfgSemesterStart').value = c.semesterStart;
+  const weekField = document.getElementById('cfgWeek');
+  weekField.disabled = !!c.semesterStart;
+  weekField.title = c.semesterStart ? 'Set automatically from the Semester Start Date' : '';
+  const weekHint = document.getElementById('cfgWeekHint');
+  if (weekHint) weekHint.textContent = c.semesterStart ? '(automatic from the semester start date)' : '(enter manually, or set a start date to make it automatic)';
   const cw1 = c.cw1Deadline || c.cw1Sub || '2026-03-13';
   const cw2 = c.cw2Deadline || c.cw2Sub || '2026-05-06';
   document.getElementById('cfgCW1Deadline').value = cw1;
