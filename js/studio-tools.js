@@ -347,11 +347,28 @@ function renderPlatformTool(gid) {
 
 // ─── Data Workbench ───────────────────────────────────────────────────
 function parseCSVText(text) {
-  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  const lines = text.replace(/^﻿/, '').trim().split(/\r?\n/).filter(Boolean);
   if (!lines.length) return { headers: [], rows: [] };
-  const headers = lines[0].split(',').map(h => h.trim());
-  const rows = lines.slice(1).map(l => l.split(',').map(c => c.trim()));
+  const headers = splitCSVLine(lines[0]);
+  const rows = lines.slice(1).map(splitCSVLine);
   return { headers, rows };
+}
+
+// Quote-aware split so categorical text such as "Smith, John" or "Retail, Online"
+// stays in one cell instead of shifting every later column.
+function splitCSVLine(line) {
+  const out = []; let cur = '', quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quoted) {
+      if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else quoted = false; }
+      else cur += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === ',') { out.push(cur.trim()); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur.trim());
+  return out;
 }
 
 function computeColumnStats(headers, rows) {
@@ -635,7 +652,124 @@ function correlationMatrix(headers, rows) {
   return { columns: numericCols, matrix };
 }
 
-function runDescriptiveTask(headers, rows, colA, colB) {
+// ── Categorical support helpers ───────────────────────────────────────
+// A column dropdown value is either a plain column name (use its natural type)
+// or '~cat~' + name (a numeric-looking column such as 0/1 or a 1–5 rating that
+// should be treated as categories).
+const ML_CAT_PREFIX = '~cat~';
+function mlEsc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function decodeColChoice(value) {
+  return value && value.startsWith(ML_CAT_PREFIX) ? { col: value.slice(ML_CAT_PREFIX.length), cat: true } : { col: value, cat: false };
+}
+function mlIsNumeric(headers, rows, col) {
+  const i = headers.indexOf(col);
+  const vals = rows.map(r => r[i]).filter(v => v !== undefined && v !== '');
+  return vals.length > 0 && vals.every(v => !isNaN(+v));
+}
+function mlKind(headers, rows, col, forceCat) { return !forceCat && mlIsNumeric(headers, rows, col) ? 'numeric' : 'categorical'; }
+function catValue(row, idx) { return row[idx] === undefined || row[idx] === '' ? '(missing)' : String(row[idx]); }
+// Keep the most frequent categories and lump the rest into "Other" so tables
+// and charts stay readable for high-cardinality columns.
+function collapseCategories(values, max) {
+  max = max || 8;
+  const counts = {};
+  values.forEach(v => counts[v] = (counts[v] || 0) + 1);
+  const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (ranked.length <= max) return { labels: ranked.map(e => e[0]), map: v => v, freq: ranked };
+  const keep = new Set(ranked.slice(0, max - 1).map(e => e[0]));
+  const otherCount = ranked.slice(max - 1).reduce((s, e) => s + e[1], 0);
+  return { labels: [...keep, 'Other'], map: v => keep.has(v) ? v : 'Other', freq: [...ranked.slice(0, max - 1), ['Other', otherCount]] };
+}
+function lnGamma(z) {
+  const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  z -= 1; let x = c[0];
+  for (let i = 1; i < 9; i++) x += c[i] / (z + i);
+  const t = z + 7.5;
+  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+}
+// Upper regularised incomplete gamma Q(a,x); chi-square p-value = Q(df/2, chi2/2).
+function gammaQ(a, x) {
+  if (x <= 0) return 1;
+  const gln = lnGamma(a);
+  if (x < a + 1) {
+    let ap = a, sum = 1 / a, del = sum;
+    for (let n = 0; n < 300; n++) { ap++; del *= x / ap; sum += del; if (Math.abs(del) < Math.abs(sum) * 1e-12) break; }
+    return 1 - sum * Math.exp(-x + a * Math.log(x) - gln);
+  }
+  let b = x + 1 - a, c = 1 / 1e-30, d = 1 / b, h = d;
+  for (let i = 1; i < 300; i++) {
+    const an = -i * (i - a); b += 2;
+    d = an * d + b; if (Math.abs(d) < 1e-30) d = 1e-30;
+    c = b + an / c; if (Math.abs(c) < 1e-30) c = 1e-30;
+    d = 1 / d; const del = d * c; h *= del;
+    if (Math.abs(del - 1) < 1e-12) break;
+  }
+  return Math.exp(-x + a * Math.log(x) - gln) * h;
+}
+function chiSquareP(chi2, df) { return df > 0 ? +Math.min(1, Math.max(0, gammaQ(df / 2, chi2 / 2))).toFixed(4) : 1; }
+
+// Categorical × categorical: contingency table, chi-square test of independence
+// and Cramér's V (effect size, 0 = independent, 1 = perfectly associated).
+function runCategoricalPairTask(headers, rows, colA, colB) {
+  const ai = headers.indexOf(colA), bi = headers.indexOf(colB);
+  const av = rows.map(r => catValue(r, ai)), bv = rows.map(r => catValue(r, bi));
+  const ca = collapseCategories(av), cb = collapseCategories(bv);
+  const rl = ca.labels, cl = cb.labels;
+  const counts = rl.map(() => cl.map(() => 0));
+  rows.forEach((_, k) => { counts[rl.indexOf(ca.map(av[k]))][cl.indexOf(cb.map(bv[k]))]++; });
+  const n = rows.length;
+  const rowTot = counts.map(r => r.reduce((a, b) => a + b, 0));
+  const colTot = cl.map((_, j) => counts.reduce((s, r) => s + r[j], 0));
+  let chi2 = 0, lowCells = 0;
+  counts.forEach((r, i) => r.forEach((o, j) => {
+    const e = rowTot[i] * colTot[j] / n;
+    if (e > 0) chi2 += (o - e) ** 2 / e;
+    if (e < 5) lowCells++;
+  }));
+  const df = (rl.length - 1) * (cl.length - 1);
+  const minDim = Math.min(rl.length, cl.length) - 1;
+  const v = minDim > 0 && n > 0 ? +Math.sqrt(chi2 / (n * minDim)).toFixed(3) : 0;
+  return { mode: 'category-category', colA, colB, n, rowLabels: rl, colLabels: cl, counts,
+    chi2: +chi2.toFixed(2), df, pValue: chiSquareP(chi2, df), cramersV: v,
+    strength: v >= 0.5 ? 'strong' : v >= 0.3 ? 'moderate' : v >= 0.1 ? 'weak' : 'negligible',
+    lowExpected: lowCells / (rl.length * cl.length) > 0.2,
+    freqA: ca.freq, freqB: cb.freq };
+}
+
+// Categorical × numeric: summary of the numeric column inside each category,
+// plus eta-squared (share of the numeric variation explained by the category).
+function runCategoryNumericTask(headers, rows, catCol, numCol) {
+  const ci = headers.indexOf(catCol), ni = headers.indexOf(numCol);
+  const cats = rows.map(r => catValue(r, ci)), nums = rows.map(r => +r[ni]);
+  const cc = collapseCategories(cats, 10);
+  const byCat = {};
+  cats.forEach((c, k) => { (byCat[cc.map(c)] = byCat[cc.map(c)] || []).push(nums[k]); });
+  const grand = nums.reduce((a, b) => a + b, 0) / nums.length;
+  let ssb = 0, sst = 0;
+  nums.forEach(x => sst += (x - grand) ** 2);
+  const groups = cc.labels.map(name => {
+    const vals = byCat[name] || [];
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    ssb += vals.length * (mean - grand) ** 2;
+    const sd = vals.length > 1 ? Math.sqrt(vals.reduce((s, x) => s + (x - mean) ** 2, 0) / (vals.length - 1)) : 0;
+    return { name, n: vals.length, mean: +mean.toFixed(2), sd: +sd.toFixed(2), min: Math.min(...vals), max: Math.max(...vals) };
+  });
+  const eta2 = sst === 0 ? 0 : +(ssb / sst).toFixed(3);
+  return { mode: 'category-numeric', catCol, numCol, n: rows.length, groups, eta2,
+    strength: eta2 >= 0.14 ? 'large' : eta2 >= 0.06 ? 'medium' : eta2 >= 0.01 ? 'small' : 'negligible',
+    grandMean: +grand.toFixed(2) };
+}
+
+function runDescriptiveTask(headers, rows, colA, colB, forceCat) {
+  forceCat = forceCat || [];
+  const kA = mlKind(headers, rows, colA, forceCat.includes(colA)), kB = mlKind(headers, rows, colB, forceCat.includes(colB));
+  if (kA === 'categorical' && kB === 'categorical') return runCategoricalPairTask(headers, rows, colA, colB);
+  if (kA === 'categorical') return runCategoryNumericTask(headers, rows, colA, colB);
+  if (kB === 'categorical') return runCategoryNumericTask(headers, rows, colB, colA);
+  return runNumericPairTask(headers, rows, colA, colB);
+}
+
+function runNumericPairTask(headers, rows, colA, colB) {
   const ai = headers.indexOf(colA), bi = headers.indexOf(colB);
   const xs = rows.map(r=>+r[ai]), ys = rows.map(r=>+r[bi]);
   const r = pearsonCorrelation(xs, ys);
@@ -663,7 +797,49 @@ function runForecastingTask(headers, rows, valueCol, periods) {
     improvedOnBaseline: modelMSE < baselineMSE, historical: ys, projections };
 }
 
-function runClassificationTask(headers, rows, targetCol, featureCol) {
+function confusionMatrix(labels, actual, predicted) {
+  const matrix = labels.map(() => labels.map(() => 0));
+  actual.forEach((a, i) => { const r = labels.indexOf(a), c = labels.indexOf(predicted[i]); if (r >= 0 && c >= 0) matrix[r][c]++; });
+  return { labels, matrix };
+}
+
+// Categorical feature: one rule per category — predict the class most common
+// among training rows with that category (a one-level decision tree). Works
+// with any number of target classes; unseen categories fall back to the overall
+// training majority.
+function runCategoricalClassificationTask(headers, rows, targetCol, featureCol) {
+  const ti = headers.indexOf(targetCol), fi = headers.indexOf(featureCol);
+  const usable = rows.map(r => ({ t: catValue(r, ti), f: catValue(r, fi) }));
+  const classCounts = {};
+  usable.forEach(u => classCounts[u.t] = (classCounts[u.t] || 0) + 1);
+  const classes = Object.entries(classCounts).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+  if (classes.length < 2) return null;
+  const splitAt = Math.max(1, Math.floor(usable.length * 0.8));
+  const train = usable.slice(0, splitAt), test = usable.slice(splitAt).length ? usable.slice(splitAt) : usable.slice(0, splitAt);
+  const trainClass = {};
+  train.forEach(u => trainClass[u.t] = (trainClass[u.t] || 0) + 1);
+  const trainMajority = Object.entries(trainClass).sort((a, b) => b[1] - a[1])[0][0];
+  const perCat = {};
+  train.forEach(u => { const c = perCat[u.f] = perCat[u.f] || {}; c[u.t] = (c[u.t] || 0) + 1; });
+  const ruleFor = {};
+  const rules = Object.entries(perCat).map(([cat, cnts]) => {
+    const total = Object.values(cnts).reduce((a, b) => a + b, 0);
+    const [pred, pc] = Object.entries(cnts).sort((a, b) => b[1] - a[1])[0];
+    ruleFor[cat] = pred;
+    return { category: cat, predicted: pred, n: total, share: +(pc / total * 100).toFixed(1) };
+  }).sort((a, b) => b.n - a.n).slice(0, 12);
+  const predict = u => ruleFor[u.f] !== undefined ? ruleFor[u.f] : trainMajority;
+  const acc = set => set.length ? +(set.filter(u => predict(u) === u.t).length / set.length * 100).toFixed(1) : 0;
+  const base = set => set.length ? +(set.filter(u => u.t === trainMajority).length / set.length * 100).toFixed(1) : 0;
+  const shown = classes.slice(0, 6);
+  return { featureKind: 'categorical', targetCol, featureCol, classes: shown, n: usable.length, trainN: train.length, testN: test.length,
+    categoryCount: Object.keys(perCat).length, rules,
+    trainAcc: acc(train), testAcc: acc(test), baselineTrainAcc: base(train), baselineTestAcc: base(test),
+    confusion: confusionMatrix(shown, test.map(u => u.t), test.map(predict)) };
+}
+
+function runClassificationTask(headers, rows, targetCol, featureCol, featureAsCat) {
+  if (featureAsCat || mlKind(headers, rows, featureCol, false) === 'categorical') return runCategoricalClassificationTask(headers, rows, targetCol, featureCol);
   const ti = headers.indexOf(targetCol), fi = headers.indexOf(featureCol);
   const counts = {};
   rows.forEach(r => counts[r[ti]] = (counts[r[ti]]||0)+1);
@@ -684,10 +860,74 @@ function runClassificationTask(headers, rows, targetCol, featureCol) {
   return { targetCol, featureCol, classes, n: usable.length, trainN: train.length, testN: test.length,
     threshold: +stump.threshold.toFixed(2), flip: stump.flip,
     trainAcc: acc(train), testAcc: acc(test), baselineTrainAcc: baselineAcc(train), baselineTestAcc: baselineAcc(test),
+    confusion: confusionMatrix(classes, test.map(r => r[ti]), test.map(r => stumpPredict(stump, classes, +r[fi]))),
     points: usable.map(r => ({ x: +r[fi], group: r[ti], isTest: usable.indexOf(r) >= splitAt })) };
 }
 
-function runClusteringTask(headers, rows, cols, k) {
+// k-prototypes: k-means for numeric columns (standardised) combined with k-modes
+// for categorical columns (a mismatch costs 1). Reduces to k-means when every
+// column is numeric and k-modes when every column is categorical.
+function runMixedClusteringTask(headers, rows, cols, k, forceCat) {
+  const idxs = cols.map(c => headers.indexOf(c));
+  const kinds = cols.map(c => mlKind(headers, rows, c, forceCat.includes(c)));
+  const n = rows.length;
+  k = Math.min(k, n);
+  const stat = {};
+  const data = rows.map(r => cols.map((_, d) => kinds[d] === 'numeric' ? +r[idxs[d]] : catValue(r, idxs[d])));
+  cols.forEach((_, d) => {
+    if (kinds[d] !== 'numeric') return;
+    const vals = data.map(p => p[d]);
+    const mean = vals.reduce((a, b) => a + b, 0) / n;
+    const sd = Math.sqrt(vals.reduce((s, x) => s + (x - mean) ** 2, 0) / n) || 1;
+    stat[d] = { mean, sd };
+  });
+  const dist = (p, c) => p.reduce((s, v, d) => s + (kinds[d] === 'numeric' ? ((v - c[d]) / stat[d].sd) ** 2 : (v === c[d] ? 0 : 1)), 0);
+  // Deterministic farthest-first initialisation
+  let centroids = [data[0].slice()];
+  while (centroids.length < k) {
+    let bestIdx = 0, bestD = -1;
+    data.forEach((p, i) => { const dm = Math.min(...centroids.map(c => dist(p, c))); if (dm > bestD) { bestD = dm; bestIdx = i; } });
+    centroids.push(data[bestIdx].slice());
+  }
+  let assignments = new Array(n).fill(0);
+  for (let iter = 0; iter < 20; iter++) {
+    const next = data.map(p => { let b = 0, bd = Infinity; centroids.forEach((c, ci) => { const dd = dist(p, c); if (dd < bd) { bd = dd; b = ci; } }); return b; });
+    const changed = next.some((a, i) => a !== assignments[i]);
+    assignments = next;
+    centroids = centroids.map((old, ci) => {
+      const members = data.filter((_, i) => assignments[i] === ci);
+      if (!members.length) return old;
+      return cols.map((_, d) => {
+        if (kinds[d] === 'numeric') return members.reduce((s, p) => s + p[d], 0) / members.length;
+        const tally = {}; members.forEach(p => tally[p[d]] = (tally[p[d]] || 0) + 1);
+        return Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
+      });
+    });
+    if (!changed && iter > 0) break;
+  }
+  const clusters = centroids.map((c, ci) => {
+    const members = data.filter((_, i) => assignments[i] === ci);
+    const summary = cols.map((name, d) => {
+      if (!members.length) return '—';
+      if (kinds[d] === 'numeric') return `${name}: ${(members.reduce((s, p) => s + p[d], 0) / members.length).toFixed(2)} avg`;
+      const tally = {}; members.forEach(p => tally[p[d]] = (tally[p[d]] || 0) + 1);
+      return `${name}: ` + Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([v, cnt]) => `${v} ${Math.round(cnt / members.length * 100)}%`).join(', ');
+    });
+    return { id: ci + 1, size: members.length, centroid: c.map((v, d) => kinds[d] === 'numeric' ? +v.toFixed(2) : v), summary };
+  });
+  const numericDims = cols.map((_, d) => d).filter(d => kinds[d] === 'numeric');
+  const out = { mode: 'mixed', cols, colKinds: kinds, k, n, clusters, assignments };
+  if (numericDims.length >= 2) {
+    const [dx, dy] = numericDims;
+    out.scatter = { xLabel: cols[dx], yLabel: cols[dy], points: data.map(p => [p[dx], p[dy]]),
+      marks: clusters.map(c => ({ x: c.centroid[dx], y: c.centroid[dy] })) };
+  }
+  return out;
+}
+
+function runClusteringTask(headers, rows, cols, k, forceCat) {
+  forceCat = forceCat || [];
+  if (cols.some(c => mlKind(headers, rows, c, forceCat.includes(c)) === 'categorical')) return runMixedClusteringTask(headers, rows, cols, k, forceCat);
   const idxs = cols.map(c => headers.indexOf(c));
   const points = rows.map(r => idxs.map(i => +r[i]));
   const { centroids, assignments } = kMeans(points, k, 15);
@@ -700,9 +940,10 @@ function runClusteringTask(headers, rows, cols, k) {
 function runAssociationTask(headers, rows, colA, colB) {
   const ai = headers.indexOf(colA), bi = headers.indexOf(colB);
   const n = rows.length;
-  const countA = {}, countPair = {};
+  const countA = {}, countB = {}, countPair = {};
   rows.forEach(r => {
     countA[r[ai]] = (countA[r[ai]]||0) + 1;
+    countB[r[bi]] = (countB[r[bi]]||0) + 1;
     const key = r[ai] + '→' + r[bi];
     countPair[key] = (countPair[key]||0) + 1;
   });
@@ -710,7 +951,8 @@ function runAssociationTask(headers, rows, colA, colB) {
     .filter(([,c]) => c >= 2)
     .map(([key, count]) => {
       const [a, b] = key.split('→');
-      return { a, b, count, support: +(count/n).toFixed(3), confidence: +(count/countA[a]).toFixed(3) };
+      return { a, b, count, support: +(count/n).toFixed(3), confidence: +(count/countA[a]).toFixed(3),
+        lift: +((count/countA[a]) / (countB[b]/n)).toFixed(2) };
     })
     .sort((x,y) => y.confidence - x.confidence)
     .slice(0, 8);
@@ -727,9 +969,11 @@ async function runModelLabAnalysis(gid) {
   let config = {}, colsNeeded = [], results = null;
 
   if (type === 'Descriptive') {
-    config.colA = document.getElementById('ml-colA').value;
-    config.colB = document.getElementById('ml-colB').value;
-    if (!config.colA || !config.colB) { toast('Choose two numeric columns', 'err'); return; }
+    const a = decodeColChoice(document.getElementById('ml-colA').value), b = decodeColChoice(document.getElementById('ml-colB').value);
+    config.colA = a.col; config.colB = b.col;
+    if (!config.colA || !config.colB) { toast('Choose two columns', 'err'); return; }
+    if (config.colA === config.colB) { toast('Choose two different columns', 'err'); return; }
+    config.asCat = [a.cat && a.col, b.cat && b.col].filter(Boolean);
     colsNeeded = [config.colA, config.colB];
   } else if (type === 'Forecasting') {
     config.valueCol = document.getElementById('ml-forecast-col').value;
@@ -737,21 +981,25 @@ async function runModelLabAnalysis(gid) {
     if (!config.valueCol) { toast('Choose a numeric column to forecast', 'err'); return; }
     colsNeeded = [config.valueCol];
   } else if (type === 'Classification') {
-    config.targetCol = document.getElementById('ml-target').value;
-    config.featureCol = document.getElementById('ml-feature').value;
+    const t = decodeColChoice(document.getElementById('ml-target').value), f = decodeColChoice(document.getElementById('ml-feature').value);
+    config.targetCol = t.col; config.featureCol = f.col; config.featureAsCat = f.cat;
     if (!config.targetCol || !config.featureCol) { toast('Choose a target and a feature column', 'err'); return; }
+    if (config.targetCol === config.featureCol) { toast('The feature must be a different column from the target', 'err'); return; }
     colsNeeded = [config.targetCol, config.featureCol];
   } else if (type === 'Clustering') {
-    const c1 = document.getElementById('ml-cluster-col1').value;
-    const c2 = document.getElementById('ml-cluster-col2').value;
-    config.cols = c2 && c2 !== c1 ? [c1, c2] : [c1];
+    const picks = ['ml-cluster-col1', 'ml-cluster-col2', 'ml-cluster-col3'].map(id => decodeColChoice(document.getElementById(id).value)).filter(p => p.col);
+    const seen = new Set();
+    const uniq = picks.filter(p => !seen.has(p.col) && seen.add(p.col));
+    config.cols = uniq.map(p => p.col);
+    config.asCat = uniq.filter(p => p.cat).map(p => p.col);
     config.k = +document.getElementById('ml-k').value || 3;
-    if (!c1) { toast('Choose at least one numeric column', 'err'); return; }
+    if (!config.cols.length) { toast('Choose at least one column', 'err'); return; }
     colsNeeded = config.cols;
   } else if (type === 'Association') {
-    config.colA = document.getElementById('ml-assoc-colA').value;
-    config.colB = document.getElementById('ml-assoc-colB').value;
-    if (!config.colA || !config.colB) { toast('Choose two categorical columns', 'err'); return; }
+    config.colA = decodeColChoice(document.getElementById('ml-assoc-colA').value).col;
+    config.colB = decodeColChoice(document.getElementById('ml-assoc-colB').value).col;
+    if (!config.colA || !config.colB) { toast('Choose two columns', 'err'); return; }
+    if (config.colA === config.colB) { toast('Choose two different columns', 'err'); return; }
     colsNeeded = [config.colA, config.colB];
   }
 
@@ -760,10 +1008,12 @@ async function runModelLabAnalysis(gid) {
     : { cleaned: parsed.rows, droppedCount: 0 };
   if (cleaned.length < 2) { toast('Not enough complete rows for those columns', 'err'); return; }
 
-  if (type === 'Descriptive') results = runDescriptiveTask(parsed.headers, cleaned, config.colA, config.colB);
+  if (type === 'Forecasting' && !mlIsNumeric(parsed.headers, cleaned, config.valueCol)) { toast('Forecasting needs a numeric column — pick a different column', 'err'); return; }
+
+  if (type === 'Descriptive') results = runDescriptiveTask(parsed.headers, cleaned, config.colA, config.colB, config.asCat);
   else if (type === 'Forecasting') results = runForecastingTask(parsed.headers, cleaned, config.valueCol, config.periods);
-  else if (type === 'Classification') results = runClassificationTask(parsed.headers, cleaned, config.targetCol, config.featureCol);
-  else if (type === 'Clustering') results = runClusteringTask(parsed.headers, cleaned, config.cols, config.k);
+  else if (type === 'Classification') results = runClassificationTask(parsed.headers, cleaned, config.targetCol, config.featureCol, config.featureAsCat);
+  else if (type === 'Clustering') results = runClusteringTask(parsed.headers, cleaned, config.cols, config.k, config.asCat);
   else if (type === 'Association') results = runAssociationTask(parsed.headers, cleaned, config.colA, config.colB);
 
   if (!results) { toast('Could not run that analysis — check your target column has at least two distinct values', 'err'); return; }
@@ -788,7 +1038,16 @@ function downloadModelRun(gid, rid) {
   if (!run) return;
   const r = run.results;
   let rows = [];
-  if (run.type === 'Descriptive') {
+  if (run.type === 'Descriptive' && r.mode === 'category-category') {
+    rows = [['Metric','Value'],['Column A', r.colA],['Column B', r.colB],["Cramér's V", r.cramersV],['Strength', r.strength],
+      ['Chi-square', r.chi2],['Degrees of freedom', r.df],['p-value', r.pValue],['Rows used', r.n],[],
+      [r.colA + ' \\ ' + r.colB, ...r.colLabels]];
+    r.counts.forEach((row, i) => rows.push([r.rowLabels[i], ...row]));
+  } else if (run.type === 'Descriptive' && r.mode === 'category-numeric') {
+    rows = [['Metric','Value'],['Category column', r.catCol],['Numeric column', r.numCol],['Eta-squared', r.eta2],['Effect size', r.strength],['Rows used', r.n],[],
+      [r.catCol, 'n', 'Mean', 'SD', 'Min', 'Max']];
+    r.groups.forEach(g => rows.push([g.name, g.n, g.mean, g.sd, g.min, g.max]));
+  } else if (run.type === 'Descriptive') {
     rows = [['Metric','Value'],['Column A', r.colA],['Column B', r.colB],['Correlation (r)', r.correlation],
       ['Strength', r.strength],['Direction', r.direction],['Rows used', r.n]];
     if (r.matrix && r.matrix.columns.length > 1) {
@@ -802,14 +1061,26 @@ function downloadModelRun(gid, rid) {
     r.projections.forEach((v,i)=>rows.push(['Projected +'+(i+1), v]));
     rows.push(['Model MSE', r.modelMSE]); rows.push(['Baseline MSE (mean)', r.baselineMSE]);
   } else if (run.type === 'Classification') {
-    rows = [['Metric','Value'],['Target', r.targetCol],['Feature', r.featureCol],['Classes', r.classes.join(' vs ')],
-      ['Threshold', r.threshold],['Train accuracy %', r.trainAcc],['Test accuracy %', r.testAcc],
+    const categorical = r.featureKind === 'categorical';
+    rows = [['Metric','Value'],['Target', r.targetCol],['Feature', r.featureCol],['Classes', r.classes.join(categorical ? ', ' : ' vs ')],
+      categorical ? ['Feature type', 'categorical'] : ['Threshold', r.threshold],['Train accuracy %', r.trainAcc],['Test accuracy %', r.testAcc],
       ['Baseline train %', r.baselineTrainAcc],['Baseline test %', r.baselineTestAcc]];
+    if (categorical && r.rules) {
+      rows.push([]); rows.push([r.featureCol, 'Predicted class', 'Train rows', '% in predicted class']);
+      r.rules.forEach(x => rows.push([x.category, x.predicted, x.n, x.share]));
+    }
+    if (r.confusion) {
+      rows.push([]); rows.push(['Confusion matrix (test): actual \\ predicted', ...r.confusion.labels]);
+      r.confusion.matrix.forEach((row, i) => rows.push([r.confusion.labels[i], ...row]));
+    }
   } else if (run.type === 'Clustering') {
-    rows = [['Cluster','Size', ...r.cols]].concat(r.clusters.map(c=>[c.id, c.size, ...c.centroid]));
+    rows = r.mode === 'mixed'
+      ? [['Cluster','Size', ...r.cols, 'Profile']].concat(r.clusters.map(c=>[c.id, c.size, ...c.centroid, (c.summary || []).join(' | ')]))
+      : [['Cluster','Size', ...r.cols]].concat(r.clusters.map(c=>[c.id, c.size, ...c.centroid]));
   } else if (run.type === 'Association') {
-    rows = [[run.results.colA, run.results.colB, 'Count', 'Support', 'Confidence']]
-      .concat(r.rules.map(rule=>[rule.a, rule.b, rule.count, rule.support, rule.confidence]));
+    const lift = r.rules.some(rule => rule.lift !== undefined);
+    rows = [[run.results.colA, run.results.colB, 'Count', 'Support', 'Confidence', ...(lift ? ['Lift'] : [])]]
+      .concat(r.rules.map(rule=>[rule.a, rule.b, rule.count, rule.support, rule.confidence, ...(lift ? [rule.lift] : [])]));
   }
   downloadCSV(rows, `${run.name.replace(/\s+/g,'_')}.csv`);
 }
@@ -820,6 +1091,38 @@ function renderModelRunResult(run, rid) {
   const chartId = `chart-run-${rid}`;
   const chartFile = n => `${run.name.replace(/\s+/g,'_')}_${n}.png`;
 
+  if (run.type === 'Descriptive' && r.mode === 'category-category') {
+    const fA = chartId + '-freqA', fB = chartId + '-freqB';
+    queueChart(fA, canvas => drawBarChart(canvas, r.freqA.map(e => e[0]), r.freqA.map(e => e[1]), { title: `Counts: ${mlEsc(r.colA)}`, color: '#2563EB' }));
+    queueChart(fB, canvas => drawBarChart(canvas, r.freqB.map(e => e[0]), r.freqB.map(e => e[1]), { title: `Counts: ${mlEsc(r.colB)}`, color: '#7C3AED' }));
+    const rowTot = r.counts.map(row => row.reduce((a, b) => a + b, 0));
+    const head = `<tr><th>${mlEsc(r.colA)} \\ ${mlEsc(r.colB)}</th>${r.colLabels.map(c => `<th class="C">${mlEsc(c)}</th>`).join('')}<th class="C">Total</th></tr>`;
+    const body = r.counts.map((row, i) => `<tr><td><strong>${mlEsc(r.rowLabels[i])}</strong></td>${row.map(v => {
+      const pct = rowTot[i] ? v / rowTot[i] : 0;
+      return `<td class="C" style="background:rgba(124,58,237,${(pct * 0.45).toFixed(2)})">${v} <span style="color:#64748b;font-size:9px">(${Math.round(pct * 100)}%)</span></td>`;
+    }).join('')}<td class="C">${rowTot[i]}</td></tr>`).join('');
+    const sig = r.pValue < 0.05 ? 'statistically significant at the 5% level' : 'not statistically significant at the 5% level';
+    return meta + `<span style="font-size:11px">Association between <strong>${mlEsc(r.colA)}</strong> and <strong>${mlEsc(r.colB)}</strong> (both categorical): Cramér's V = <strong>${r.cramersV}</strong> (${r.strength}); χ²(${r.df}) = ${r.chi2}, p = ${r.pValue} — ${sig}.</span>
+      <div style="overflow-x:auto;margin-top:6px"><table style="font-size:11px"><thead>${head}</thead><tbody>${body}</tbody></table></div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Cell shading and brackets show the share of each ${mlEsc(r.colA)} row falling in that ${mlEsc(r.colB)} category.</div>
+      ${r.lowExpected ? `<div class="alert" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;margin-top:6px">Many cells have fewer than 5 expected observations, so the χ² p-value is unreliable. Collect more data or merge rare categories.</div>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+        <div>${chartCanvasHTML(fA, 260, 170)}${downloadChartButton(fA, chartFile('counts_' + r.colA))}</div>
+        <div>${chartCanvasHTML(fB, 260, 170)}${downloadChartButton(fB, chartFile('counts_' + r.colB))}</div>
+      </div>`;
+  }
+  if (run.type === 'Descriptive' && r.mode === 'category-numeric') {
+    const mId = chartId + '-means', cId = chartId + '-counts';
+    queueChart(mId, canvas => drawBarChart(canvas, r.groups.map(g => g.name), r.groups.map(g => g.mean), { title: `Mean ${mlEsc(r.numCol)} by ${mlEsc(r.catCol)}`, color: '#0D7377' }));
+    queueChart(cId, canvas => drawBarChart(canvas, r.groups.map(g => g.name), r.groups.map(g => g.n), { title: `Counts: ${mlEsc(r.catCol)}`, color: '#7C3AED' }));
+    const rows = r.groups.map(g => `<tr><td>${mlEsc(g.name)}</td><td class="C">${g.n}</td><td class="C">${g.mean}</td><td class="C">${g.sd}</td><td class="C">${g.min}</td><td class="C">${g.max}</td></tr>`).join('');
+    return meta + `<span style="font-size:11px"><strong>${mlEsc(r.numCol)}</strong> across the categories of <strong>${mlEsc(r.catCol)}</strong>: η² = <strong>${r.eta2}</strong> (${r.strength} effect — ${Math.round(r.eta2 * 100)}% of the variation in ${mlEsc(r.numCol)} is explained by ${mlEsc(r.catCol)}). Overall mean ${r.grandMean}.</span>
+      <table style="font-size:11px;margin-top:4px"><thead><tr><th>${mlEsc(r.catCol)}</th><th class="C">n</th><th class="C">Mean</th><th class="C">SD</th><th class="C">Min</th><th class="C">Max</th></tr></thead><tbody>${rows}</tbody></table>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+        <div>${chartCanvasHTML(mId, 280, 170)}${downloadChartButton(mId, chartFile('means_by_' + r.catCol))}</div>
+        <div>${chartCanvasHTML(cId, 260, 170)}${downloadChartButton(cId, chartFile('counts_' + r.catCol))}</div>
+      </div>`;
+  }
   if (run.type === 'Descriptive') {
     const histAId = chartId + '-histA', histBId = chartId + '-histB', heatId = chartId + '-heat';
     queueChart(chartId, canvas => drawScatterChart(canvas, r.points, { xLabel: r.colA, yLabel: r.colB, title: `${r.colA} vs ${r.colB}` }));
@@ -842,6 +1145,20 @@ function renderModelRunResult(run, rid) {
       <div class="alert" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;margin-top:6px">Simple linear trend — assumes rows are already in chronological order. Treat as a hypothesis to test, not a guarantee.</div>
       <div style="margin-top:6px">${chartCanvasHTML(chartId, 300, 180)}${downloadChartButton(chartId, chartFile('forecast'))}</div>`;
   }
+  if (run.type === 'Classification' && r.featureKind === 'categorical') {
+    queueChart(chartId, canvas => drawBarChart(canvas, ['Train', 'Test', 'Base tr.', 'Base te.'], [r.trainAcc, r.testAcc, r.baselineTrainAcc, r.baselineTestAcc], { title: 'Accuracy % (model vs baseline)', color: '#1D4ED8' }));
+    const ruleRows = r.rules.map(x => `<tr><td>${mlEsc(r.featureCol)} = ${mlEsc(x.category)}</td><td>${mlEsc(x.predicted)}</td><td class="C">${x.n}</td><td class="C">${x.share}%</td></tr>`).join('');
+    const cm = r.confusion;
+    const cmHTML = cm ? `<div style="overflow-x:auto;margin-top:6px"><table style="font-size:11px"><thead><tr><th>Actual \\ Predicted (test)</th>${cm.labels.map(l => `<th class="C">${mlEsc(l)}</th>`).join('')}</tr></thead><tbody>${cm.matrix.map((row, i) => `<tr><td><strong>${mlEsc(cm.labels[i])}</strong></td>${row.map((v, j) => `<td class="C" style="${i === j ? 'background:#dcfce7' : ''}">${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '';
+    return meta + `<span style="font-size:11px">Predicting <strong>${mlEsc(r.targetCol)}</strong> (${r.classes.map(mlEsc).join(', ')}) from the category of <strong>${mlEsc(r.featureCol)}</strong> — one rule per category (${r.categoryCount} categories${r.rules.length < r.categoryCount ? ', largest ' + r.rules.length + ' shown' : ''})</span>
+      <table style="font-size:11px;margin-top:4px"><thead><tr><th>Rule: if</th><th>predict</th><th class="C">Train rows</th><th class="C">Of which predicted class</th></tr></thead><tbody>${ruleRows}</tbody></table>
+      <table style="font-size:11px;margin-top:6px"><thead><tr><th></th><th class="C">Train</th><th class="C">Test</th></tr></thead>
+      <tbody><tr><td>Model accuracy</td><td class="C">${r.trainAcc}%</td><td class="C">${r.testAcc}%</td></tr>
+      <tr><td>Baseline (majority class)</td><td class="C">${r.baselineTrainAcc}%</td><td class="C">${r.baselineTestAcc}%</td></tr></tbody></table>
+      ${cmHTML}
+      <div class="alert" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;margin-top:6px">A one-feature, category-by-category rule — a starting baseline, not a production model. Compare test accuracy to the baseline, not to 100%.</div>
+      <div style="margin-top:6px">${chartCanvasHTML(chartId, 300, 180)}${downloadChartButton(chartId, chartFile('accuracy'))}</div>`;
+  }
   if (run.type === 'Classification') {
     queueChart(chartId, canvas => drawScatterChart(canvas, r.points.map(p => ({ x: p.x, y: p.isTest ? 1 : 0, group: p.group })), { xLabel: r.featureCol, yLabel: 'train=0 / test=1', vLine: r.threshold, title: `${r.featureCol} split at ${r.threshold}` }));
     return meta + `<span style="font-size:11px">Predicting <strong>${r.targetCol}</strong> (${r.classes.join(' vs ')}) from <strong>${r.featureCol}</strong> at threshold ${r.threshold}</span>
@@ -850,6 +1167,19 @@ function renderModelRunResult(run, rid) {
       <tr><td>Baseline (majority class)</td><td class="C">${r.baselineTrainAcc}%</td><td class="C">${r.baselineTestAcc}%</td></tr></tbody></table>
       <div class="alert" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;margin-top:6px">A single-rule classifier on one feature — a starting baseline, not a production model. Compare test accuracy to the baseline, not to 100%.</div>
       <div style="margin-top:6px">${chartCanvasHTML(chartId, 300, 180)}${downloadChartButton(chartId, chartFile('classes'))}</div>`;
+  }
+  if (run.type === 'Clustering' && r.mode === 'mixed') {
+    if (r.scatter) {
+      queueChart(chartId, canvas => drawScatterChart(canvas,
+        r.scatter.points.map((p, i) => ({ x: p[0], y: p[1], group: r.assignments[i] })),
+        { xLabel: r.scatter.xLabel, yLabel: r.scatter.yLabel, title: `${r.k} clusters`, marks: r.scatter.marks }));
+    } else {
+      queueChart(chartId, canvas => drawBarChart(canvas, r.clusters.map(c => 'C' + c.id), r.clusters.map(c => c.size), { title: 'Cluster sizes', color: '#7C3AED' }));
+    }
+    const cRows = r.clusters.map(c => `<tr><td>Cluster ${c.id}</td><td class="C">${c.size}</td><td>${(c.summary || []).map(mlEsc).join('<br>')}</td></tr>`).join('');
+    return meta + `<table style="font-size:11px"><thead><tr><th>Cluster</th><th class="C">Size</th><th>Profile (${r.cols.map(mlEsc).join(', ')})</th></tr></thead><tbody>${cRows}</tbody></table>
+      <div style="font-size:10px;color:#64748b;margin-top:4px">Mixed clustering (k-prototypes): numeric columns are standardised, categorical columns count 1 for each mismatch. Categorical columns show the most common categories in each cluster.</div>
+      <div style="margin-top:6px">${chartCanvasHTML(chartId, 300, 180)}${downloadChartButton(chartId, chartFile('clusters'))}</div>`;
   }
   if (run.type === 'Clustering') {
     const rows = r.clusters.map(c => `<tr><td>Cluster ${c.id}</td><td class="C">${c.size}</td><td>${c.centroid.join(', ')}</td></tr>`).join('');
@@ -862,9 +1192,11 @@ function renderModelRunResult(run, rid) {
       <div style="margin-top:6px">${chartCanvasHTML(chartId, 300, 180)}${downloadChartButton(chartId, chartFile('clusters'))}</div>`;
   }
   if (run.type === 'Association') {
-    const rows = r.rules.map(rule => `<tr><td>${r.colA}=${rule.a} → ${r.colB}=${rule.b}</td><td class="C">${rule.count}</td><td class="C">${rule.support}</td><td class="C">${rule.confidence}</td></tr>`).join('');
+    const hasLift = r.rules.some(rule => rule.lift !== undefined);
+    const rows = r.rules.map(rule => `<tr><td>${mlEsc(r.colA)}=${mlEsc(rule.a)} → ${mlEsc(r.colB)}=${mlEsc(rule.b)}</td><td class="C">${rule.count}</td><td class="C">${rule.support}</td><td class="C">${rule.confidence}</td>${hasLift ? `<td class="C">${rule.lift}</td>` : ''}</tr>`).join('');
     queueChart(chartId, canvas => drawBarChart(canvas, r.rules.map(rule => `${rule.a}→${rule.b}`), r.rules.map(rule => rule.confidence), { title: 'Confidence by rule', color: '#B45309' }));
-    return meta + `<table style="font-size:11px"><thead><tr><th>Rule</th><th class="C">Count</th><th class="C">Support</th><th class="C">Confidence</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No rule occurred more than once</td></tr>'}</tbody></table>
+    return meta + `<table style="font-size:11px"><thead><tr><th>Rule</th><th class="C">Count</th><th class="C">Support</th><th class="C">Confidence</th>${hasLift ? '<th class="C">Lift</th>' : ''}</tr></thead><tbody>${rows || '<tr><td colspan="5">No rule occurred more than once</td></tr>'}</tbody></table>
+      ${hasLift ? '<div style="font-size:10px;color:#64748b;margin-top:2px">Lift above 1 means the pair occurs together more often than chance; below 1, less often.</div>' : ''}
       ${r.rules.length ? `<div style="margin-top:6px">${chartCanvasHTML(chartId, 300, 180)}${downloadChartButton(chartId, chartFile('rules'))}</div>` : ''}`;
   }
   return '';
@@ -873,13 +1205,21 @@ function renderModelRunResult(run, rid) {
 function renderModelLabConfig(gid, ds, type) {
   const numericCols = (ds.stats || []).filter(s => s.type === 'numeric').map(s => s.name);
   const catCols = (ds.stats || []).filter(s => s.type === 'categorical').map(s => s.name);
-  const opts = (cols, placeholder) => `<option value="">${placeholder}</option>` + cols.map(c=>`<option>${c}</option>`).join('');
+  const opts = (cols, placeholder) => `<option value="">${placeholder}</option>` + cols.map(c=>`<option>${mlEsc(c)}</option>`).join('');
+  // Every column, tagged by type. Numeric columns also appear "as categories" so
+  // coded values such as 0/1 or 1–5 ratings can be treated as groups.
+  const anyOpts = (placeholder) => `<option value="">${placeholder}</option>` + (ds.stats || []).map(s => s.type === 'numeric'
+    ? `<option value="${mlEsc(s.name)}">${mlEsc(s.name)} (numeric)</option><option value="${ML_CAT_PREFIX}${mlEsc(s.name)}">${mlEsc(s.name)} (numeric, as categories)</option>`
+    : `<option value="${mlEsc(s.name)}">${mlEsc(s.name)} (categorical)</option>`).join('');
+  const catOpts = (placeholder) => `<option value="">${placeholder}</option>` + (ds.stats || []).map(s => s.type === 'numeric'
+    ? `<option value="${ML_CAT_PREFIX}${mlEsc(s.name)}">${mlEsc(s.name)} (numeric codes as categories)</option>`
+    : `<option value="${mlEsc(s.name)}">${mlEsc(s.name)} (categorical)</option>`).join('');
 
   if (type === 'Descriptive') {
     return `<div class="form-row">
-      <div class="form-group"><label>Column A (numeric)</label><select id="ml-colA">${opts(numericCols,'— column —')}</select></div>
-      <div class="form-group"><label>Column B (numeric)</label><select id="ml-colB">${opts(numericCols,'— column —')}</select></div>
-    </div>`;
+      <div class="form-group"><label>Column A</label><select id="ml-colA">${anyOpts('— column —')}</select></div>
+      <div class="form-group"><label>Column B</label><select id="ml-colB">${anyOpts('— column —')}</select></div>
+    </div><div class="alert alert-info">Numeric + numeric → correlation. Categorical + categorical → contingency table, χ² test and Cramér's V. Categorical + numeric → summary of the numbers within each category.</div>`;
   }
   if (type === 'Forecasting') {
     return `<div class="form-row">
@@ -889,21 +1229,22 @@ function renderModelLabConfig(gid, ds, type) {
   }
   if (type === 'Classification') {
     return `<div class="form-row">
-      <div class="form-group"><label>Target to predict (categorical)</label><select id="ml-target">${opts(catCols,'— column —')}</select></div>
-      <div class="form-group"><label>Feature to predict from (numeric)</label><select id="ml-feature">${opts(numericCols,'— column —')}</select></div>
-    </div><div class="alert alert-info">Uses the two most common categories if there are more than two.</div>`;
+      <div class="form-group"><label>Target to predict (categorical)</label><select id="ml-target">${catOpts('— column —')}</select></div>
+      <div class="form-group"><label>Feature to predict from</label><select id="ml-feature">${anyOpts('— column —')}</select></div>
+    </div><div class="alert alert-info">Numeric feature → best single threshold, using the two most common target categories. Categorical feature → one rule per category, any number of target classes.</div>`;
   }
   if (type === 'Clustering') {
     return `<div class="form-row">
-      <div class="form-group"><label>Column 1 (numeric)</label><select id="ml-cluster-col1">${opts(numericCols,'— column —')}</select></div>
-      <div class="form-group"><label>Column 2 (optional, numeric)</label><select id="ml-cluster-col2">${opts(numericCols,'— none —')}</select></div>
+      <div class="form-group"><label>Column 1</label><select id="ml-cluster-col1">${anyOpts('— column —')}</select></div>
+      <div class="form-group"><label>Column 2 (optional)</label><select id="ml-cluster-col2">${anyOpts('— none —')}</select></div>
+      <div class="form-group"><label>Column 3 (optional)</label><select id="ml-cluster-col3">${anyOpts('— none —')}</select></div>
       <div class="form-group"><label>Number of clusters (k)</label><input type="number" id="ml-k" value="3" min="2" max="6"></div>
-    </div>`;
+    </div><div class="alert alert-info">All numeric → k-means. Any categorical column → mixed clustering (k-prototypes), which groups by both the numbers and the categories.</div>`;
   }
   if (type === 'Association') {
     return `<div class="form-row">
-      <div class="form-group"><label>Column A (categorical)</label><select id="ml-assoc-colA">${opts(catCols,'— column —')}</select></div>
-      <div class="form-group"><label>Column B (categorical)</label><select id="ml-assoc-colB">${opts(catCols,'— column —')}</select></div>
+      <div class="form-group"><label>Column A (categories)</label><select id="ml-assoc-colA">${catOpts('— column —')}</select></div>
+      <div class="form-group"><label>Column B (categories)</label><select id="ml-assoc-colB">${catOpts('— column —')}</select></div>
     </div>`;
   }
   return '';
