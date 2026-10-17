@@ -25,7 +25,7 @@ async function issueCertificate(studentId) {
   if (student.certificateId) return student.certificateId; // idempotent — never re-issue
   const certId = generateCertId();
   const cohortName = COHORT_ID === 'default' ? '2025–26 S2' : ((allCohorts[COHORT_ID] || {}).name || COHORT_ID);
-  await db.ref('studio/__certificates/' + certId).set({
+  await db.ref(DB_ROOT + '/__certificates/' + certId).set({
     studentId, studentName: student.name, guildId: gid, guildName: guild.name,
     campus: student.campus || guild.campus || '', cohortId: COHORT_ID, cohortName,
     module: 'CMP701 Digital Transformation Studio', issuedAt: Date.now(),

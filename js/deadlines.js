@@ -91,7 +91,7 @@ async function publishDeadlines() {
   // deadline published here silently never appears there, looking like the
   // save didn't take.
   if (COHORT_ID !== 'default') {
-    await db.ref('studio/__cohorts/' + COHORT_ID).update({
+    await db.ref(DB_ROOT + '/__cohorts/' + COHORT_ID).update({
       cw1Sub: cw1Sub || null, cw1Mark: cw1Mark || null, cw2Sub: cw2Sub || null, cw2Mark: cw2Mark || null
     });
   }
