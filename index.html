@@ -813,12 +813,37 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
 ════════════════════════════════════════════════════════════ -->
 
 <!-- STUDENT: Identity selector banner -->
-<div id="studentIdentityBanner" style="display:none;background:#fffbeb;border-bottom:2px solid #fde68a;padding:10px 20px;display:flex;align-items:center;gap:10px">
+<div id="studentIdentityBanner" style="display:none;background:#fffbeb;border-bottom:2px solid #fde68a;padding:10px 20px;align-items:center;gap:10px">
+  <span id="studentSignedInBox" style="display:none;align-items:center;gap:10px;font-size:12px;color:#854d0e">
+    Signed in as <strong id="studentSignedInName"></strong>
+    <button class="btn btn-ghost btn-sm" onclick="studentSignOut()">Not you? Sign out</button>
+  </span>
+  <span id="studentPickerBox" style="display:flex;align-items:center;gap:10px">
   <span style="font-size:12px;font-weight:700;color:#854d0e">Who are you?</span>
   <select id="studentIdentitySelect" onchange="setStudentIdentity()" style="padding:6px 10px;border:1.5px solid #fde68a;border-radius:6px;font-size:12px;min-width:200px;background:#fff">
     <option value="">— Select your name —</option>
   </select>
   <span style="font-size:11px;color:#92400e">Your submissions will be saved under the name you select.</span>
+  </span>
+</div>
+
+<!-- STUDENT: sign-in by full name (checked server-side; shows only your own Guild afterwards) -->
+<div id="studentAccessScreen" style="display:none;position:fixed;inset:0;background:#f0f4f8;z-index:999;overflow-y:auto;align-items:flex-start;justify-content:center;padding:60px 20px">
+  <div style="width:100%;max-width:440px">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:36px;margin-bottom:10px">🎓</div>
+      <h2 style="font-size:18px;font-weight:800;color:#1B3A6B;margin-bottom:6px">CMP701 Digital Transformation Studio</h2>
+      <p style="font-size:12px;color:#64748b">Confirm your name to continue</p>
+    </div>
+    <div class="card"><div class="card-body">
+      <label style="font-size:12px;font-weight:700;color:#475569">Your full name</label>
+      <input type="text" id="studentGateName" autocomplete="off" placeholder="As it appears on your university record"
+             style="margin:6px 0 8px" onkeydown="if(event.key==='Enter')studentGateSubmit()">
+      <p id="studentGateErr" style="font-size:11px;color:#B91C1C;margin-bottom:8px;display:none"></p>
+      <button class="btn btn-primary" id="studentGateBtn" style="width:100%" onclick="studentGateSubmit()">Continue →</button>
+    </div></div>
+    <p style="font-size:10px;color:#94a3b8;text-align:center;margin-top:14px">You will only see your own Guild's information. Personal data of other students is not shared.</p>
+  </div>
 </div>
 
 <!-- STUDENT: This Week's Quest -->
@@ -1383,6 +1408,7 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -1401,6 +1427,15 @@ firebase.initializeApp(_fbCfg);
 const db      = firebase.database();
 const storage = firebase.storage();
 
+// Database root. 'studio_test' is an identical, synthetic-data copy used to test the
+// access rules end to end (?dbroot=studio_test); anything else means the live 'studio'.
+const DB_ROOT = new URLSearchParams(location.search).get('dbroot') === 'studio_test' ? 'studio_test' : 'studio';
+
+// Every visitor gets an anonymous Firebase identity. That identity only becomes useful
+// once it "claims" a role (student name / tutor PIN / leader code) that the database
+// rules verify server-side — see js/access.js and security/build_rules.py.
+const authReady = firebase.auth().signInAnonymously().then(c => c.user);
+
 // safeStore: localStorage with automatic sessionStorage fallback for cross-origin iframes
 // (Safari's ITP and Chrome with strict third-party cookie settings block localStorage in iframes)
 const safeStore = (() => {
@@ -1416,7 +1451,7 @@ async function preloadApiKey() {
   if (_apiKey && !looksLikeAnthropicKey(_apiKey)) { safeStore.removeItem('cmp701_ai_key'); _apiKey = ''; } // discard a bad cached value
   if (!_apiKey) {
     try {
-      const snap = await db.ref('studio/__config/aiKey').once('value');
+      const snap = await db.ref(DB_ROOT + '/__config/aiKey').once('value');
       const shared = snap.val() || '';
       if (looksLikeAnthropicKey(shared)) { _apiKey = shared; safeStore.setItem('cmp701_ai_key', _apiKey); }
     } catch(e) {}
@@ -1440,7 +1475,7 @@ let csvImportBuffer = [];
 
 // ─── Cohort State ────────────────────────────────────────────
 let COHORT_ID   = 'default';          // current cohort key
-let COHORT_PATH = 'studio';           // Firebase base path for current cohort
+let COHORT_PATH = DB_ROOT;            // Firebase base path for current cohort
 let allCohorts  = {};                 // cohortId → meta, loaded from studio/__cohorts
 let _mainUnsub  = null;
 let _annUnsub   = null;
@@ -1455,31 +1490,19 @@ function sRef(subpath) {
 window.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(location.search);
 
-  // Role from URL param (?role=student | lecturer | leader)
+  // Role from URL param (?role=student | lecturer | leader). This only chooses which
+  // screen to show — what a session may actually read is decided by the database
+  // rules after the visitor proves who they are (see js/access.js).
   const urlRole = params.get('role');
   if (urlRole === 'student')  { userRole = 'student';   isLeader = false; isLecturer = false; }
   if (urlRole === 'lecturer') { userRole = 'lecturer';  isLeader = false; isLecturer = true;  }
-
-  // Preload API key from safeStore / Firebase (async — AI features fire on user action so timing is fine)
-  preloadApiKey();
 
   // Embed mode: hide header when running inside a Blackboard iframe
   const isEmbed = params.get('embed') === '1';
   if (isEmbed) document.body.classList.add('embed');
 
-  // Restore last cohort
-  const savedCohort = safeStore.getItem('cmp701_cohort') || 'default';
-
-  // Load cohort list first, then subscribe to data
-  sRef('__cohorts').on('value', snap => {
-    allCohorts = snap.val() || {};
-    renderCohortSelector(savedCohort);
-  });
-
-  // Subscribe to data for the saved cohort
-  subscribeToCohort(savedCohort);
-
-  // Restore lecturer identity from previous session
+  // Restore lecturer display identity from previous session (access itself is the
+  // server-verified claim, re-checked in bootAccess)
   if (isLecturer) {
     const saved = safeStore.getItem('cmp701_lecturer');
     if (saved) {
@@ -1487,19 +1510,83 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Load teaching team (global, not cohort-scoped)
-  loadTeachingTeam();
-
   // Apply role UI (must run after DOM is ready)
   applyRole();
   populateWeekSelects();
   setCurrentWeekBadge();
 
-  // Show lecturer identity screen if not yet identified
-  if (isLecturer && !currentLecturer) {
-    showLecturerIdentityScreen();
-  }
+  bootAccess(params);
 });
+
+let _staffStarted = false;
+let _leaderClaimed = false;
+
+// The newest cohort that is still active — used when no (valid) cohort is requested.
+function latestActiveCohort() {
+  const ids = Object.keys(allCohorts).filter(id => allCohorts[id] && allCohorts[id].name && allCohorts[id].status !== 'archived');
+  ids.sort((a, b) => (allCohorts[b].createdAt || 0) - (allCohorts[a].createdAt || 0));
+  return ids[0] || '';
+}
+
+async function bootAccess(params) {
+  try { await authReady; }
+  catch (e) {
+    document.getElementById('liveBadge').textContent = '● Offline';
+    toast('Could not start a secure session (' + (e.code || e.message) + '). Please reload.', 'err');
+    return;
+  }
+  // Cohort names/dates only — no personal data
+  try { allCohorts = (await db.ref(DB_ROOT + '/__cohorts').once('value')).val() || {}; } catch (e) { allCohorts = {}; }
+  db.ref(DB_ROOT + '/__cohorts').on('value', snap => { allCohorts = snap.val() || {}; renderCohortSelector(COHORT_ID); });
+
+  let cohort = params.get('cohort') || safeStore.getItem('cmp701_cohort') || '';
+  if (!cohort || cohort === 'default' || !allCohorts[cohort]) cohort = latestActiveCohort();
+  COHORT_ID = cohort;
+  COHORT_PATH = DB_ROOT + '/c_' + cohort;
+  safeStore.setItem('cmp701_cohort', cohort);
+  renderCohortSelector(cohort);
+
+  if (isRealStudentSession()) return startStudentAccess();
+  if (isLecturer) return startLecturerAccess();
+  return startLeaderAccess();
+}
+
+async function startStudentAccess() {
+  const saved = safeStore.getItem('cmp701_student_name');
+  if (saved) {
+    const r = await studentSignIn(saved);
+    if (r.ok) { document.getElementById('studentAccessScreen').style.display = 'none'; startStudentSession(r.sid, r.gid); return; }
+  }
+  showStudentGate();
+}
+
+async function startLecturerAccess() {
+  loadTeachingTeam();                       // names only (the PIN list is Module Leader-only)
+  const claim = await currentClaim();
+  if (claim && claim.role === 'lecturer' && currentLecturer && currentLecturer.id === claim.id) {
+    _accessOk = true;
+    beginStaffSession();
+    return;
+  }
+  currentLecturer = null;
+  showLecturerIdentityScreen();
+}
+
+async function startLeaderAccess() {
+  const claim = await currentClaim();
+  if (claim && claim.role === 'leader') { _accessOk = true; _leaderClaimed = true; beginStaffSession(); return; }
+  openModal('leaderCodeModal');
+  setTimeout(() => { const f = document.getElementById('leaderCodeInput'); if (f) f.focus(); }, 150);
+}
+
+// Staff sessions (Module Leader / tutors) read the whole cohort, as before.
+function beginStaffSession() {
+  if (_staffStarted) return;
+  _staffStarted = true;
+  preloadApiKey();
+  loadTeachingTeam();
+  subscribeToCohort(COHORT_ID);
+}
 
 // ─── Cohort Subscription ─────────────────────────────────────
 function subscribeToCohort(cohortId) {
@@ -1509,23 +1596,19 @@ function subscribeToCohort(cohortId) {
   if (_prUnsub)   { db.ref(COHORT_PATH + '/peerReviews').off('value', _prUnsub); _prUnsub = null; }
 
   COHORT_ID   = cohortId;
-  COHORT_PATH = cohortId === 'default' ? 'studio' : 'studio/c_' + cohortId;
+  COHORT_PATH = DB_ROOT + '/c_' + cohortId;
   safeStore.setItem('cmp701_cohort', cohortId);
 
   _mainUnsub = snap => {
     const raw = snap.val() || {};
-    appData.guilds      = raw.guilds      || {};
-    appData.students    = raw.students    || {};
-    appData.quests      = raw.quests      || {};
-    appData.config      = raw.config      || {};
-    applyAutoCurrentWeek();
-    checkLeaderCodeGate();
-
-    document.getElementById('liveBadge').textContent = '● Live';
-    document.getElementById('liveBadge').className   = 'live-badge ok';
-    refreshAll();
-    ensurePeerReviewRoundsGenerated(); // guild rosters changed — re-check for newly pairable campuses
-    ensureQuestsAutoPublished(); // current week (or quest content) changed — publish anything now due
+    appData.guilds       = raw.guilds       || {};
+    appData.students     = raw.students     || {};
+    appData.quests       = raw.quests       || {};
+    appData.config       = raw.config       || {};
+    appData.guildSummary = raw.guildSummary || {};
+    onCohortDataUpdated();
+    syncNameIndex(raw.nameIndex);        // keep the private sign-in index in step with the roster
+    publishGuildSummaries();             // leaderboard figures students can see (no personal data)
   };
   db.ref(COHORT_PATH).on('value', _mainUnsub, () => {
     document.getElementById('liveBadge').textContent = '● Offline';
@@ -1555,6 +1638,19 @@ function subscribeToCohort(cohortId) {
   db.ref(COHORT_PATH + '/peerReviews').on('value', _prUnsub);
 }
 
+// Everything that runs after cohort data (staff: the whole cohort; student: their
+// Guild scope) has been loaded into appData.
+function onCohortDataUpdated() {
+  applyAutoCurrentWeek();
+  checkLeaderCodeGate();
+
+  document.getElementById('liveBadge').textContent = '● Live';
+  document.getElementById('liveBadge').className   = 'live-badge ok';
+  refreshAll();
+  ensurePeerReviewRoundsGenerated(); // guild rosters changed — re-check for newly pairable campuses
+  ensureQuestsAutoPublished(); // current week (or quest content) changed — publish anything now due
+}
+
 async function switchCohort(cohortId) {
   subscribeToCohort(cohortId);
   updateCohortBadge(cohortId);
@@ -1562,8 +1658,8 @@ async function switchCohort(cohortId) {
 
 function renderCohortSelector(activeCohortId) {
   const sel = document.getElementById('cohortSelector');
-  const opts = [{ id: 'default', meta: { name: '2025–26 S2 (Default)', year: '2025-26', semester: '2' } }];
-  Object.entries(allCohorts).forEach(([id, m]) => opts.push({ id, meta: m }));
+  const opts = [];
+  Object.entries(allCohorts).forEach(([id, m]) => { if (m && m.name) opts.push({ id, meta: m }); });
   sel.innerHTML = opts.map(o =>
     `<option value="${o.id}" ${o.id === activeCohortId ? 'selected' : ''}>${o.meta.name}</option>`
   ).join('');
@@ -1580,26 +1676,30 @@ function updateCohortBadge(cohortId) {
 }
 
 function refreshAll() {
-  updateDashboard();
-  renderGuilds();
-  renderQuests();
-  renderSubmissions();
-  renderStudents();
-  updateStudentIdentityDropdown();
-  if (!isLeader) refreshStudentViews();
-  loadConfig();
-  updateWeekSelectors();
-  if (typeof renderCompanies === 'function') renderCompanies();
-  if (typeof renderStudioTools === 'function') renderStudioTools();
-  if (typeof renderDeadlines === 'function') renderDeadlines();
-  if (typeof renderPrototypesPage === 'function') renderPrototypesPage();
-  if (typeof renderProgressDashboard === 'function') renderProgressDashboard();
+  // Each renderer is isolated so one failure (e.g. a section a Guild-scoped student has
+  // no data for) cannot stop the others from drawing.
+  const run = fn => { try { fn(); } catch (e) { console.warn('[refresh]', e); } };
+  run(updateDashboard);
+  run(renderGuilds);
+  run(renderQuests);
+  run(renderSubmissions);
+  run(renderStudents);
+  run(updateStudentIdentityDropdown);
+  if (!isLeader) run(refreshStudentViews);
+  run(loadConfig);
+  run(updateWeekSelectors);
+  if (typeof renderCompanies === 'function') run(renderCompanies);
+  if (typeof renderStudioTools === 'function') run(renderStudioTools);
+  if (typeof renderDeadlines === 'function') run(renderDeadlines);
+  if (typeof renderPrototypesPage === 'function') run(renderPrototypesPage);
+  if (typeof renderProgressDashboard === 'function') run(renderProgressDashboard);
 }
+function refreshAllSafe() { refreshAll(); }
 
 // ─── Role Management ─────────────────────────────────────────
 function setRole(role) {
   // Switching to leader requires code verification (if a code is set)
-  if (role === 'leader' && appData.config.leaderCode && !sessionStorage.getItem('cmp701_leader_ok')) {
+  if (role === 'leader' && !_leaderClaimed) {
     openModal('leaderCodeModal');
     setTimeout(() => { const f = document.getElementById('leaderCodeInput'); if (f) f.focus(); }, 150);
     return;
@@ -2395,7 +2495,7 @@ async function saveMasterApiKey() {
   _apiKey = key;
   safeStore.setItem('cmp701_ai_key', key);
   try {
-    await db.ref('studio/__config/aiKey').set(key); // also save to Firebase so all sessions/iframes can read it
+    await db.ref(DB_ROOT + '/__config/aiKey').set(key); // also save to Firebase so all sessions/iframes can read it
     toast('API key saved — AI feedback is now on for students and tutors', 'ok');
   } catch (e) {
     toast('Saved in this browser only — could not sync to Firebase: ' + e.message, 'err');
@@ -2409,7 +2509,7 @@ async function refreshAiKeyStatus() {
   const el = document.getElementById('aiKeyStatus');
   if (!el || !isLeader) return;
   try {
-    const stored = (await db.ref('studio/__config/aiKey').get()).val();
+    const stored = (await db.ref(DB_ROOT + '/__config/aiKey').get()).val();
     if (stored && !looksLikeAnthropicKey(stored)) {
       el.innerHTML = '<span style="color:#B91C1C;font-weight:700">● The stored value is not an Anthropic API key</span> — AI feedback will fail. Paste your real key (starts with <code>sk-ant-</code>) above and click <strong>Save Key</strong>.';
       return;
@@ -2965,12 +3065,15 @@ async function saveConfig() {
     cw2Deadline:   cw2,
   };
   const code = document.getElementById('cfgLeaderCode').value.trim();
-  if (code) config.leaderCode = code;
+  if (code) {
+    await db.ref(DB_ROOT + '/__secrets/leaderCode').set(code);
+    document.getElementById('cfgLeaderCode').value = '';
+  }
   await sRef('config').update(config);
 
   // Also mirror deadlines onto the cohort meta so Timeline picks them up
   if (COHORT_ID !== 'default') {
-    await db.ref('studio/__cohorts/' + COHORT_ID).update({ cw1Sub: cw1, cw2Sub: cw2 });
+    await db.ref(DB_ROOT + '/__cohorts/' + COHORT_ID).update({ cw1Sub: cw1, cw2Sub: cw2 });
   }
 
   toast('Configuration saved!', 'ok');
@@ -2988,6 +3091,16 @@ function isRealStudentSession() {
 }
 
 function updateStudentIdentityDropdown() {
+  if (isRealStudentSession()) {
+    // Students sign in by name (js/access.js) and only ever hold their own Guild's data.
+    const s = appData.students[currentStudent];
+    const nm = document.getElementById('studentSignedInName');
+    if (nm) nm.textContent = s ? s.name : '';
+    const box = document.getElementById('studentSignedInBox'), pick = document.getElementById('studentPickerBox');
+    if (box) box.style.display = s ? 'flex' : 'none';
+    if (pick) pick.style.display = 'none';
+    return;
+  }
   const sel = document.getElementById('studentIdentitySelect');
   const saved = isRealStudentSession() ? safeStore.getItem('cmp701_student_id') : null;
   sel.innerHTML = '<option value="">— Select your name —</option>' +
@@ -2997,8 +3110,8 @@ function updateStudentIdentityDropdown() {
 }
 
 function setStudentIdentity() {
+  if (isRealStudentSession()) return;     // identity comes from the verified sign-in
   currentStudent = document.getElementById('studentIdentitySelect').value;
-  if (currentStudent && isRealStudentSession()) safeStore.setItem('cmp701_student_id', currentStudent);
   refreshStudentViews();
 }
 
@@ -3451,14 +3564,33 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 let allTeachingTeam = {};
 let currentLecturer = null; // { id, name, campus, title }
 
+let _teamListening = false;
 function loadTeachingTeam() {
-  db.ref('studio/__teachingTeam').on('value', snap => {
+  // The Module Leader reads the full list (it includes PINs, which the database rules
+  // withhold from everyone else); everyone else reads a names-only directory.
+  const leaderView = isLeader && _leaderClaimed;
+  if (_teamListening === (leaderView ? 'leader' : 'dir')) return;
+  _teamListening = leaderView ? 'leader' : 'dir';
+  db.ref(DB_ROOT + (leaderView ? '/__teachingTeam' : '/__teamDirectory')).on('value', snap => {
     allTeachingTeam = snap.val() || {};
     renderTeachingTeamSelector();
     renderTeachingTeamAdmin();
+    if (leaderView) syncTeamDirectory();
     // Show identity screen if lecturer not yet identified
     if (isLecturer && !currentLecturer) showLecturerIdentityScreen();
-  });
+  }, () => {});
+}
+
+// Names-only copy of the teaching team that tutors can read before they sign in.
+let _teamDirJson = '';
+function syncTeamDirectory() {
+  if (!isLeader || !_leaderClaimed) return;
+  const dir = {};
+  Object.entries(allTeachingTeam).forEach(([id, m]) => { dir[id] = { name: m.name || '', campus: m.campus || '', title: m.title || '' }; });
+  const json = JSON.stringify(dir);
+  if (json === _teamDirJson) return;
+  _teamDirJson = json;
+  db.ref(DB_ROOT + '/__teamDirectory').set(dir).catch(() => { _teamDirJson = ''; });
 }
 
 function renderTeachingTeamSelector() {
@@ -3479,20 +3611,17 @@ function renderTeachingTeamSelector() {
 
 // Require the member's own login PIN (set by the Module Leader in Blackboard Setup)
 // before granting Lecturer access — prevents anyone from picking any name off the list.
-function promptLecturerPin(id, name, campus, title) {
-  const member = allTeachingTeam[id];
-  const stored = member && member.pin;
-  if (!stored) {
-    toast('No PIN set for ' + name + ' — ask the Module Leader to add one in Blackboard Setup', 'err');
-    return;
-  }
+async function promptLecturerPin(id, name, campus, title) {
   const input = prompt('Enter your login PIN, ' + name + ':');
   if (input === null) return;
-  if (input.trim().toUpperCase() !== stored.toUpperCase()) {
+  // The PIN is checked by the database rules, not in the browser.
+  const ok = await lecturerSignIn(id, input);
+  if (!ok) {
     toast('Incorrect PIN', 'err');
     return;
   }
   selectLecturerIdentity(id, name, campus, title);
+  beginStaffSession();
 }
 
 function showLecturerIdentityScreen() {
@@ -3552,8 +3681,8 @@ async function addTeachingTeamMember() {
   const pin    = document.getElementById('ttPin').value.trim().toUpperCase();
   if (!name) { toast('Enter a name first', 'err'); return; }
   if (!pin) { toast('Enter a login PIN first (e.g. initials + 0701)', 'err'); return; }
-  const id = db.ref('studio/__teachingTeam').push().key;
-  await db.ref('studio/__teachingTeam/' + id).set({ name, campus, title, pin, addedAt: Date.now() });
+  const id = db.ref(DB_ROOT + '/__teachingTeam').push().key;
+  await db.ref(DB_ROOT + '/__teachingTeam/' + id).set({ name, campus, title, pin, addedAt: Date.now() });
   document.getElementById('ttName').value = '';
   document.getElementById('ttCampus').value = '';
   document.getElementById('ttTitle').value = '';
@@ -3564,35 +3693,34 @@ async function addTeachingTeamMember() {
 async function removeTeachingTeamMember(id) {
   if (!isLeader) return;
   if (!confirm('Remove this team member?')) return;
-  await db.ref('studio/__teachingTeam/' + id).remove();
+  await db.ref(DB_ROOT + '/__teachingTeam/' + id).remove();
   toast('Removed', 'ok');
 }
 
 async function clearTeachingTeam() {
   if (!isLeader) return;
   if (!confirm('Remove all teaching team members? Do this at the start of a new semester before adding the new team.')) return;
-  await db.ref('studio/__teachingTeam').remove();
+  await db.ref(DB_ROOT + '/__teachingTeam').remove();
   toast('Teaching team cleared — ready for new semester', 'ok');
 }
 
 // ─── Leader Code Gate ─────────────────────────────────────────
 function checkLeaderCodeGate() {
-  if (!isLeader) return;
-  const code = appData.config.leaderCode;
-  if (code && !sessionStorage.getItem('cmp701_leader_ok')) {
-    openModal('leaderCodeModal');
-    setTimeout(() => { const f = document.getElementById('leaderCodeInput'); if (f) f.focus(); }, 150);
-  }
+  if (!isLeader || _leaderClaimed) return;
+  openModal('leaderCodeModal');
+  setTimeout(() => { const f = document.getElementById('leaderCodeInput'); if (f) f.focus(); }, 150);
 }
 
-function verifyLeaderCode() {
-  const input  = document.getElementById('leaderCodeInput').value.trim();
-  const stored = appData.config.leaderCode;
-  if (!stored || input === stored) {
-    sessionStorage.setItem('cmp701_leader_ok', '1');
+async function verifyLeaderCode() {
+  const input = document.getElementById('leaderCodeInput').value.trim();
+  const ok = await leaderSignIn(input);
+  if (ok) {
+    _leaderClaimed = true;
     closeModal('leaderCodeModal');
     document.getElementById('leaderCodeInput').value = '';
+    document.getElementById('leaderCodeErr').style.display = 'none';
     toast('Admin access granted', 'ok');
+    beginStaffSession();
   } else {
     document.getElementById('leaderCodeErr').style.display = 'block';
     document.getElementById('leaderCodeInput').value = '';
@@ -4130,13 +4258,13 @@ async function saveCohort() {
 
   // Generate a safe cohort ID from year + semester if new
   const cohortId = editId || (year + '-s' + semester).replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
-  await db.ref('studio/__cohorts/' + cohortId).set(meta);
+  await db.ref(DB_ROOT + '/__cohorts/' + cohortId).set(meta);
 
   // Keep this cohort's config in sync with the Deadlines tab's fields (both
   // read/write cw1Deadline etc. under different names in different places —
   // without this, a date saved here would never show up in Deadlines, or
   // vice versa, looking like the save silently failed).
-  const cfgPath = 'studio/c_' + cohortId + '/config';
+  const cfgPath = DB_ROOT + '/c_' + cohortId + '/config';
   await db.ref(cfgPath).update({
     cw1Deadline: meta.cw1Sub, cw1MarkDeadline: meta.cw1Mark,
     cw2Deadline: meta.cw2Sub, cw2MarkDeadline: meta.cw2Mark,
@@ -4201,16 +4329,16 @@ function renderCohortGrid() {
 async function archiveCohort(cohortId) {
   if (!isLeader) return;
   if (!confirm('Archive this cohort? It will be hidden from the selector but data is preserved.')) return;
-  await db.ref('studio/__cohorts/' + cohortId + '/status').set('archived');
+  await db.ref(DB_ROOT + '/__cohorts/' + cohortId + '/status').set('archived');
   toast('Cohort archived');
 }
 
 async function deleteCohort(cohortId) {
   if (!isLeader) return;
   if (!confirm('Permanently delete this cohort and ALL its data? This cannot be undone.')) return;
-  await db.ref('studio/__cohorts/' + cohortId).remove();
-  await db.ref('studio/c_' + cohortId).remove();
-  if (COHORT_ID === cohortId) switchCohort('default');
+  await db.ref(DB_ROOT + '/__cohorts/' + cohortId).remove();
+  await db.ref(DB_ROOT + '/c_' + cohortId).remove();
+  if (COHORT_ID === cohortId) switchCohort(latestActiveCohort());
   toast('Cohort deleted');
 }
 
@@ -4414,6 +4542,7 @@ function getLevelProgress(xp) {
 // correct; a Guild with no members yet has no XP.
 function computeGuildXP(guildId) {
   const guild = appData.guilds[guildId];
+  if (guild && guild._xp !== undefined) return guild._xp;   // another Guild: published summary only
   if (!guild || !guild.members) return 0;
   const anyMember = Object.keys(guild.members)[0];
   return anyMember ? computeStudentXP(anyMember) : 0;
@@ -4530,7 +4659,7 @@ function renderGuildLeaderboard() {
     const isMyGuild = guildId === studentGuildId;
     const maxXP = lb[0].xp || 1;
     const pct   = Math.round((xp / maxXP) * 100);
-    const memberCount = guild.members ? Object.values(guild.members).length : 0;
+    const memberCount = guild._memberCount !== undefined ? guild._memberCount : (guild.members ? Object.values(guild.members).length : 0);
     return `<div class="lb-row" style="${isMyGuild ? 'background:#eff6ff;margin:0 -12px;padding:7px 12px;border-radius:6px' : ''}">
       <div class="lb-rank ${rankClass(rank)}">${rankMedal(rank)}</div>
       <div style="flex:1;min-width:0">
@@ -4616,6 +4745,7 @@ function renderGamificationDashboard() {
      itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
      that touches any of these files. -->
 <script>const SCRIPT_V = '20261007a';</script>
+<script src="js/access.js?v=20261007a"></script>
 <script src="js/company.js?v=20261007a"></script>
 <script src="js/individual-workspace.js?v=20261007a"></script>
 <script src="js/studio-tools.js?v=20261007a"></script>
