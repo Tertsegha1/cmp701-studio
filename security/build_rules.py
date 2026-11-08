@@ -26,7 +26,11 @@ def studio_rules(R):
     OWN_GUILD = f"({STU}) && {MYGID} === $gid"
     PEER_TARGET = (f"({STU}) && root.child('{R}/'+$cohort+'/peerReviews/'+$wk+'/'+{MYGID}+'/targetGuildId').val() === $gid")
     OWN_STUDENT_FIELD = f"({STU}) && {MYSID} === $sid"
-    FB_OPEN = f"root.child('{R}/'+$cohort+'/config/feedbackOpen').val() === true"
+    _c = lambda leaf: f"root.child('{R}/'+$cohort+'/config/{leaf}')"
+    # Open when forced open, or - unless forced closed - between the scheduled open and close times.
+    FB_OPEN = (f"({_c('feedbackOpen')}.val() === true || ({_c('feedbackOpen')}.val() !== false && "
+               f"{_c('feedbackOpenAt')}.exists() && now >= {_c('feedbackOpenAt')}.val() && "
+               f"(!{_c('feedbackCloseAt')}.exists() || now < {_c('feedbackCloseAt')}.val())))")
 
     nm = "newData.child('name').val()"
     idx = lambda leaf: f"root.child('{R}/'+newData.child('cohort').val()+'/nameIndex/'+{nm}+'/{leaf}').val()"

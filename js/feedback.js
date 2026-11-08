@@ -69,6 +69,30 @@ const FB_CAMPUSES = ['London', 'Birmingham', 'Manchester'];
 
 function fbEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function fbCohortKey() { return 'c_' + COHORT_ID; }
+
+// Open/closed state, using the database's clock so a student's wrong device clock cannot matter.
+// config.feedbackOpen: true = forced open, false = forced closed, absent = follow the schedule
+// (config.feedbackOpenAt / feedbackCloseAt, in ms). Mirrors FB_OPEN in security/build_rules.py.
+let _fbOffset = 0;
+try { db.ref('.info/serverTimeOffset').on('value', s => { _fbOffset = s.val() || 0; }); } catch (e) {}
+function fbNow() { return Date.now() + _fbOffset; }
+function fbFmt(ms) { return new Date(ms).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+function fbState(cfg) {
+  cfg = cfg || appData.config || {};
+  const now = fbNow(), at = Number(cfg.feedbackOpenAt) || 0, until = Number(cfg.feedbackCloseAt) || 0;
+  if (cfg.feedbackOpen === true) return { open: true, why: 'opened manually' };
+  if (cfg.feedbackOpen === false) return { open: false, why: 'closed manually' };
+  if (at && now >= at && (!until || now < until)) return { open: true, why: 'scheduled' + (until ? ', closes ' + fbFmt(until) : '') };
+  if (at && now < at) return { open: false, why: 'opens ' + fbFmt(at) };
+  if (at && until && now >= until) return { open: false, why: 'schedule ended ' + fbFmt(until) };
+  return { open: false, why: 'not scheduled' };
+}
+function fbIsOpen() { return fbState().open; }
+function fbLocalInput(ms) {
+  if (!ms) return '';
+  const d = new Date(Number(ms)), z = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`;
+}
 function fbRandomId() {
   const b = new Uint8Array(16);
   (window.crypto || window.msCrypto).getRandomValues(b);
@@ -111,11 +135,11 @@ function renderStudentFeedback() {
   const nudge = document.getElementById('feedbackNudge');
   if (!body) return;
   fbInjectStyle();
-  const open = !!(appData.config && appData.config.feedbackOpen === true);
+  const open = fbIsOpen();
   const real = isRealStudentSession();
   const key = [open, real, _fbDone].join('|');
 
-  if (nudge) nudge.style.display = (open && real && !_fbDone) ? 'block' : 'none';
+  if (nudge) nudge.style.display = (open && real && !_fbDone && !fbDeclined()) ? 'block' : 'none';
   if (key === _fbRenderKey) return;          // never rebuild the form while someone is typing in it
   _fbRenderKey = key;
 
@@ -187,7 +211,7 @@ async function submitFeedback() {
   const msg = document.getElementById('fbSubmitMsg');
   const say = (t, bad) => { msg.textContent = t; msg.style.color = bad ? '#B91C1C' : '#15803D'; };
   if (!isRealStudentSession() || !currentStudent) { say('Sign in as a student to submit.', true); return; }
-  if (!(appData.config && appData.config.feedbackOpen === true)) { say('The survey is closed.', true); return; }
+  if (!fbIsOpen()) { say('The survey is closed.', true); return; }
   const val = name => { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? +el.value : null; };
   const overall = val('fb_overall');
   if (!overall) { say('Please give an overall rating (section 1).', true); return; }
@@ -243,6 +267,53 @@ function fbDrawHBar(canvas, labels, values, opts) {
   });
 }
 
+// ─── Prompt before a Guild quest is saved ──────────────────────────────────
+// A reminder, never a block: the Studio never stops a Guild submitting, and taking part in
+// the survey is voluntary. Asked at most once per week's quest; "No thanks" stops it for good.
+function fbDeclined() { return safeStore.getItem('cmp701_fb_declined_' + COHORT_ID) === '1'; }
+function fbWeekNow() { return parseInt((appData.config && appData.config.currentWeek) || computeCurrentWeek()) || 0; }
+function fbSnoozed() { return safeStore.getItem('cmp701_fb_snooze_' + COHORT_ID) === String(fbWeekNow()); }
+
+// Resolves true when the student chose to give feedback now (the save should not continue).
+function feedbackPromptBeforeSubmit() {
+  if (!isRealStudentSession() || !currentStudent || !fbIsOpen() || _fbDone || fbDeclined() || fbSnoozed()) return Promise.resolve(false);
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay open';
+    ov.id = 'fbPromptOverlay';
+    ov.innerHTML = `<div class="modal" style="max-width:460px">
+      <div style="font-size:34px;text-align:center;margin-bottom:6px">📝</div>
+      <h3 style="text-align:center;margin-bottom:8px">Before you save your Guild's submission</h3>
+      <p style="font-size:13px;color:#334155;line-height:1.6;margin-bottom:14px">We'd really value your feedback on the Studio — it takes about 5 minutes, it's anonymous, and it helps us improve the module. Your submission is not affected either way.</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-primary" id="fbPromptNow">Give feedback now</button>
+        <button class="btn btn-ghost" id="fbPromptLater">Not now — continue saving my submission</button>
+        <button class="btn btn-ghost" id="fbPromptNever" style="font-size:11px;color:#64748b">No thanks, don't ask me again</button>
+      </div></div>`;
+    document.body.appendChild(ov);
+    const done = result => { ov.remove(); resolve(result); };
+    ov.querySelector('#fbPromptNow').onclick = () => { done(true); showTab('s-feedback', document.getElementById('tab-s-feedback')); };
+    ov.querySelector('#fbPromptLater').onclick = () => { safeStore.setItem('cmp701_fb_snooze_' + COHORT_ID, String(fbWeekNow())); done(false); };
+    ov.querySelector('#fbPromptNever').onclick = () => { safeStore.setItem('cmp701_fb_declined_' + COHORT_ID, '1'); _fbRenderKey = ''; renderStudentFeedback(); done(false); };
+  });
+}
+
+(function wrapSubmitArtefact() {
+  if (typeof submitArtefact !== 'function' || submitArtefact._fbWrapped) return;
+  const original = submitArtefact;
+  const wrapped = async function () {
+    let abort = false;
+    try { abort = await feedbackPromptBeforeSubmit(); } catch (e) { abort = false; }
+    if (abort) return;
+    return original.apply(this, arguments);
+  };
+  wrapped._fbWrapped = true;
+  window.submitArtefact = wrapped;
+})();
+
+// Re-check every 30s so the survey appears (or closes) on its own at the scheduled time.
+setInterval(() => { try { if (document.getElementById('sFeedbackBody')) renderStudentFeedback(); } catch (e) {} }, 30000);
+
 // ─── Module Leader: results ───────────────────────────────────────────────
 let _fbResponses = {}, _fbDoneMap = {}, _fbOffs = [], _fbFilter = 'all';
 
@@ -261,9 +332,23 @@ function startFeedbackResults(cohortId) {
   on('__feedbackDone', v => { _fbDoneMap = v; });
 }
 
-async function toggleFeedbackOpen(open) {
-  try { await sRef('config/feedbackOpen').set(open); toast(open ? 'Student feedback survey is now OPEN' : 'Student feedback survey closed', 'ok'); }
-  catch (e) { toast('Could not change the survey status: ' + (e.code || e.message), 'err'); }
+async function setFeedbackMode(mode) {
+  try {
+    const ref = sRef('config/feedbackOpen');
+    if (mode === 'schedule') await ref.remove(); else await ref.set(mode === 'open');
+    toast(mode === 'open' ? 'Survey opened now' : mode === 'closed' ? 'Survey closed' : 'Survey now follows its schedule', 'ok');
+  } catch (e) { toast('Could not change the survey status: ' + (e.code || e.message), 'err'); }
+}
+async function saveFeedbackSchedule() {
+  const o = document.getElementById('fbOpenAt').value, c = document.getElementById('fbCloseAt').value;
+  const at = o ? new Date(o).getTime() : null, until = c ? new Date(c).getTime() : null;
+  if (!at) { toast('Choose when the survey should open', 'err'); return; }
+  if (until && until <= at) { toast('The closing time must be after the opening time', 'err'); return; }
+  try {
+    await sRef('config').update({ feedbackOpenAt: at, feedbackCloseAt: until });   // null clears the closing time
+    await sRef('config/feedbackOpen').remove();                                    // so the schedule takes effect
+    toast('Schedule saved — opens ' + fbFmt(at), 'ok');
+  } catch (e) { toast('Could not save the schedule: ' + (e.code || e.message), 'err'); }
 }
 function setFeedbackFilter(v) { _fbFilter = v; renderFeedbackResults(); }
 
@@ -297,7 +382,8 @@ function renderFeedbackResults() {
   const el = document.getElementById('fbResultsBody');
   if (!el) return;
   fbInjectStyle();
-  const open = !!(appData.config && appData.config.feedbackOpen === true);
+  const FS = fbState();
+  const open = FS.open;
   const total = Object.keys(appData.students || {}).length;
   const doneN = Object.keys(_fbDoneMap || {}).length;
   const everyone = Object.values(_fbResponses || {});
@@ -320,9 +406,18 @@ function renderFeedbackResults() {
   queueChart('fbToolsChart', c => fbDrawHBar(c, toolsRated.map(t => t.label), toolsRated.map(t => t.mean), { title: 'Mean rating by tool and feature (1–5, "Not used" excluded)', color: '#7C3AED' }));
 
   el.innerHTML = `
-  <div class="alert ${open ? 'alert-success' : 'alert-info'}" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <span><b>Survey is ${open ? 'OPEN' : 'CLOSED'}</b> ${open ? '— students see the Feedback tab and a reminder on their landing page.' : '— students cannot submit.'}</span>
-    <button class="btn ${open ? 'btn-danger' : 'btn-primary'} btn-sm" onclick="toggleFeedbackOpen(${!open})">${open ? 'Close survey' : 'Open survey'}</button>
+  <div class="alert ${open ? 'alert-success' : 'alert-info'}">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span><b>Survey is ${open ? 'OPEN' : 'CLOSED'}</b> — ${fbEsc(FS.why)}. ${open ? 'Students see the Feedback tab, a reminder on their landing page, and a prompt before they save a weekly submission.' : ''}</span>
+      <button class="btn btn-primary btn-sm" onclick="setFeedbackMode('open')">Open now</button>
+      <button class="btn btn-danger btn-sm" onclick="setFeedbackMode('closed')">Close now</button>
+      <button class="btn btn-ghost btn-sm" onclick="setFeedbackMode('schedule')" title="Remove a manual open/close so the schedule below applies">Follow schedule</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:12px">
+      <label>Opens <input type="datetime-local" id="fbOpenAt" value="${fbLocalInput(appData.config && appData.config.feedbackOpenAt)}" style="padding:4px 6px;border:1.5px solid #cbd5e1;border-radius:6px"></label>
+      <label>Closes (optional) <input type="datetime-local" id="fbCloseAt" value="${fbLocalInput(appData.config && appData.config.feedbackCloseAt)}" style="padding:4px 6px;border:1.5px solid #cbd5e1;border-radius:6px"></label>
+      <button class="btn btn-ghost btn-sm" onclick="saveFeedbackSchedule()">Save schedule</button>
+    </div>
   </div>
   <div class="krow">
     <div class="kpi bl"><div class="v">${everyone.length}</div><div class="l">Responses</div></div>
