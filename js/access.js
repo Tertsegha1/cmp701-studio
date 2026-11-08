@@ -76,6 +76,7 @@ function showStudentGate() {
 
 async function studentSignOut() {
   scopeOff();
+  if (typeof stopFeedbackWatch === 'function') stopFeedbackWatch();
   safeStore.removeItem('cmp701_student_name');
   safeStore.removeItem('cmp701_student_id');
   try { const u = await authReady; await accessRef(u.uid).remove(); } catch (e) {}
@@ -92,6 +93,7 @@ function startStudentSession(sid, gid) {
   const banner = document.getElementById('studentIdentityBanner');
   if (banner) banner.style.display = 'flex';
   subscribeStudentScope(COHORT_ID, sid, gid);
+  if (typeof startFeedbackWatch === 'function') startFeedbackWatch(sid);
 }
 
 // ── Staff ─────────────────────────────────────────────────────────────
