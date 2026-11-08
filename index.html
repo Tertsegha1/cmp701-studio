@@ -253,6 +253,7 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
   <button class="tab" onclick="showTab('announcements',this)">Announcements</button>
   <button class="tab" onclick="showTab('timeline',this)">Timeline</button>
   <button class="tab" id="tab-cohorts" onclick="showTab('cohorts',this)">Cohorts</button>
+  <button class="tab" onclick="showTab('fb-results',this)">Student Feedback</button>
   <button class="tab" onclick="showTab('bb-setup',this)">Blackboard Setup</button>
 </div>
 
@@ -283,6 +284,7 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
   <button class="tab" onclick="showTab('s-ai',this)">AI Feedback</button>
   <button class="tab" onclick="showTab('s-progress',this)">My Progress</button>
   <button class="tab" onclick="showTab('s-timeline',this)">Timeline</button>
+  <button class="tab" id="tab-s-feedback" onclick="showTab('s-feedback',this)">Feedback</button>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -597,6 +599,12 @@ body.embed .tabs{top:0;position:sticky;z-index:90}
 </div>
 
 <!-- BLACKBOARD SETUP -->
+<!-- LEADER: Student feedback results -->
+<div class="pg" id="pg-fb-results">
+  <div class="alert alert-info" style="margin-bottom:12px"><b>Student feedback.</b> Open the survey when you want students to respond; they see a Feedback tab and a reminder on their landing page. Results appear here as responses arrive.</div>
+  <div id="fbResultsBody"><p style="color:#94a3b8;font-size:12px">Loading…</p></div>
+</div>
+
 <div class="pg" id="pg-bb-setup">
   <div class="card">
     <div class="card-hdr blue">Blackboard Ultra — Integration Guide</div>
@@ -849,6 +857,10 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
 <!-- STUDENT: This Week's Quest -->
 <div class="pg" id="pg-s-quest">
   <div id="missedTasksBanner" style="display:none"></div>
+  <div id="feedbackNudge" class="alert" style="display:none;background:#e6f4f1;border:1px solid #99d5cf;color:#0f5c5f;margin-bottom:10px">
+    📝 <b>We'd value your feedback on the Studio</b> — about 5 minutes, anonymous.
+    <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="showTab('s-feedback', document.getElementById('tab-s-feedback'))">Give feedback</button>
+  </div>
   <div class="quest-hero" id="questHero">
     <h2 id="questHeroTitle">Loading this week's quest…</h2>
     <div id="questDeadlineBadge" style="display:none;margin:8px 0"></div>
@@ -1070,6 +1082,11 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
 </div>
 
 <!-- STUDENT: Timeline -->
+<!-- STUDENT: Feedback survey -->
+<div class="pg" id="pg-s-feedback">
+  <div id="sFeedbackBody"></div>
+</div>
+
 <div class="pg" id="pg-s-timeline">
   <div class="card">
     <div class="card-hdr blue">Module Timeline &amp; Key Dates</div>
@@ -1519,6 +1536,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 let _staffStarted = false;
+let _feedbackCohortWatched = null;
 let _leaderClaimed = false;
 
 // The newest cohort that is still active — used when no (valid) cohort is requested.
@@ -1608,6 +1626,7 @@ function subscribeToCohort(cohortId) {
     appData.guildSummary = raw.guildSummary || {};
     onCohortDataUpdated();
     syncNameIndex(raw.nameIndex);        // keep the private sign-in index in step with the roster
+    if (typeof startFeedbackResults === 'function' && _feedbackCohortWatched !== cohortId) { _feedbackCohortWatched = cohortId; startFeedbackResults(cohortId); }
     publishGuildSummaries();             // leaderboard figures students can see (no personal data)
   };
   db.ref(COHORT_PATH).on('value', _mainUnsub, () => {
@@ -3128,6 +3147,7 @@ function refreshStudentViews() {
   if (typeof renderCertificateSection === 'function') renderCertificateSection();
   if (typeof renderIndividualWorkspace === 'function') renderIndividualWorkspace();
   if (typeof renderPrototypesPage === 'function') renderPrototypesPage();
+  if (typeof renderStudentFeedback === 'function') renderStudentFeedback();
 }
 
 // Flags a student about their Guild's incomplete milestone weeks — purely
@@ -4744,14 +4764,15 @@ function renderGamificationDashboard() {
      reach real users' browsers for up to 4 hours even after index.html
      itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
      that touches any of these files. -->
-<script>const SCRIPT_V = '20261017a';</script>
-<script src="js/access.js?v=20261017a"></script>
-<script src="js/company.js?v=20261017a"></script>
-<script src="js/individual-workspace.js?v=20261017a"></script>
-<script src="js/studio-tools.js?v=20261017a"></script>
-<script src="js/prototype.js?v=20261017a"></script>
-<script src="js/deadlines.js?v=20261017a"></script>
-<script src="js/progress.js?v=20261017a"></script>
-<script src="js/certificate.js?v=20261017a"></script>
+<script>const SCRIPT_V = '20261108a';</script>
+<script src="js/feedback.js?v=20261108a"></script>
+<script src="js/access.js?v=20261108a"></script>
+<script src="js/company.js?v=20261108a"></script>
+<script src="js/individual-workspace.js?v=20261108a"></script>
+<script src="js/studio-tools.js?v=20261108a"></script>
+<script src="js/prototype.js?v=20261108a"></script>
+<script src="js/deadlines.js?v=20261108a"></script>
+<script src="js/progress.js?v=20261108a"></script>
+<script src="js/certificate.js?v=20261108a"></script>
 </body>
 </html>
