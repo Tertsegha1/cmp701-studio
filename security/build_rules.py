@@ -68,7 +68,11 @@ def studio_rules(R):
         "__feedback": {"$cohort": {
             ".read": LEADER, ".write": LEADER,
             "$rid": {
-                ".write": f"({STU}) && {FB_OPEN} && !data.exists()",
+                # A response can only be added while this student's own "done" flag does not exist
+                # yet (checked against the pre-write state, so the genuine atomic submission passes
+                # and any later extra response is refused). Rules cannot count children, so several
+                # responses inside that single first write are not prevented — documented limitation.
+                ".write": f"({STU}) && {FB_OPEN} && !data.exists() && !root.child('{R}/__feedbackDone/'+$cohort+'/'+{MYSID}).exists()",
                 ".validate": "$rid.matches(/^[a-f0-9]{32}$/) && newData.hasChildren(['overall','researchConsent'])",
                 "v": {".validate": "newData.isNumber()"},
                 "week": {".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 12"},

@@ -1712,6 +1712,7 @@ function refreshAll() {
   if (typeof renderDeadlines === 'function') run(renderDeadlines);
   if (typeof renderPrototypesPage === 'function') run(renderPrototypesPage);
   if (typeof renderProgressDashboard === 'function') run(renderProgressDashboard);
+  if (isLeader && typeof renderFeedbackResults === 'function') run(renderFeedbackResults);
 }
 function refreshAllSafe() { refreshAll(); }
 
