@@ -936,6 +936,7 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
           <input type="text" id="submitTitle" placeholder="e.g. Business Snapshot — Netflix Digital Maturity Analysis">
         </div>
       </div>
+      <div id="storageNotice"></div>
       <div id="submitStatusBanner"></div>
 
       <div class="form-group" style="margin-bottom:12px">
@@ -960,7 +961,7 @@ https://tertsegha1.github.io/cmp701-studio/?role=lecturer&amp;cohort=COHORT_ID</
       </div>
 
       <div class="form-group" style="margin-bottom:12px">
-        <label>Link <span style="font-weight:400;color:#64748b">(optional — a live prototype URL, or a folder link alongside your files)</span></label>
+        <label>Link <span style="font-weight:400;color:#64748b">(optional alongside files — <b>or use it on its own</b>: a OneDrive / SharePoint / Google Drive share link, set to "anyone with the link can view", counts as your Guild's submission)</span></label>
         <input type="url" id="submitLink" placeholder="https://…">
       </div>
 
@@ -2376,7 +2377,7 @@ function renderSubmissions() {
     const statusLabel = graded ? 'Graded' : r.status;
     return `<tr>
       <td style="font-weight:700">${r.guild}</td>
-      <td>${fileCount} file${fileCount===1?'':'s'}</td>
+      <td>${fileCount} file${fileCount===1?'':'s'}${milestoneHasLink(r.m) ? ' + link' : ''}</td>
       <td><span class="b b-blue">Wk ${r.weekNum}</span></td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.m ? (r.m.title || '—') : '<span style="color:#94a3b8">—</span>'}</td>
       <td class="C"><span class="b ${statusBadge}">${statusLabel}</span></td>
@@ -2616,6 +2617,7 @@ function renderArtefactFileList() {
 }
 
 function loadGuildMilestoneForm() {
+  checkStorageAvailable();
   const weekNum = document.getElementById('submitWeekSel').value;
   const gid = currentSubmitGuildId();
   _artefactPendingFiles = [];
@@ -2625,9 +2627,8 @@ function loadGuildMilestoneForm() {
   document.getElementById('submitLink').value = (m && m.link) || '';
   document.getElementById('submitDescription').value = (m && m.description) || '';
   document.getElementById('submitReflection').value = (m && m.reflection) || '';
-  const fileCount = m && m.files ? Object.keys(m.files).length : 0;
-  const status = !m ? 'not-attempted' : (fileCount > 0 ? 'complete' : 'incomplete');
-  const banner = { 'not-attempted': ['#f1f5f9', '#475569', 'Not attempted yet'], 'incomplete': ['#fef9c3', '#854d0e', 'Draft saved — add a file to mark this week complete'], 'complete': ['#dcfce7', '#15803D', '✓ Complete — automatically marked once a file was uploaded'] }[status];
+  const status = !m ? 'not-attempted' : (milestoneIsComplete(m) ? 'complete' : 'incomplete');
+  const banner = { 'not-attempted': ['#f1f5f9', '#475569', 'Not attempted yet'], 'incomplete': ['#fef9c3', '#854d0e', 'Draft saved — add a file or a share link to mark this week complete'], 'complete': ['#dcfce7', '#15803D', '✓ Complete — automatically marked once a file was uploaded'] }[status];
   document.getElementById('submitStatusBanner').innerHTML = gid
     ? `<div class="alert" style="background:${banner[0]};color:${banner[1]};border:1px solid ${banner[0]};margin-bottom:12px">Week ${weekNum} for your Guild: <strong>${status.replace('-', ' ')}</strong>${m && m.lastUpdatedByName ? ' · last updated by ' + m.lastUpdatedByName : ''}</div>`
     : `<div class="alert" style="background:#fee2e2;color:#B91C1C;border:1px solid #fca5a5;margin-bottom:12px">You're not in a Guild yet — ask your tutor to add you before submitting.</div>`;
@@ -3309,6 +3310,45 @@ function renderStudentGuild() {
     : '<p style="color:#94a3b8;font-size:12px">No contract set yet.</p>';
 }
 
+// ─── File-storage availability ─────────────────────────────────────────
+// Uploads go to Firebase Storage. If that service is unavailable (for example the project's
+// billing is suspended, which answers every request with HTTP 402) students must be told
+// plainly and pointed at the share-link route, which needs no file storage.
+let _storageStatus = 'unknown', _storageCheckedAt = 0;
+async function checkStorageAvailable(force) {
+  if (!force && Date.now() - _storageCheckedAt < 5 * 60 * 1000) return _storageStatus;
+  _storageCheckedAt = Date.now();
+  try {
+    const r = await fetch(`https://firebasestorage.googleapis.com/v0/b/${_fbCfg.storageBucket}/o/artefacts%2F__probe%2Fg%2Fping`, { cache: 'no-store' });
+    _storageStatus = (r.status === 402 || r.status >= 500) ? 'down' : 'ok';
+  } catch (e) { /* offline: leave the status unchanged */ }
+  renderStorageNotice();
+  return _storageStatus;
+}
+function storageHelpHTML() {
+  return `<div class="alert" style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;margin-bottom:12px"><div>
+    <b>File uploads are temporarily unavailable.</b> This is a problem with the Studio's file storage, not your connection or your files, and your tutors are aware of it.
+    <ol style="margin:6px 0 0 18px;font-size:12px;line-height:1.6">
+      <li>Put your file(s) in OneDrive, SharePoint or Google Drive and set sharing to <b>"anyone with the link can view"</b>.</li>
+      <li>Paste that link into the <b>Link</b> box below, fill in the title, description and reflection, and click <b>Save Guild Submission</b>.</li>
+      <li>A saved link <b>counts as your Guild's submission</b> for the week — you do not need to upload as well.</li>
+    </ol>
+    <div style="font-size:11px;margin-top:6px">Files uploaded in earlier weeks may not open until this is fixed; they have not been lost.</div></div></div>`;
+}
+function renderStorageNotice() {
+  const el = document.getElementById('storageNotice');
+  if (el) el.innerHTML = _storageStatus === 'down' ? storageHelpHTML() : '';
+}
+function showStorageDownHelp(skippedUpload) {
+  _storageStatus = 'down';
+  renderStorageNotice();
+  const el = document.getElementById('submitAlert');
+  if (el) el.innerHTML = `<div class="alert" style="background:#fff7ed;border:2px solid #fdba74;color:#9a3412;font-size:13px;padding:14px"><div>
+    <b>${skippedUpload ? 'Your file was not uploaded.' : 'The upload did not complete.'}</b> The Studio's file storage is not responding, so nothing was submitted. Nothing you typed has been lost — paste a share link to your file in the <b>Link</b> box and click <b>Save Guild Submission</b> again; the link counts as your Guild's submission.</div></div>`;
+  toast('File upload unavailable — use the Link box with a share link instead', 'err');
+  const n = document.getElementById('storageNotice'); if (n) n.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function populateSubmitWeeks() {
   const sel = document.getElementById('submitWeekSel');
   sel.innerHTML = '';
@@ -3319,10 +3359,16 @@ function populateSubmitWeeks() {
 
 // Guild milestone status: 'complete' once ANY file has been uploaded for that week —
 // no manual marking by tutors, per the framework's automation requirement.
+// A week is complete once the Guild has saved evidence: at least one uploaded file OR a valid
+// share link (http/https). The link route keeps submissions possible when file upload is
+// unavailable, and is how a Guild can submit a very large file or a live document.
+function milestoneHasLink(m) { return !!(m && typeof m.link === 'string' && /^https?:\/\/\S+$/i.test(m.link.trim())); }
+function milestoneIsComplete(m) { return !!m && ((m.files && Object.keys(m.files).length > 0) || milestoneHasLink(m)); }
+function safeUrl(u) { return String(u || '').trim().replace(/["'<>\s]/g, c => encodeURIComponent(c)); }
 function guildMilestoneStatus(gid, weekNum) {
   const m = appData.guilds[gid] && appData.guilds[gid].milestones && appData.guilds[gid].milestones['week-' + weekNum];
   if (!m) return 'not-attempted';
-  return (m.files && Object.keys(m.files).length > 0) ? 'complete' : 'incomplete';
+  return milestoneIsComplete(m) ? 'complete' : 'incomplete';
 }
 function guildMilestoneCompletedCount(gid) {
   return MILESTONE_WEEKS.filter(w => guildMilestoneStatus(gid, w) === 'complete').length;
@@ -3337,7 +3383,7 @@ function guildMilestoneCompletedCount(gid) {
 function guildMilestoneOnTimeCompletedCount(gid) {
   return MILESTONE_WEEKS.filter(w => {
     const m = appData.guilds[gid] && appData.guilds[gid].milestones && appData.guilds[gid].milestones['week-' + w];
-    return m && m.files && Object.keys(m.files).length > 0 && m.completedOnTime !== false;
+    return milestoneIsComplete(m) && m.completedOnTime !== false;
   }).length;
 }
 
@@ -3370,8 +3416,16 @@ async function submitArtefact() {
 
   if (!title) { toast('Add an artefact title', 'err'); return; }
   const hasExistingFiles = existingMilestoneFilesTotalSize(weekNum) > 0;
+  const existingMilestone = appData.guilds[gid].milestones && appData.guilds[gid].milestones['week-' + weekNum];
+  const linkOk = /^https?:\/\/\S+$/i.test(manualLink);
+  if (manualLink && !linkOk) { toast('The link must start with http:// or https:// and contain no spaces', 'err'); return; }
   if (!_artefactPendingFiles.length && !hasExistingFiles && !manualLink) {
-    toast('Upload at least one file (or paste a link) to save this week', 'err'); return;
+    toast('Upload at least one file (or paste a share link) to save this week', 'err'); return;
+  }
+  // File storage is down: fail fast with a clear next step instead of hanging, and never lose the text.
+  if (_artefactPendingFiles.length && _storageStatus === 'down') {
+    showStorageDownHelp(true);
+    return;
   }
 
   const btn = document.getElementById('submitBtn');
@@ -3387,10 +3441,14 @@ async function submitArtefact() {
       ]);
     }
   } catch (err) {
-    const timedOut = err && err.message === 'timeout';
-    toast(timedOut ? 'File upload isn\'t available right now — contact your module leader, or paste a link instead' : 'Upload failed — check your connection and try again', 'err');
+    const code = (err && err.code) || '';
+    const tooBig = code === 'storage/unauthorized';
+    // timeout / unknown / retry-limit / network errors mean the file service itself is not responding
+    if (!tooBig) _storageStatus = 'down';
     document.getElementById('uploadProgress').style.display = 'none';
     if (btn) { btn.disabled = false; btn.textContent = 'Save Guild Submission'; }
+    if (tooBig) toast('That file was refused — each file must be under 20MB. Use a smaller file, or paste a share link instead.', 'err');
+    else showStorageDownHelp(false);
     return;
   }
 
@@ -3404,7 +3462,7 @@ async function submitArtefact() {
   // late work is still accepted and still counts toward the certificate, it
   // just never earns the on-time XP/badge reward, so this must never be
   // recomputed or overwritten by a later edit to the same week.
-  if (!hasExistingFiles && uploadedFiles.length > 0) {
+  if (!milestoneIsComplete(existingMilestone) && (uploadedFiles.length > 0 || linkOk)) {
     const deadline = questDeadlineForWeek(+weekNum);
     updates.completedOnTime = !deadline || Date.now() <= deadline.getTime();
     updates.firstCompletedAt = Date.now();
@@ -3417,7 +3475,7 @@ async function submitArtefact() {
     });
   }
 
-  const nowComplete = uploadedFiles.length > 0 || hasExistingFiles;
+  const nowComplete = uploadedFiles.length > 0 || hasExistingFiles || linkOk;
   const savedAt = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
   const guildName = appData.guilds[gid].name;
   const fileConfirmList = uploadedFiles.length
@@ -3426,7 +3484,7 @@ async function submitArtefact() {
   document.getElementById('submitAlert').innerHTML = `
     <div class="alert alert-success" style="border:2px solid #15803D;font-size:13px;padding:14px">
       <div style="font-size:15px;font-weight:800">${nowComplete ? '✓ Submitted — Week ' + weekNum + ' is now COMPLETE' : '✓ Draft saved for Week ' + weekNum}</div>
-      <div style="margin-top:2px">On behalf of <strong>${guildName}</strong>.${nowComplete ? '' : ' Add a file to mark this week complete.'}</div>
+      <div style="margin-top:2px">On behalf of <strong>${guildName}</strong>.${nowComplete ? '' : ' Add a file or a share link to mark this week complete.'}</div>
       ${fileConfirmList}
       <div style="font-size:10px;color:#64748b;margin-top:8px">Saved ${savedAt} by ${studentName}</div>
     </div>`;
@@ -3460,7 +3518,8 @@ function renderStudentProgress() {
     const isPastDue = !!wDeadline && wDeadline.getTime() < Date.now();
     const quest = appData.quests[wk];
     const fileLinks = (m && m.files ? Object.values(m.files) : []).map(f =>
-      `<a href="${f.url}" target="_blank" style="font-size:10px;color:#1D4ED8;text-decoration:none;margin-left:6px">📎 ${f.name}</a>`).join('');
+      `<a href="${f.url}" target="_blank" style="font-size:10px;color:#1D4ED8;text-decoration:none;margin-left:6px">📎 ${f.name}</a>`).join('')
+      + (milestoneHasLink(m) ? `<a href="${safeUrl(m.link)}" target="_blank" rel="noopener" style="font-size:10px;color:#1D4ED8;text-decoration:none;margin-left:6px">🔗 shared link</a>` : '');
     const missed = status !== 'complete' && isPastDue;
     const dotClass = status === 'complete' ? 'green' : missed ? 'red' : status === 'incomplete' ? 'amber' : '';
     const lateTag = status === 'complete' && m.completedOnTime === false
@@ -4495,7 +4554,7 @@ function getSubmissionStreak(studentId) {
   let streak = 0;
   for (const w of MILESTONE_WEEKS) {
     const m = appData.guilds[gid].milestones && appData.guilds[gid].milestones['week-' + w];
-    const onTime = m && m.files && Object.keys(m.files).length > 0 && m.completedOnTime !== false;
+    const onTime = milestoneIsComplete(m) && m.completedOnTime !== false;
     if (onTime) streak++;
     else break;
   }
@@ -4765,15 +4824,15 @@ function renderGamificationDashboard() {
      reach real users' browsers for up to 4 hours even after index.html
      itself refreshes. Bump SCRIPT_V (below, and in each src) on every push
      that touches any of these files. -->
-<script>const SCRIPT_V = '20261108b';</script>
-<script src="js/feedback.js?v=20261108b"></script>
-<script src="js/access.js?v=20261108b"></script>
-<script src="js/company.js?v=20261108b"></script>
-<script src="js/individual-workspace.js?v=20261108b"></script>
-<script src="js/studio-tools.js?v=20261108b"></script>
-<script src="js/prototype.js?v=20261108b"></script>
-<script src="js/deadlines.js?v=20261108b"></script>
-<script src="js/progress.js?v=20261108b"></script>
-<script src="js/certificate.js?v=20261108b"></script>
+<script>const SCRIPT_V = '20261118a';</script>
+<script src="js/feedback.js?v=20261118a"></script>
+<script src="js/access.js?v=20261118a"></script>
+<script src="js/company.js?v=20261118a"></script>
+<script src="js/individual-workspace.js?v=20261118a"></script>
+<script src="js/studio-tools.js?v=20261118a"></script>
+<script src="js/prototype.js?v=20261118a"></script>
+<script src="js/deadlines.js?v=20261118a"></script>
+<script src="js/progress.js?v=20261118a"></script>
+<script src="js/certificate.js?v=20261118a"></script>
 </body>
 </html>
